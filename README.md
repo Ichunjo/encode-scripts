@@ -1,2 +1,2 @@
-# encode-script
+# Encode-script
 Various scripts I use regarding encoding and stuff
