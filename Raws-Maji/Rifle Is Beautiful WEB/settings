@@ -1,0 +1,2 @@
+x264
+--input-depth 10 --output-depth 10 --partitions all --colormatrix bt709 --ref 12 --deblock -2:-2 --me umh --subme 10 --psy-rd 0.75:0.15 --merange 24 --trellis 2 --no-dct-decimate --bframes 8 --b-adapt 2 --direct auto --keyint 240 --min-keyint 23 --rc-lookahead 48 --crf 16 --qcomp 0.7 --aq-mode 3 --aq-strength 1.0 --fade-compensate 0.65
