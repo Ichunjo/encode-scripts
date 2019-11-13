@@ -1,0 +1,4 @@
+x264
+--input-depth 10 --output-depth 10 --partitions all --colormatrix bt709 --ref 16 --deblock -2:-2 --threads 27 --me tesa --subme 10 --psy-rd 0.8:0.05 --merange 32 --trellis 2 --no-dct-decimate --no-fast-pskip --bframes 16 --b-adapt 2 --direct auto --keyint 360 --min-keyint 23 --rc-lookahead 72 --crf 15 --qcomp 0.75 --aq-mode 3 --aq-strength 0.85 --aq2-strength 0.25 --aq2-sensitivity 20 --aq3-mode 3 --aq3-strength 0.40:0.20:0.30:0.00:0.00:0.10:0.10:0.20 --aq3-sensitivity 10 --aq3-boundary 820:224:36 --fade-compensate 0.65
+qaac
+--threading -V 127 --no-delay --no-optimize --verbose
