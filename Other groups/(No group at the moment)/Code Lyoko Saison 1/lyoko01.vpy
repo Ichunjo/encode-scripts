@@ -30,8 +30,8 @@ def detelecine(src):
 src = lvf.src(r"Code.Lyoko.S01E01.DVD.Remux.Multi-Odd_HD.mkv")
 src = core.std.AssumeFPS(src, fpsnum=25, fpsden=1)
 
-asrc = r"Code.Lyoko.S01E01.DVD.Remux.Multi-Odd_HD.mka"
-ac.eztrim(src, [(3,34778)], asrc, "S01E01_cut.mka")
+#asrc = r"Code.Lyoko.S01E01.DVD.Remux.Multi-Odd_HD.mka"
+#ac.eztrim(src, [(3,34778)], asrc, "S01E01_cut.mka")
 
 src = src[3:34778]
 src = core.std.FreezeFrames(src, first=[0], last=[1], replacement=[2])
@@ -51,7 +51,7 @@ deblock = fvf.AutoDeblock(fixedges)
 
 adaptmask = vrdf.adaptive_mask(deblock, 50)
 edgemask = kgf.retinex_edgemask(deblock).std.Binarize(9500).std.Inflate()
-w2x = mvf.ToRGB(deblock, depth=32)
+w2x = mvf.ToRGB(deblock, matrix="bt709", depth=32)
 w2x = core.w2xc.Waifu2x(w2x, noise=3, scale=1, gpu=1)
 w2x = mvf.ToYUV(w2x, css='420', depth=16)
 denoise_a = kgf.hybriddenoise(deblock, knl=0.5, sigma=2)
@@ -65,7 +65,7 @@ denoise = fvf.rfs(denoise, w2x, mappings="[2555 2556] [2571 2572] [5714 5724] 11
 
 dehalo = hvf.FineDehalo(denoise, rx=2, thmi=80, thma=128, thlimi=50, thlima=100, darkstr=0.4, brightstr=1.0)
 
-dering = hvf.HQDeringmod(dehalo, mrad=3, msmooth=2, mthr=80, minp=2, nrmode=2, drrep=13, thr=64, darkthr=0.3, planes=[0, 1, 2])
+dering = hvf.HQDeringmod(dehalo, mrad=2, msmooth=2, mthr=80, minp=2, nrmode=2, drrep=13, thr=64, sharp=3, darkthr=0.3, planes=[0, 1, 2])
 
 resize = nnedi3_rpow2CL(dering, device=0).resize.Bicubic(768, 576, format=vs.YUV420P16, filter_param_a=0, filter_param_b=1/2)
 
@@ -77,7 +77,7 @@ deband_c = core.f3kdb.Deband(aa, range=17, y=64, cb=64, cr=64, grainy=32, grainc
 deband = fvf.rfs(deband_a, deband_b, mappings="[1125 1249]")
 deband = fvf.rfs(deband, deband_c, mappings="[11158 11214]")
 
-grain_a = kgf.adaptive_grain(deband, 0.4, luma_scaling=8)
+grain_a = kgf.adaptive_grain(deband, 0.2)
 grain_b = core.grain.Add(deband, var=0.4, constant=True)
 grain_b = core.grain.Add(grain_b, var=0.8, constant=False)
 grain_c = core.grain.Add(deband, var=1.2, constant=False)
