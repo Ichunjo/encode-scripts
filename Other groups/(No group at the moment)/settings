@@ -1,2 +1,2 @@
 x264
---input-depth 10 --output-depth 10 --partitions all --colormatrix bt709 --threads 14 --ref 16 --deblock 0:-1 --me tesa --subme 11 --no-mbtree --psy-rd 0.95:0.0 --merange 32 --trellis 2 --no-dct-decimate --no-fast-pskip --bframes 16 --b-adapt 2 --direct auto --keyint 375 --min-keyint 25 --rc-lookahead 75 --crf 13 --qcomp 0.75 --aq-mode 3 --aq-strength 1.1
+--input-depth 10 --output-depth 10 --partitions all --colormatrix bt709 --threads 14 --ref 16 --deblock 0:-1 --me tesa --subme 11 --psy-rd 0.95:0.0 --merange 32 --trellis 2 --no-dct-decimate --no-fast-pskip --bframes 16 --b-adapt 2 --direct auto --keyint 375 --min-keyint 25 --rc-lookahead 75 --crf 13 --qcomp 0.75 --aq-mode 3 --aq-strength 1.1 --fade-compensate 0.65
