@@ -2,12 +2,10 @@ import vapoursynth as vs
 import lvsfunc as lvf
 import kagefunc as kgf
 import mvsfunc as mvf
-import muvsfunc as muvf
 import fvsfunc as fvf
 import havsfunc as hvf
 import vardefunc as vrdf
 import functools
-from vsutil import get_w, get_y, split, join
 from nnedi3_rpow2CL import nnedi3_rpow2CL
 
 import acsuite
@@ -17,7 +15,6 @@ core = vs.core
 core.max_cache_size = 32000
 
 def detelecine(src):
-    import functools
     def _postprocess(n, f, clip, deinterlaced):
         if f.props['_Combed'] > 0:
            return deinterlaced

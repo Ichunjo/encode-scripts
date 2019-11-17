@@ -15,7 +15,6 @@ core = vs.core
 core.max_cache_size = 32000
 
 def detelecine(src):
-    import functools
     def _postprocess(n, f, clip, deinterlaced):
         if f.props['_Combed'] > 0:
            return deinterlaced
