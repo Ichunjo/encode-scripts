@@ -41,7 +41,7 @@ src = fvf.Depth(src, 16)
 conv = core.resize.Bicubic(src, transfer_in_s="470bg", primaries_in_s="470bg", matrix_in_s="470bg", transfer_s="709", primaries_s="709", matrix_s="709", dither_type="error_diffusion")
 
 crop = core.std.CropRel(conv, left=10, top=2, right=8, bottom=2)
-fixedges = core.edgefixer.ContinuityFixer(crop, [1, 1, 1], [6, 3, 3], [1, 0, 0], [6, 3, 3], [6, 3, 3])
+fixedges = core.edgefixer.ContinuityFixer(crop, [1, 1, 1], [6, 3, 3], [1, 0, 0], [6, 3, 3])
 
 deblock = fvf.AutoDeblock(fixedges)
 deblock32 = fvf.Depth(fixedges, 32)
