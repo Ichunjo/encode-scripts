@@ -2,12 +2,10 @@ import vapoursynth as vs
 import lvsfunc as lvf
 import kagefunc as kgf
 import mvsfunc as mvf
-import muvsfunc as muvf
 import fvsfunc as fvf
 import havsfunc as hvf
 import vardefunc as vrdf
 import functools
-from vsutil import get_w, get_y, split, join
 from nnedi3_rpow2CL import nnedi3_rpow2CL
 
 import acsuite
@@ -30,8 +28,8 @@ def detelecine(src):
 src = lvf.src(r"Code.Lyoko.S01E01.DVD.Remux.Multi-Odd_HD.mkv")
 src = core.std.AssumeFPS(src, fpsnum=25, fpsden=1)
 
-#asrc = r"Code.Lyoko.S01E01.DVD.Remux.Multi-Odd_HD.mka"
-#ac.eztrim(src, [(3,34778)], asrc, "S01E01_cut.mka")
+asrc = r"Code.Lyoko.S01E01.DVD.Remux.Multi-Odd_HD.mka"
+ac.eztrim(src, [(3,34778)], asrc, "S01E01_cut.mka")
 
 src = src[3:34778]
 src = core.std.FreezeFrames(src, first=[0], last=[1], replacement=[2])
@@ -42,21 +40,22 @@ conv = core.resize.Bicubic(src, transfer_in_s="470bg", primaries_in_s="470bg", m
 
 crop_a = core.std.CropRel(conv, left=10, top=2, right=8, bottom=2)
 crop_b = core.std.CropRel(conv, left=10, top=18, right=8, bottom=18)
-fixedges_a = core.edgefixer.ContinuityFixer(crop_a, [1, 1, 1], [3, 1, 1], [1, 0, 0], [3, 1, 1], [6, 3, 3])
-fixedges_b = core.edgefixer.ContinuityFixer(crop_b, [1, 1, 1], [6, 3, 3], [1, 0, 0], [6, 3, 3], [6, 3, 3])
+fixedges_a = core.edgefixer.ContinuityFixer(crop_a, [1, 1, 1], [3, 1, 1], [1, 0, 0], [3, 1, 1])
+fixedges_b = core.edgefixer.ContinuityFixer(crop_b, [1, 1, 1], [6, 3, 3], [1, 0, 0], [6, 3, 3])
 fixedges_b = core.resize.Bicubic(fixedges_b, 702, 572)
 fixedges = fvf.rfs(fixedges_a, fixedges_b, mappings="[4859 4937] [4998 5201] [5321 5405] [5602 5659] [19680 19785] [20997 21125] [21176 21215]")
 
 deblock = fvf.AutoDeblock(fixedges)
+deblock32 = fvf.Depth(fixedges, 32)
 
 adaptmask = vrdf.adaptive_mask(deblock, 50)
 edgemask = kgf.retinex_edgemask(deblock).std.Binarize(9500).std.Inflate()
-w2x = mvf.ToRGB(deblock, matrix="bt709", depth=32)
+w2x = mvf.ToRGB(deblock32, matrix="709")
 w2x = core.w2xc.Waifu2x(w2x, noise=3, scale=1, gpu=1)
 w2x = mvf.ToYUV(w2x, css='420', depth=16)
-denoise_a = kgf.hybriddenoise(deblock, knl=0.5, sigma=2)
-denoise_b = kgf.hybriddenoise(deblock, knl=0.8, sigma=2.5)
-denoise_c = kgf.hybriddenoise(deblock, knl=1, sigma=3.5)
+denoise_a = kgf.hybriddenoise(deblock32, knl=0.5, sigma=2, depth=16)
+denoise_b = kgf.hybriddenoise(deblock32, knl=0.8, sigma=2.5, depth=16)
+denoise_c = kgf.hybriddenoise(deblock32, knl=1, sigma=3.5, depth=16)
 denoise = core.std.MaskedMerge(denoise_b, denoise_c, adaptmask)
 denoise = core.std.MaskedMerge(denoise, denoise_a, edgemask)
 denoise = fvf.rfs(denoise, denoise_a, mappings="[4619 4858]")
@@ -81,10 +80,9 @@ grain_a = kgf.adaptive_grain(deband, 0.2)
 grain_b = core.grain.Add(deband, var=0.4, constant=True)
 grain_b = core.grain.Add(grain_b, var=0.8, constant=False)
 grain_c = core.grain.Add(deband, var=1.2, constant=False)
-grain = fvf.rfs(grain_a, grain_b, mappings="[176 372] [4525 4618]")
-grain = fvf.rfs(grain, grain_c, mappings="[1125 1249]")
+grain = fvf.rfs(grain_a, grain_b, mappings="[176 372] [4525 4618]") #Lyoko Connection 
+grain = fvf.rfs(grain, grain_c, mappings="[1125 1249]") #Title
 
 final = fvf.Depth(grain, 10)
-#src_compare = core.resize.Lanczos(src, 1440, 1080, format=vs.YUV444P10, filter_param_a=4)
-#filter_comp = core.resize.Lanczos(grain, 1440, 1080, format=vs.YUV444P10, filter_param_a=4)
+
 final.set_output()
