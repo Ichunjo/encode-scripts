@@ -24,8 +24,10 @@ adaptmask = vrdf.adaptive_mask(descaled, 300)
 edgemask = kgf.retinex_edgemask(descaled, 1)
 denoise_a = mvf.BM3D(descaled, 1.2)
 denoise_b = mvf.BM3D(descaled, 2.1)
+
 denoise = core.std.MaskedMerge(denoise_a, denoise_b, adaptmask)
 denoise = core.std.MaskedMerge(denoise, descaled, edgemask)
+
 denoise = fvf.rfs(denoise, denoise_b, mappings=flashback)
 denoise = fvf.rfs(denoise, descaled, mappings='[30877 31064]')
 denoise = fvf.rfs(denoise, denoise_a, mappings=f'[{opstart} {opstart+106}]')
