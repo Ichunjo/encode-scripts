@@ -40,8 +40,8 @@ conv = core.resize.Bicubic(src, transfer_in_s="470bg", primaries_in_s="470bg", m
 
 crop_a = core.std.CropRel(conv, left=10, top=2, right=8, bottom=2)
 crop_b = core.std.CropRel(conv, left=10, top=18, right=8, bottom=18)
-fixedges_a = core.edgefixer.ContinuityFixer(crop_a, [2, 1, 1], [6, 3, 3], [2, 1, 1], [4, 2, 2], [12, 6, 6])
-fixedges_b = core.edgefixer.ContinuityFixer(crop_b, [2, 1, 1], [6, 3, 3], [2, 1, 1], [6, 3, 3], [12, 6, 6])
+fixedges_a = core.edgefixer.ContinuityFixer(crop_a, [1, 1, 1], [3, 1, 1], [1, 0, 0], [3, 1, 1])
+fixedges_b = core.edgefixer.ContinuityFixer(crop_b, [1, 1, 1], [6, 3, 3], [1, 0, 0], [6, 3, 3])
 fixedges_b = core.resize.Bicubic(fixedges_b, 702, 572)
 fixedges = fvf.rfs(fixedges_a, fixedges_b, mappings="[4859 4937] [4998 5201] [5321 5405] [5602 5659] [19680 19785] [20997 21125] [21176 21215]")
 
