@@ -5,6 +5,7 @@ import mvsfunc as mvf
 import fvsfunc as fvf
 import havsfunc as hvf
 import vardefunc as vrdf
+import modfunc as mdf
 import functools
 from nnedi3_rpow2CL import nnedi3_rpow2CL
 
@@ -24,11 +25,11 @@ def detelecine(src):
     src = core.nnedi3.nnedi3(src, field=1)
     return core.std.FrameEval(matched, functools.partial(_postprocess, clip=matched, deinterlaced=src), prop_src=matched)
 
-src = lvf.src(r"Code.Lyoko.S01E03.DVD.Remux.Multi-Odd_HD.mkv")
+src = lvf.src(r"RAW/Code.Lyoko.S01E03.DVD.Remux.Multi-Odd_HD.mkv")
 src = core.std.AssumeFPS(src, fpsnum=25, fpsden=1)
 
-asrc = r"Code.Lyoko.S01E03.DVD.Remux.Multi-Odd_HD.mka"
-ac.eztrim(src, [(3,34778)], asrc, "S01E03_cut.mka")
+asrc = r"AUDIOS/Code.Lyoko.S01E03.DVD.Remux.Multi-Odd_HD.mka"
+ac.eztrim(src, [(3,34778)], asrc, "AUDIOS/S01E03_cut.mka")
 
 src = src[3:34778]
 src = core.std.FreezeFrames(src, first=[0], last=[1], replacement=[2])
@@ -38,19 +39,19 @@ src = fvf.Depth(src, 16)
 conv = core.resize.Bicubic(src, transfer_in_s="470bg", primaries_in_s="470bg", matrix_in_s="470bg", transfer_s="709", primaries_s="709", matrix_s="709", dither_type="error_diffusion")
 
 crop = core.std.CropRel(conv, left=10, top=2, right=8, bottom=2)
-fixedges = core.edgefixer.ContinuityFixer(crop, [1, 1, 1], [6, 3, 3], [1, 0, 0], [6, 3, 3])
+fixedges = core.edgefixer.ContinuityFixer(crop, [1, 1, 1], [6, 3, 3], [1, 0, 0], [6, 3, 3], [6, 3, 3])
 
 deblock = fvf.AutoDeblock(fixedges)
-deblock32 = fvf.Depth(fixedges, 32)
+deblock32 = fvf.Depth(deblock, 32)
 
 adaptmask = vrdf.adaptive_mask(deblock, 50)
 edgemask = kgf.retinex_edgemask(deblock).std.Binarize(9500).std.Inflate()
 w2x = mvf.ToRGB(deblock32, matrix="709")
 w2x = core.w2xc.Waifu2x(w2x, noise=3, scale=1, gpu=1)
 w2x = mvf.ToYUV(w2x, css='420', depth=16)
-denoise_a = kgf.hybriddenoise(deblock32, knl=0.5, sigma=2, depth=16)
-denoise_b = kgf.hybriddenoise(deblock32, knl=0.8, sigma=2.5, depth=16)
-denoise_c = kgf.hybriddenoise(deblock32, knl=1, sigma=3.5, depth=16)
+denoise_a = mdf.hybriddenoise_mod(deblock32, knl=0.5, sigma=2, depth=16)
+denoise_b = mdf.hybriddenoise_mod(deblock32, knl=0.8, sigma=2.5, depth=16)
+denoise_c = mdf.hybriddenoise_mod(deblock32, knl=1, sigma=3.5, depth=16)
 denoise = core.std.MaskedMerge(denoise_b, denoise_c, adaptmask)
 denoise = core.std.MaskedMerge(denoise, denoise_a, edgemask)
 denoise = fvf.rfs(denoise, denoise_a, mappings="[4619 4858]")

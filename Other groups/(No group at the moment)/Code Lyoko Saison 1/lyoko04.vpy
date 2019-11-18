@@ -5,6 +5,7 @@ import mvsfunc as mvf
 import fvsfunc as fvf
 import havsfunc as hvf
 import vardefunc as vrdf
+import modfunc as mdf
 import functools
 from nnedi3_rpow2CL import nnedi3_rpow2CL
 
@@ -45,16 +46,16 @@ fixedges_b = core.resize.Bicubic(fixedges_b, 702, 572)
 fixedges = fvf.rfs(fixedges_a, fixedges_b, mappings="[28910 28957]")
 
 deblock = fvf.AutoDeblock(fixedges)
-deblock32 = fvf.Depth(fixedges, 32)
+deblock32 = fvf.Depth(deblock, 32)
 
 adaptmask = vrdf.adaptive_mask(deblock, 50)
 edgemask = kgf.retinex_edgemask(deblock).std.Binarize(9500).std.Inflate()
 w2x = mvf.ToRGB(deblock32, matrix="709")
 w2x = core.w2xc.Waifu2x(w2x, noise=3, scale=1, gpu=1)
 w2x = mvf.ToYUV(w2x, css="420", depth=16)
-denoise_a = kgf.hybriddenoise(deblock32, knl=0.5, sigma=2, depth=16)
-denoise_b = kgf.hybriddenoise(deblock32, knl=0.8, sigma=2.5, depth=16)
-denoise_c = kgf.hybriddenoise(deblock32, knl=1, sigma=3.5, depth=16)
+denoise_a = mdf.hybriddenoise_mod(deblock32, knl=0.5, sigma=2, depth=16)
+denoise_b = mdf.hybriddenoise_mod(deblock32, knl=0.8, sigma=2.5, depth=16)
+denoise_c = mdf.hybriddenoise_mod(deblock32, knl=1, sigma=3.5, depth=16)
 denoise = core.std.MaskedMerge(denoise_b, denoise_c, adaptmask)
 denoise = core.std.MaskedMerge(denoise, denoise_a, edgemask)
 denoise = fvf.rfs(denoise, w2x, mappings="[176 372] [467 470] [599 604] [720 724] [836 838] [926 929] [1028 1030]") #OP
