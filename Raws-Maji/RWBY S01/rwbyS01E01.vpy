@@ -71,7 +71,7 @@ deband = fvf.rfs(deband, deband_hh, mappings='[22119 22331]')
 grain_a = kgf.adaptive_grain(deband, 0.1)
 grain_b = kgf.adaptive_grain(deband, 0.2)
 grain_c = kgf.adaptive_grain(deband, 0.3)
-grain = fvf.rfs(deband, grain_b, mappings=f'[{opstart} 21987]')
+grain = fvf.rfs(grain_a, grain_b, mappings=f'[{opstart} 21987]')
 grain = fvf.rfs(deband, grain_c, mappings='[1614 1808]')
 
 final = fvf.Depth(grain, 10)
