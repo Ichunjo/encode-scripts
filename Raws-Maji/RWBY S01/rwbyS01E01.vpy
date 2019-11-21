@@ -41,7 +41,7 @@ adaptmask = vrdf.adaptive_mask(shift, 20)
 linemask = kgf.retinex_edgemask(shift).std.Binarize(9880).std.Inflate()
 mergemask = core.std.Expr([adaptmask, linemask], expr="x y -")
 denoise = core.knlm.KNLMeansCL(fvf.Depth(shift, 32), a=2, h=0.4, d=0, device_type='gpu', channels='Y')
-denoise = core.std.MaskedMerge(shift, fvf.Depth(shift, 16), mergemask)
+denoise = core.std.MaskedMerge(shift, fvf.Depth(denoise, 16), mergemask)
 
 deringmask = muvf.AnimeMask(denoise, shift=0.2).std.Expr('x 10 < 0 x 3 * ?')
 dering = hvf.YAHR(denoise, blur=6)
