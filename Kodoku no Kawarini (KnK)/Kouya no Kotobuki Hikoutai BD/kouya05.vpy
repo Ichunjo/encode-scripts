@@ -26,14 +26,13 @@ fixedges = fvf.rfs(fixedges_a, fixedges_b, mappings=f'[{opstart} {opend}] [{edst
 fixedges = fvf.rfs(fixedges, src, mappings=f'[{edend+1} {edendJikai}] [{eye_start} {eye_end}] [{titreend} {end}]')
 
 descaled = core.descale.Debicubic(fvf.Depth(get_y(fixedges), 32), get_w(844), 844, 0, 1/2)
-
+descaled = fvf.Depth(descaled, 16)
 denoise_mask = vrdf.adaptive_mask(descaled, 30)
-denoise = mvf.BM3D(descaled, 1.5)
-denoise = core.std.MaskedMerge(descaled, denoise, denoise_mask)
+stabilize = hvf.GSMC(descaled, Lmask=denoise_mask, rep=24)
 
-aa = lvf.nneedi3_clamp(fvf.Depth(denoise, 16), strong_mask=True)
+aa = lvf.nneedi3_clamp(stabilize, ret_mask=True)
 
-scaled = nnedi3_rpow2CL(aa, device=0).resize.Bicubic(1920, 1080, format=vs.GRAY16, filter_param_a=0, filter_param_b=0)
+scaled = nnedi3_rpow2CL(aa, device=0).resize.Bicubic(1920, 1080, filter_param_a=0, filter_param_b=0)
 
 merged = core.std.ShufflePlanes([scaled, src], [0, 1, 2], vs.YUV)
 
@@ -43,7 +42,7 @@ credit = fvf.rfs(merged, core.std.MaskedMerge(merged, fixedges, c_mask), mapping
 
 deband = core.f3kdb.Deband(credit, range=16, y=36, cb=24, cr=24, grainy=0, grainc=0, output_depth=16)
 
-grain = kgf.adaptive_grain(deband, 0.3, luma_scaling=8)
+grain = kgf.adaptive_grain(deband, 0.2, luma_scaling=8)
 
 final = fvf.Depth(grain, 10)
 

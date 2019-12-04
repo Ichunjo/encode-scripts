@@ -10,6 +10,18 @@ from vsutil import get_y, get_w
 core = vs.core
 core.max_cache_size = 64000
 
+def DesDenAARes(src, h, b1, c1):
+	descaled = core.descale.Debicubic(fvf.Depth(get_y(src), 32), get_w(h), h, b1, c1)
+	descaled = fvf.Depth(descaled, 16)
+	denoise_mask = vrdf.adaptive_mask(descaled, 30)
+	stabilize = hvf.GSMC(descaled, Lmask=denoise_mask, rep=24)
+
+	aa = lvf.nneedi3_clamp(stabilize, ret_mask=True)
+
+	scaled = nnedi3_rpow2CL(aa, device=0).resize.Bicubic(1920, 1080, filter_param_a=0, filter_param_b=0)
+
+	return core.std.ShufflePlanes([scaled, src], [0, 1, 2], vs.YUV)
+
 src = lvf.src(r"Vol.02/BDMV/STREAM/00004.m2ts")[:34046]
 src = fvf.Depth(src, 16)
 
@@ -25,17 +37,10 @@ fixedges_b = core.edgefixer.ContinuityFixer(src, [1,0,0], 0, [1,0,0], 0)
 fixedges = fvf.rfs(fixedges_a, fixedges_b, mappings=f'[{opstart} {opend}] [{edstart} {edend}]')
 fixedges = fvf.rfs(fixedges, src, mappings=f'[{edend+1} {edendJikai}] [{eye_start} {eye_end}] [{titreend} {end}]')
 
-descaled = core.descale.Debicubic(fvf.Depth(get_y(fixedges), 32), get_w(844), 844, 0, 1/2)
-
-denoise_mask = vrdf.adaptive_mask(descaled, 30)
-denoise = mvf.BM3D(descaled, 1.5)
-denoise = core.std.MaskedMerge(descaled, denoise, denoise_mask)
-
-aa = lvf.nneedi3_clamp(fvf.Depth(denoise, 16), strong_mask=True)
-
-scaled = nnedi3_rpow2CL(aa, device=0).resize.Bicubic(1920, 1080, format=vs.GRAY16, filter_param_a=0, filter_param_b=0)
-
-merged = core.std.ShufflePlanes([scaled, src], [0, 1, 2], vs.YUV)
+merged_a = DesDenAARes(fixedges, 842, 0, 1)
+merged_b = DesDenAARes(fixedges, 844, 0, 1/2)
+merged = fvf.rfs(merged_a, merged_b, mappings=f'[{opstart} {opend}] [{eye_start} {eye_end}] [{edstart} {edend}]')
+merged = fvf.rfs(merged, merged_b, mappings='[3653 3936] [4224 4537] [18919 18966] [19331 19550] [19599 19693] [19826 20310] [21701 21891] [25862 26052] [33722 34045]')
 
 c_mask = vrdf.DRM(fixedges, 844, 'bicubic', b=0, c=1/2, mthr=150)
 c_mask = hvf.mt_expand_multi(c_mask, mode='ellipse', sw=2, sh=2).std.Inflate()
@@ -52,7 +57,7 @@ deband_b = core.std.MaskedMerge(deband_b, denoise_plus, deband_mask)
 deband = fvf.rfs(deband_a, deband_b, mappings='[2229 2299]')
 deband = fvf.rfs(deband, deband_c, mappings='[2752 2854] [3587 3652] [3937 3965] [4098 4223]')
 
-grain = kgf.adaptive_grain(deband, 0.3, luma_scaling=8)
+grain = kgf.adaptive_grain(deband, 0.2, luma_scaling=8)
 
 final = fvf.Depth(grain, 10)
 

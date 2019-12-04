@@ -27,19 +27,18 @@ fixedges = fvf.rfs(fixedges_a, fixedges_b, mappings=f'[{opstart} {opend}] [{edst
 fixedges = fvf.rfs(fixedges, src, mappings=f'[{edend+1} {edendJikai}] [{eye_start} {eye_end}] [{titreend} {end}]')
 
 descaled = core.descale.Debicubic(fvf.Depth(get_y(fixedges), 32), get_w(844), 844, 0, 1/2)
-
+descaled = fvf.Depth(descaled, 16)
 denoise_mask = vrdf.adaptive_mask(descaled, 30)
-denoise = mvf.BM3D(descaled, 1.5)
-denoise = core.std.MaskedMerge(descaled, denoise, denoise_mask)
+stabilize = hvf.GSMC(descaled, Lmask=denoise_mask, rep=24)
 
-aa = lvf.nneedi3_clamp(fvf.Depth(denoise, 16), strong_mask=True)
-linemask = core.std.Sobel(fvf.Depth(denoise, 16)).std.Expr("x 2 *").std.Maximum()
+aa = lvf.nneedi3_clamp(stabilize, ret_mask=True)
+linemask = core.std.Sobel(stabilize).std.Expr("x 2 *").std.Maximum()
 linemask = core.std.CropAbs(linemask, x=858, y=480, width=250, height=158)
 linemask = core.std.AddBorders(linemask, left=858, right=392, top=480, bottom=206)
 aa_b = taa.TAAmbk(aa, aatype='Eedi3SangNom', mclip=linemask)
 aa = fvf.rfs(aa, aa_b, mappings='[23530 23548]')
 
-scaled = nnedi3_rpow2CL(aa, device=0).resize.Bicubic(1920, 1080, format=vs.GRAY16, filter_param_a=0, filter_param_b=0)
+scaled = nnedi3_rpow2CL(aa, device=0).resize.Bicubic(1920, 1080, filter_param_a=0, filter_param_b=0)
 
 merged = core.std.ShufflePlanes([scaled, src], [0, 1, 2], vs.YUV)
 
@@ -51,7 +50,7 @@ deband_a = core.f3kdb.Deband(credit, range=16, y=36, cb=24, cr=24, grainy=0, gra
 deband_b = core.f3kdb.Deband(credit, range=16, y=48, cb=36, cr=36, grainy=0, grainc=0, output_depth=16)
 deband = fvf.rfs(deband_a, deband_b, mappings='[22265 22392]')
 
-grain = kgf.adaptive_grain(deband, 0.3, luma_scaling=8)
+grain = kgf.adaptive_grain(deband, 0.2, luma_scaling=8)
 
 final = fvf.Depth(grain, 10)
 
