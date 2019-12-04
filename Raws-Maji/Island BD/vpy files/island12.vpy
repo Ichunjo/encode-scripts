@@ -31,8 +31,6 @@ denoise = core.std.MaskedMerge(denoise, descaled, edgemask)
 denoise = fvf.rfs(denoise, denoise_a, mappings=f'[{opstart} {opstart+106}]')
 denoise = fvf.rfs(denoise, denoise_b, mappings=flashback)
 
-scaled = lvf.upscaled_sraa(denoise, 2, None, 1080)
-
 aa = lvf.upscaled_sraa(denoise, 2, 13)
 
 scaled_u = core.resize.Bicubic(u, get_w(720), 720, src_left=0.25)
