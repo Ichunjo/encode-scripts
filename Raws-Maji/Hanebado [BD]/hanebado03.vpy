@@ -96,19 +96,15 @@ grain = fvf.rfs(grain_a, db_c, mappings=f'[{opstart} {opstart+337}]')
 grain = fvf.rfs(grain, aa_c, mappings=f'[{edstart} {edend}]')
 grain = fvf.rfs(grain, grain_b, mappings=opzone_a)
 
-#Creating and applying credit mask in OP & ED
+#Creating and applying credit mask in OP
 blank = core.std.BlankClip(grain, format=vs.GRAY8)
 credit_op_m = hvf.mt_expand_multi(atf.DiffCreditlessMask(src_op[:opend-opstart+1], src_ncop[:opend-opstart+1]), sw=4, sh=4)
 credit_op_m = blank[:opstart]+credit_op_m+blank[opend+1:]
 credit_op = core.std.MaskedMerge(grain, den_pre, fvf.Depth(credit_op_m, 16))
 
-credit_ed_m = hvf.mt_expand_multi(atf.DiffCreditlessMask(src[edstart:edend+1], src_nced[:edend-edstart+1]), sw=4, sh=4)
-credit_ed_m = blank[:edstart]+credit_ed_m
-credit_ed = core.std.MaskedMerge(credit_op, src16, fvf.Depth(credit_ed_m, 16))
-
 #Creating and applying credit mask in some random scenes
 credit_m = vrdf.DRM(fixedges, 720, 'bilinear', mthr=120).std.Inflate()
-credit = fvf.rfs(credit_ed, core.std.MaskedMerge(credit_ed, den_pre, credit_m), mappings='[6737 6880] [20186 20257] [32364 34316]')
+credit = fvf.rfs(credit_op, core.std.MaskedMerge(credit_op, den_pre, credit_m), mappings='[6737 6880] [20186 20257] [32364 34316]')
 
 final = fvf.Depth(credit, 10)
 
