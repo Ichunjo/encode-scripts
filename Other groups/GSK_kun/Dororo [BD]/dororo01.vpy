@@ -124,6 +124,6 @@ credit_m = vrdf.DRM(src16, 806, 'bicubic', 0, 1/2).std.Inflate()
 credit = fvf.rfs(tag, core.std.MaskedMerge(tag, src16, credit_m[16640:16641], 0), mappings='[16640 16774]')
 
 # Dither
-final = fvf.Depth(tag, 10)
+final = fvf.Depth(credit, 10)
 
 final.set_output()
