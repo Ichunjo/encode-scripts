@@ -39,7 +39,7 @@ src_fade_b = kgf.hardsubmask_fades(src_a, src_b, highpass=1300)
 src_fade_a = core.std.MaskedMerge(src_a, src_b, src_fade_a)
 src_fade_b = core.std.MaskedMerge(src_a, src_b, src_fade_b)
 
-src = fvf.rfs(src, src_fade_a, mappings="[7127 7177] [7301 7366] [9252 9749] [9838 10137] [10525 10726] [13398 13451] [13518 13583] [15150 15491] [25512 25652] [26711 26824] [29453 29476] [29510 29532] [29640 29663] [29775 29798] [29866 29889] [30011 30034] [30361 30844] [31743 31768] [33927 34045]")
+src = fvf.rfs(src, src_fade_a, mappings="[7127 7177] [7301 7366] [9252 9749] [9838 10137] [10525 10726] [13398 13451] [13518 13583] [15150 15491] [25512 25652] [26711 26824] [29453 29476] [29510 29532] [29640 29663] [29775 29798] [29866 29889] [30011 30034] [30361 30844] [31743 31768] [33741 33746] [33927 34045]")
 src = fvf.rfs(src, src_fade_b, mappings="[32079 32281] [33861 33926]")
 
 #scomp2 = lvf.stack_compare(src, src_b, height=540)
@@ -70,7 +70,7 @@ crop = core.std.Crop(grain, 240, 240, 0, 0)
 borders = core.std.AddBorders(crop, 240, 240, 0, 0)
 borders = fvf.rfs(grain, borders, mappings="[5149 5598]")
 
-dering = hvf.HQDeringmod(db, mrad=1, msmooth=2, mthr=220, drrep=13, thr=42, planes=[0])
+dering = hvf.HQDeringmod(db, mrad=1, msmooth=2, mthr=220, drrep=13, thr=42, planes=[0], show=False)
 dering = fvf.rfs(borders, dering, mappings="[33927 34045]")
 
 final = fvf.Depth(dering, 10)
