@@ -11,10 +11,12 @@ from cooldegrain import CoolDegrain
 
 core = vs.core
 core.max_cache_size = 32000
+
 ac = acsuite.AC()
 
-src_a = lvf.src(r'WKN/Magia_Record_01_FR_HD.mp4')
+src_a = lvf.src(r'WKN/Magia Record - 01 (WEB-DL 1920x1080 x264 AAC Rus + Jap).mkv')
 src_b = lvf.src(r'Funi/[HorribleSubs] Magia Record - 01 [1080p].mkv')[289:]
+src_c = lvf.src(r'WKN/Magia_Record_01_FR_HD.mp4')
 
 asrc = r"WKN/Magia_Record_01_FR_HD.mka"
 ac.eztrim(src_a, [(0,1)], 								asrc, "Magia01a_cut.mka")
@@ -23,26 +25,45 @@ ac.eztrim(src_a, [(0,12)], 								asrc, "Magia01c_cut.mka")
 
 src_a = src_a[0]+src_a[:18150]+src_a[18154:33930]+src_a[33948:]+(src_a[-1]*12)
 src_b = src_b[:-1]
+src_c = src_c[0]+src_c[:18150]+src_c[18154:33930]+src_c[33948:]+(src_c[-1]*12)
 
 vrdf.generate_keyframes(src_a, 'magia01_keyframes.log')
 
-#scomp = lvf.stack_compare(src_a, src_b, height=540)
+# scomp = lvf.stack_compare(src_a, src_b, src_c, height=540)
 
 src_a = fvf.Depth(src_a, 16)
 src_b = fvf.Depth(src_b, 16)
+src_c = fvf.Depth(src_c, 16)
 
-hardsubmask = kgf.hardsubmask(src_a, src_b)
-src = core.std.MaskedMerge(src_a, src_b, hardsubmask)
+hardsubmask_ab = kgf.hardsubmask(src_a, src_b)
+hardsubmask_ac = kgf.hardsubmask(src_a, src_c)
+src_ab = core.std.MaskedMerge(src_a, src_b, hardsubmask_ab)
+src_ac = core.std.MaskedMerge(src_a, src_c, hardsubmask_ac)
 
-src_fade_a = kgf.hardsubmask_fades(src_a, src_b, highpass=2000)
-src_fade_b = kgf.hardsubmask_fades(src_a, src_b, highpass=1300)
-src_fade_a = core.std.MaskedMerge(src_a, src_b, src_fade_a)
-src_fade_b = core.std.MaskedMerge(src_a, src_b, src_fade_b)
+src = fvf.rfs(src_a, src_ab, mappings="[7127 7177]")
+src = fvf.rfs(src, src_ac, mappings="[32341 33097]")
 
-src = fvf.rfs(src, src_fade_a, mappings="[7127 7177] [7301 7366] [9252 9749] [9838 10137] [10525 10726] [13398 13451] [13518 13583] [15150 15491] [25512 25652] [26711 26824] [27500 27550] [29453 29476] [29510 29532] [29640 29663] [29775 29798] [29866 29889] [30011 30034] [30361 30844] [31743 31768] [33741 33746] [33927 34045]")
-src = fvf.rfs(src, src_fade_b, mappings="[32079 32281] [33861 33926]")
+src_fade_ab = kgf.hardsubmask_fades(src_a, src_b, highpass=2000)
+src_fade_ab_2 = kgf.hardsubmask_fades(src_a, src_b, highpass=600)
+src_fade_ab_3 = kgf.hardsubmask_fades(src_a, src_b, highpass=1300)
+src_fade_ac = kgf.hardsubmask_fades(src_a, src_c, highpass=2000)
 
-#scomp2 = lvf.stack_compare(src, src_b, height=540)
+src_fade_ab = core.std.MaskedMerge(src_a, src_b, src_fade_ab)
+src_fade_ab_2 = core.std.MaskedMerge(src_a, src_b, src_fade_ab_2)
+src_fade_ab_3 = core.std.MaskedMerge(src_a, src_b, src_fade_ab_3)
+
+src_fade_ac_1 = core.std.MaskedMerge(src_a, src_c, src_fade_ac)
+src_fade_ac_2 = core.std.MaskedMerge(src_a, src_c, vrdf.RegionMask(src_fade_ac, left=211, top=407, right=155, bottom=620))
+src_fade_ac_3 = core.std.MaskedMerge(src_a, src_c, vrdf.RegionMask(src_fade_ac, left=547, top=253, right=541, bottom=683))
+
+src = fvf.rfs(src, src_fade_ab, mappings="[13398 13451] [15150 15491] [25512 25652] [30361 30844] [31649 31768] [32320 32340] [33927 34045]")
+src = fvf.rfs(src, src_fade_ab_2, mappings="[10525 10726]")
+src = fvf.rfs(src, src_fade_ab_3, mappings="[32083 32284]")
+src = fvf.rfs(src, src_fade_ac_1, mappings="[33098 33112]")
+src = fvf.rfs(src, src_fade_ac_2, mappings="[9252 9749]")
+src = fvf.rfs(src, src_fade_ac_3, mappings="[13518 13583]")
+
+#scomp2 = lvf.stack_compare(src, src_b, src_c, height=540)
 
 den_a = CoolDegrain(src, tr=1, thsad=84, thsadc=60, bits=16, blksize=8, overlap=4)
 den_b = CoolDegrain(src, tr=1, thsad=168, thsadc=120, bits=16, blksize=8, overlap=4)
