@@ -5,7 +5,7 @@ import fvsfunc as fvf
 import vardefunc as vrdf
 import vsTAAmbk as taa
 import descale as dsc
-from vsutil import iterate
+from vsutil import iterate, join, split
 
 import acsuite
 ac = acsuite.AC()
@@ -32,9 +32,9 @@ src32 = fvf.Depth(src, 32)
 src16 = fvf.Depth(src, 16)
 
 # Chroma shift
-planes = kgf.split(src32)
+planes = split(src32)
 planes[1], planes[2] = [core.resize.Spline36(plane, src_left=0.25) for plane in planes[1:]]
-uv_shift = kgf.join(planes)
+uv_shift = join(planes)
 
 # Descale
 desc_y = dsc.Descale(src32, 1433, 806, 'bilinear', gray=True)
