@@ -56,7 +56,7 @@ src_fade_ac_1 = core.std.MaskedMerge(src_a, src_c, src_fade_ac)
 src_fade_ac_2 = core.std.MaskedMerge(src_a, src_c, vrdf.RegionMask(src_fade_ac, left=211, top=407, right=155, bottom=620))
 src_fade_ac_3 = core.std.MaskedMerge(src_a, src_c, vrdf.RegionMask(src_fade_ac, left=547, top=253, right=541, bottom=683))
 
-src = fvf.rfs(src, src_fade_ab, mappings="[13398 13451] [15150 15491] [25512 25652] [30361 30844] [31649 31768] [32320 32340] [33927 34045]")
+src = fvf.rfs(src, src_fade_ab, mappings="[13398 13451] [15150 15491] [20959 21018] [25512 25652] [30361 30844] [31649 31768] [32320 32340] [33927 34045]")
 src = fvf.rfs(src, src_fade_ab_2, mappings="[10525 10726]")
 src = fvf.rfs(src, src_fade_ab_3, mappings="[32083 32284]")
 src = fvf.rfs(src, src_fade_ac_1, mappings="[33098 33112]")
