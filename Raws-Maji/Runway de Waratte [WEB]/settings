@@ -1,0 +1,2 @@
+x264
+--qpfile runwayXX_keyframes.log --input-depth 10 --output-depth 10 --input-csp i420 --output-csp i420 --partitions all --colormatrix bt709 --colorprim bt709 --transfer bt709 --threads 23 --ref 12 --deblock -1:-1 --me umh --subme 10 --psy-rd 0.8:0.00 --merange 24 --trellis 2 --no-dct-decimate --no-fast-pskip --bframes 10 --b-adapt 2 --direct auto --keyint 240 --min-keyint 23 --rc-lookahead 48 --crf 14 --qcomp 0.7 --aq-mode 3 --aq-strength 0.85
