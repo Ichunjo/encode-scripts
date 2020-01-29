@@ -7,7 +7,6 @@ import vsTAAmbk as taa
 import vardefunc as vrdf
 import descale as dsc
 import debandshit as dbs
-import modfunc as mdf
 import acsuite
 from edi_rpow2 import znedi3_rpow2
 from cooldegrain import CoolDegrain
@@ -19,27 +18,27 @@ core.num_threads = 18
 
 ac = acsuite.AC()
 
-src = lvf.src(r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00003.m2ts')
+src = lvf.src(r'[BDMV] どろろ Blu-ray BOX/下巻/DORORO_4/BDMV/STREAM/00002.m2ts')
 
-#asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00003.mka'
-#ac.eztrim(src,[(24,34189)], asrc,"dororo03.mka")
+#asrc = r'[BDMV] どろろ Blu-ray BOX/下巻/DORORO_4/BDMV/STREAM/00002.mka'
+#ac.eztrim(src,[(0,34165)], asrc, "dororo20.mka")
 
-src = src[24:34189]
-src = src+src[-1]
+src = src[:34165]
+src = src + src[-1]
 
 # Keyframes for x264 --qpfile 
-#vrdf.generate_keyframes(src, 'dororo03_keyframes.log')
+#vrdf.generate_keyframes(src, 'dororo20_keyframes.log')
 
 # Frame variables
-opstart, opend = 2150, 4290 #Première frame lumineuse
-epnamestart, epnameend = opend+1, 4386
+opstart, opend = 2550, 4698 # opstart: first frame with light
+epnamestart, epnameend = opend+1, 4794
 edstart, edend = 31888, 34044
 cardstart, cardend = edend+1, src.num_frames-1
-
 # Zones
-opening = f'[{opstart} {opend}]'
-opening_a = f'[{opstart+754} {opstart+797}] [{opstart+1299} {opstart+1314}]'
-opening_b = f'[{opstart+2005} {opstart+2043}]'
+opening_a = f'[{opstart} {opstart+741}]'
+opening_b = f'[{opstart+742} {opend}]'
+opening_c = f'[{opstart+1182} {opstart+1365}]'
+ending = f'[{edstart} {edend}]'
 
 # Dither
 src = fvf.Depth(src, 32)
@@ -71,19 +70,13 @@ scaled_y = vrdf.Bicubic(znedi3_rpow2(den_y, 2, nns=4, qual=2), 1920, 1080, 'catr
 scaled = core.std.ShufflePlanes([scaled_y, fvf.Depth(den_uv, 16)], [0, 1, 2], vs.YUV)
 
 # Luma & chroma denoise without rescaling. Opening parts
-adapt_m = vrdf.adaptive_mask(uv_shift16, 300)
-den_a = mdf.hybriddenoise_mod(uv_shift32, knl=0.25, sigma=1, radius1=1)
-den_b = mdf.hybriddenoise_mod(uv_shift32, knl=0.75, sigma=3, radius1=1)
-den_b = core.std.MaskedMerge(uv_shift16, den_b, adapt_m)
-den = fvf.rfs(uv_shift16, den_a, mappings=opening)
-den = fvf.rfs(den, den_b, mappings=opening_a)
+den_a = CoolDegrain(uv_shift16, tr=1, thsad=24, thsadc=48, bits=16, blksize=8, overlap=4)
+den_b = CoolDegrain(uv_shift16, tr=1, thsad=48, thsadc=48, bits=16, blksize=8, overlap=4)
 
-# AA pour l'OP et scenefiltering 
-aa_a = lvf.upscaled_sraa(den, rep=13, sharp_downscale=False)
-aa_a = taa.TAAmbk(aa_a, aatype=0, aatypeu='Nnedi3', aatypev='Nnedi3')
-scaled = fvf.rfs(scaled, aa_a, mappings=opening)
+scaled = fvf.rfs(scaled, den_a, mappings=opening_a)
+scaled = fvf.rfs(scaled, den_b, mappings=ending)
 
-# Masque déband
+# Deband masks
 scaled8 = fvf.Depth(scaled, 8)
 line_m_a = taa.TAAmbk(scaled8, mtype=1, showmask=1).std.Inflate()
 line_m_b = kgf.retinex_edgemask(scaled8).rgvs.RemoveGrain(3).rgvs.RemoveGrain(3).std.Inflate().std.Inflate()
@@ -91,47 +84,41 @@ line_m = core.std.Expr([line_m_a, line_m_b], 'x y +')
 line_m = core.std.Expr(line_m, 'x 30 < 0 x 3 * ?').std.Inflate().std.Inflate()
 adapt_m = vrdf.adaptive_mask(scaled, 60)
 
-# Déband & scenefiltering
+# Grain & scenefiltering
 db_a = core.neo_f3kdb.Deband(scaled, 17, 42, 48, 48, 24, 0, sample_mode=4)
 db_b = core.neo_f3kdb.Deband(scaled, 14, 48, 54, 54, 32, 0, sample_mode=4)
 db_c = core.neo_f3kdb.Deband(scaled, 17, 36, 36, 36, 24, 0, sample_mode=4)
-db_d = core.neo_f3kdb.Deband(scaled, 14, 64, 76, 76, 32, 0, sample_mode=4)
-db_e = dbs.f3kbilateral(scaled, 23, 500, 500)
-db_e = core.std.MaskedMerge(db_e, scaled, fvf.Depth(line_m_a, 16))
-db_e = core.grain.Add(db_c, 0.2)
-db_f = dbs.f3kbilateral(scaled, 20, 90, 120)
-db_g = dbs.f3kbilateral(uv_shift16, 22, 110, 110)
-db_h = dbs.f3kbilateral(uv_shift16, 23, 220, 220)
-db_i = core.std.MaskedMerge(db_g, db_h, adapt_m)
+db_d = dbs.f3kbilateral(scaled, 20, 64, 64)
+db_d = core.grain.Add(db_d, 0.1)
 
 db = core.std.MaskedMerge(db_a, db_b, adapt_m)
 db = core.std.MaskedMerge(db, scaled, fvf.Depth(line_m, 16))
 
-db = fvf.rfs(db, core.std.MaskedMerge(db_c, db_d, adapt_m), mappings=opening)
-db = fvf.rfs(db, db_e, mappings=opening_a)
-db = fvf.rfs(db, db_f, mappings=opening_b)
+db = fvf.rfs(db, db_c, mappings=ending)
+db = fvf.rfs(db, db_d, mappings=opening_c)
 
-# Grain & scenefiltering
-grain_a = kgf.adaptive_grain(db, 0.25)
-grain_b = kgf.adaptive_grain(db, 0.5)
-grain_c = kgf.adaptive_grain(db, 0.8, luma_scaling=4)
-grain_d = kgf.adaptive_grain(db_i, 0.4)
-grain = fvf.rfs(grain_a, grain_b, mappings=opening_a)
-grain = fvf.rfs(grain, grain_c, mappings=opening_b)
-grain = fvf.rfs(grain, grain_d, mappings=f'[{edstart} {edend}]')
+# Grain
+grain = kgf.adaptive_grain(db, 0.25)
 
-# Nom épisodes et carte à la fin
+# Episode name & endcard
 aa_b = lvf.upscaled_sraa(uv_shift16, 2, rep=13, sharp_downscale=False)
 tag = fvf.rfs(grain, aa_b, mappings=f'[{epnamestart} {epnameend}] [{cardstart} {cardend}]')
 tag = core.std.FreezeFrames(tag, epnamestart, epnameend, epnameend)
 tag = core.std.FreezeFrames(tag, cardstart, cardend, cardend)
 
-# Restoration des éléments en 1080p
+# 1080p elements
 credit_m = vrdf.DRM(uv_shift16, 806, 'bicubic', 0, 1/2).std.Inflate()
-credit = fvf.rfs(tag, core.std.MaskedMerge(tag, uv_shift16, credit_m[15579:15580], 0), mappings='[15561 15619]')
-credit = fvf.rfs(credit, core.std.MaskedMerge(credit, uv_shift16, credit_m[16124:16125], 0), mappings='[16099 16158]')
+credit_op = fvf.rfs(tag, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+747], 0), mappings=f'[{opstart+742} {opstart+835}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+929], 0), mappings=f'[{opstart+929} {opstart+1014}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+1182], 0), mappings=f'[{opstart+1182} {opstart+1277}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+1309], 0), mappings=f'[{opstart+1295} {opstart+1365}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+1548], 0), mappings=f'[{opstart+1493} {opstart+1596}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+1640], 0), mappings=f'[{opstart+1620} {opstart+1703}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+1734], 0), mappings=f'[{opstart+1712} {opstart+1799}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+2052], 0), mappings=f'[{opstart+1998} {opstart+2100}]')
+credit_op = fvf.rfs(credit_op, core.std.MaskedMerge(tag, uv_shift16, credit_m[opstart+2101], 0), mappings=f'[{opstart+2101} {opend}]')
 
 # Dither final
-final = fvf.Depth(credit, 10)
+final = fvf.Depth(credit_op, 10)
 
 final.set_output()

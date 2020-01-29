@@ -21,13 +21,13 @@ ac = acsuite.AC()
 
 src = lvf.src(r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00001.m2ts')
 
-asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00001.mka'
-ac.eztrim(src,[(22,34188)], asrc,"dororo01.mka")
+#asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00001.mka'
+#ac.eztrim(src,[(22,34188)], asrc,"dororo01.mka")
 
 src = src[22:34188] 
 
 # Keyframes for x264 --qpfile 
-vrdf.generate_keyframes(src, 'dororo01_keyframes.log')
+#vrdf.generate_keyframes(src, 'dororo01_keyframes.log')
 
 # Frame variables
 opstart, opend = 10711, 12851 # opstart: first frame with light
@@ -41,11 +41,16 @@ opening_a = f'[{opstart+754} {opstart+797}] [{opstart+1299} {opstart+1314}]'
 opening_b = f'[{opstart+2005} {opstart+2043}]'
 
 # Dither
-src32 = fvf.Depth(src, 32)
-src16 = fvf.Depth(src, 16)
+src = fvf.Depth(src, 32)
+
+# Chroma shift
+planes = kgf.split(src)
+planes[1], planes[2] = [core.resize.Spline36(plane, src_left=0.25) for plane in planes[1:]]
+uv_shift32 = kgf.join(planes)
+uv_shift16 = fvf.Depth(src, 16)
 
 # Descale
-desc = dsc.Descale(src16, get_w(806), 806, 'bicubic', 0, 1/2, gray=True)
+desc = dsc.Descale(uv_shift16, get_w(806), 806, 'bicubic', 0, 1/2, gray=True)
 
 # Luma noise stabilization
 den_clip = core.knlm.KNLMeansCL(desc, a=2, h=0.35, d=1, device_type='gpu')
@@ -58,18 +63,18 @@ den_y_b = CoolDegrain(stab, tr=1, thsad=48, thsadc=0, bits=16, blksize=8, overla
 den_y = core.std.MaskedMerge(den_y_a, den_y_b, adapt_m)
 
 # Just a standard chroma denoise
-den_uv = core.knlm.KNLMeansCL(src32, a=2, h=0.6, d=3, device_type='gpu', channels='UV')
+den_uv = core.knlm.KNLMeansCL(uv_shift32, a=2, h=0.6, d=3, device_type='gpu', channels='UV')
 
 # Rescaling & merge luma/chroma
 scaled_y = vrdf.Bicubic(znedi3_rpow2(den_y, 2, nns=4, qual=2), 1920, 1080, 'catrom')
 scaled = core.std.ShufflePlanes([scaled_y, fvf.Depth(den_uv, 16)], [0, 1, 2], vs.YUV)
 
 # Luma & chroma denoise without rescaling. Opening parts
-adapt_m = vrdf.adaptive_mask(src16, 300)
-den_a = mdf.hybriddenoise_mod(src32, knl=0.25, sigma=1, radius1=1)
-den_b = mdf.hybriddenoise_mod(src32, knl=0.75, sigma=3, radius1=1)
-den_b = core.std.MaskedMerge(src16, den_b, adapt_m)
-den = fvf.rfs(src16, den_a, mappings=opening)
+adapt_m = vrdf.adaptive_mask(uv_shift16, 300)
+den_a = mdf.hybriddenoise_mod(uv_shift32, knl=0.25, sigma=1, radius1=1)
+den_b = mdf.hybriddenoise_mod(uv_shift32, knl=0.75, sigma=3, radius1=1)
+den_b = core.std.MaskedMerge(uv_shift16, den_b, adapt_m)
+den = fvf.rfs(uv_shift16, den_a, mappings=opening)
 den = fvf.rfs(den, den_b, mappings=opening_a)
 
 # Opening anti-aliasing & scenefiltering
@@ -94,8 +99,8 @@ db_e = dbs.f3kbilateral(scaled, 23, 500, 500)
 db_e = core.std.MaskedMerge(db_e, scaled, fvf.Depth(line_m_a, 16))
 db_e = core.grain.Add(db_c, 0.2)
 db_f = dbs.f3kbilateral(scaled, 20, 90, 120)
-db_g = dbs.f3kbilateral(src16, 22, 110, 110)
-db_h = dbs.f3kbilateral(src16, 23, 220, 220)
+db_g = dbs.f3kbilateral(uv_shift16, 22, 110, 110)
+db_h = dbs.f3kbilateral(uv_shift16, 23, 220, 220)
 
 db = core.std.MaskedMerge(db_a, db_b, adapt_m)
 db = core.std.MaskedMerge(db, scaled, fvf.Depth(line_m, 16))
@@ -114,16 +119,16 @@ grain = fvf.rfs(grain, grain_c, mappings=opening_b)
 grain = fvf.rfs(grain, grain_d, mappings=f'[{edstart} {edend}]')
 
 # Episode name & endcard
-aa_b = lvf.upscaled_sraa(src16, 2, rep=13, sharp_downscale=False)
+aa_b = lvf.upscaled_sraa(uv_shift16, 2, rep=13, sharp_downscale=False)
 tag = fvf.rfs(grain, aa_b, mappings=f'[{epnamestart} {epnameend}] [{cardstart} {cardend}]')
 tag = core.std.FreezeFrames(tag, epnamestart, epnameend, epnameend)
 tag = core.std.FreezeFrames(tag, cardstart, cardend, cardend)
 
 # 1080p elements
-credit_m = vrdf.DRM(src16, 806, 'bicubic', 0, 1/2).std.Inflate()
-credit = fvf.rfs(tag, core.std.MaskedMerge(tag, src16, credit_m[16640:16641], 0), mappings='[16640 16774]')
+credit_m = vrdf.DRM(uv_shift16, 806, 'bicubic', 0, 1/2).std.Inflate()
+credit = fvf.rfs(tag, core.std.MaskedMerge(tag, uv_shift16, credit_m[16640:16641], 0), mappings='[16640 16774]')
 
 # Dither
-final = fvf.Depth(credit, 10)
+final = fvf.Depth(tag, 10)
 
 final.set_output()
