@@ -6,7 +6,6 @@ import havsfunc as hvf
 import lvsfunc as lvf
 import vardefunc as vrdf
 import modfunc as mdf
-import atomchtools as atf
 import descale as dsc
 import acsuite
 from edi_rpow2 import znedi3_rpow2
