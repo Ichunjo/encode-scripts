@@ -47,10 +47,10 @@ src = fvf.rfs(src_ru, src_sc, mappings=f'[{edstart} {edend}]')
 
 src_fade = kgf.hardsubmask_fades(src, src_sc, highpass=2000)
 src = fvf.rfs(src, core.std.MaskedMerge(src, src_sc, vrdf.RegionMask(src_fade, left=0, right=0, top=0, bottom=236)), mappings="[3645 3698] [10191 10220] [32684 32764]")
-src = fvf.rfs(src, core.std.MaskedMerge(src, src_sc, vrdf.RegionMask(src_fade, left=0, right=0, top=236, bottom=0)), mappings="[20929 20952]")
+src = fvf.rfs(src, core.std.MaskedMerge(src, src_sc, vrdf.RegionMask(src_fade, left=0, right=0, top=200, bottom=0)), mappings="[20929 20952]")
 
 src_fade = kgf.hardsubmask_fades(src, src_fu, highpass=2000)
-src = fvf.rfs(src, core.std.MaskedMerge(src, src_fu, src_fade), mappings="[3534 3644] [4261 4341] [6031 6117] [8353 8400] [9652 9687] [9748 9789] [10221 10274] [17225 17242] [23539 23610] [29673 29851] [33927 34046] [20080 20127]")
+src = fvf.rfs(src, core.std.MaskedMerge(src, src_fu, src_fade), mappings="[3534 3644] [4261 4341] [6031 6117] [8353 8400] [9652 9687] [9748 9789] [10221 10274] [17225 17242] [20080 20127] [23539 23610] [29673 29851] [33927 34046]")
 
 src = fvf.rfs(src, src_de, mappings="[21100 21123] [21310 21321]")
 
