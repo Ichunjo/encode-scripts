@@ -5,39 +5,40 @@ import fvsfunc as fvf
 import lvsfunc as lvf
 import vardefunc as vrdf
 import descale as dsc
-from vsutil import get_w, get_y
 from cooldegrain import CoolDegrain
 
 core = vs.core
 core.max_cache_size = 26000
 core.num_threads = 18
 
-src_a = lvf.src(r'WKN/NekoparA - 03 (Wakanim SC 1080p).mkv')
-src_b = lvf.src(r'AMZ/NekoparA - 03 (Amazon dAnime VBR 1080p).mkv')
+src_ = [
+	core.dgdecodenv.DGSource(r'WKN/NekoparA - 03 (Wakanim SC 1080p).dgi'),
+	core.dgdecodenv.DGSource(r'AMZ/NekoparA - 03 (Amazon dAnime VBR 1080p).dgi')
+]
 
-src_a = src_a[0]+src_a+(src_a[-1]*2)
-src_b = src_b+(src_b[-1]*2)
+src_[0] = src_[0][0] + src_[0] + src_[0][-1] * 2
+src_[1] = src_[1] + src_[1][-1] * 2
 #scomp = lvf.stack_compare(src_a, src_b, height=540)
 
-#vrdf.generate_keyframes(src_b, 'nekopara03_keyframes.log')
+vrdf.generate_keyframes(src_[1], 'nekopara03_keyframes.log')
 
-src_a = fvf.Depth(src_a, 16)
-src_b = fvf.Depth(src_b, 16)
+src_ = [fvf.Depth(src, 16) for src in src_]
 
-hardsubmask = kgf.hardsubmask(src_a, src_b)
-src = core.std.MaskedMerge(src_a, src_b, hardsubmask)
+hardsubmask = kgf.hardsubmask(src_[0], src_[1])
+src = core.std.MaskedMerge(src_[0], src_[1], hardsubmask)
 
-#diff = lvf.tvbd_diff(src_b, src)
-
-src_fade = kgf.hardsubmask_fades(src_a, src_b, highpass=2000)
-src_fade = core.std.MaskedMerge(src_a, src_b, src_fade)
-src = fvf.rfs(src, src_fade, mappings='[33326 33446]')
-#scomp2 = lvf.stack_compare(src, src_b, height=540)
+src_fade = kgf.hardsubmask_fades(src_[0], src_[1], highpass=2000)
+src_fade = core.std.MaskedMerge(src_[0], src_[1], src_fade)
+src = fvf.rfs(src, src_fade, mappings='[5967 6004] [10853 10907] [15657 15779] [33326 33446]')
+src_fade = kgf.hardsubmask_fades(src_[0], src_[1], 20, 2000)
+src_fade = core.std.MaskedMerge(src_[0], src_[1], src_fade)
+src = fvf.rfs(src, src_fade, mappings='[16382 16428]')
+#scomp2 = lvf.stack_compare(src, src_[1], height=540)
 
 opstart, opend = 792, 2948
 edstart, edend = 31169, 33325
 desc_str = 1/3
-desc_w, desc_h = get_w(846), 846
+desc_w, desc_h = kgf.get_w(846), 846
 b, c = 0.2620, 0.3690
 
 # Chroma shift
@@ -47,18 +48,17 @@ src = kgf.join(planes)
 
 # Descale / downscale
 desc_y = dsc.Descale(src, desc_w, desc_h, 'bicubic', b, c, gray=True)
-down_y = core.resize.Spline36(get_y(src), desc_w, desc_h)
+down_y = core.resize.Spline36(kgf.get_y(src), desc_w, desc_h)
 desc_y = core.std.Expr([desc_y, down_y], f'x {desc_str} * y 1 {desc_str} - * +')
+
 # Luma denoise
 den_m = vrdf.adaptive_mask(desc_y, 20)
 den_a = CoolDegrain(desc_y, tr=1, thsad=72, thsadc=0, bits=16, blksize=8, overlap=4)
 den_b = CoolDegrain(desc_y, tr=1, thsad=48, thsadc=0, bits=16, blksize=8, overlap=4)
 den_y = core.std.MaskedMerge(den_a, den_b, den_m)
 
-# Chroma denoise
+# Chroma things
 den_uv = core.knlm.KNLMeansCL(src, a=2, h=0.3, d=3, device_type='gpu', channels='UV')
-
-# Chroma aa
 aa_uv = taa.TAAmbk(den_uv, aatype=0, aatypeu='Nnedi3', aatypev='Nnedi3', down8=False, mtype=0, opencl=True)
 
 # Luma AA + upscale
@@ -89,5 +89,4 @@ endcard = lvf.upscaled_sraa(src, 2, None, src.height, False)
 endcard = fvf.rfs(credit, endcard, mappings=f'[{edend+1} {src.num_frames-1}]')
 
 final = fvf.Depth(endcard, 10)
-
 final.set_output()
