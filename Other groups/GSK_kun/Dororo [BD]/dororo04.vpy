@@ -21,16 +21,16 @@ ac = acsuite.AC()
 
 src = lvf.src(r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00004.m2ts')
 
-#asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00004.mka'
-#ac.eztrim(src,[(24,34191)], asrc,"dororo04.mka")
+asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00004.mka'
+ac.eztrim(src,[(24,34191)], asrc,"dororo04.mka")
 
 src = src[24:34191]
 
-# Keyframes pour x264 après
-#vrdf.generate_keyframes(src, 'dororo04_keyframes.log')
+# Keyframes for x264 --qpfile 
+vrdf.generate_keyframes(src, 'dororo04_keyframes.log')
 
-# Variable des frames
-opstart, opend = 1000, 3140 #Première frame lumineuse
+# Frame variables
+opstart, opend = 1000, 3140 # opstart: first frame with light
 epnamestart, epnameend = opend+1, 3236
 edstart, edend = 31505, 33662
 cardstart, cardend = 34047, src.num_frames-1
@@ -52,24 +52,24 @@ uv_shift16 = fvf.Depth(src, 16)
 # Descale
 desc = dsc.Descale(uv_shift16, get_w(806), 806, 'bicubic', 0, 1/2, gray=True)
 
-# Stabilisation du noise sur le luma 
+# Luma noise stabilization 
 den_clip = core.knlm.KNLMeansCL(desc, a=2, h=0.35, d=1, device_type='gpu')
 stab = hvf.GSMC(desc, den_clip, radius=3)
 
-# Denoise épisode luma adaptatif
+# Luma adaptive denoise for episodes
 adapt_m = vrdf.adaptive_mask(desc, 30)
 den_y_a = CoolDegrain(stab, tr=1, thsad=72, thsadc=0, bits=16, blksize=8, overlap=4)
 den_y_b = CoolDegrain(stab, tr=1, thsad=48, thsadc=0, bits=16, blksize=8, overlap=4)
 den_y = core.std.MaskedMerge(den_y_a, den_y_b, adapt_m)
 
-# Denoise chroma simple
+# Just a standard chroma denoise
 den_uv = core.knlm.KNLMeansCL(uv_shift32, a=2, h=0.6, d=3, device_type='gpu', channels='UV')
 
-# Rescaling et fusion luma / chroma
+# Rescaling & merge luma/chroma
 scaled_y = vrdf.Bicubic(znedi3_rpow2(den_y, 2, nns=4, qual=2), 1920, 1080, 'catrom')
 scaled = core.std.ShufflePlanes([scaled_y, fvf.Depth(den_uv, 16)], [0, 1, 2], vs.YUV)
 
-# Denoise luma et chroma sans rescale. Essentiellement pour l'OP
+# Luma & chroma denoise without rescaling. Opening parts
 adapt_m = vrdf.adaptive_mask(uv_shift16, 300)
 den_a = mdf.hybriddenoise_mod(uv_shift32, knl=0.25, sigma=1, radius1=1)
 den_b = mdf.hybriddenoise_mod(uv_shift32, knl=0.75, sigma=3, radius1=1)
@@ -77,12 +77,12 @@ den_b = core.std.MaskedMerge(uv_shift16, den_b, adapt_m)
 den = fvf.rfs(uv_shift16, den_a, mappings=opening)
 den = fvf.rfs(den, den_b, mappings=opening_a)
 
-# AA pour l'OP et scenefiltering 
+# Opening anti-aliasing & scenefiltering
 aa_a = lvf.upscaled_sraa(den, rep=13, sharp_downscale=False)
 aa_a = taa.TAAmbk(aa_a, aatype=0, aatypeu='Nnedi3', aatypev='Nnedi3')
 scaled = fvf.rfs(scaled, aa_a, mappings=opening)
 
-# Masque déband
+# Deband masks
 scaled8 = fvf.Depth(scaled, 8)
 line_m_a = taa.TAAmbk(scaled8, mtype=1, showmask=1).std.Inflate()
 line_m_b = kgf.retinex_edgemask(scaled8).rgvs.RemoveGrain(3).rgvs.RemoveGrain(3).std.Inflate().std.Inflate()
@@ -90,7 +90,7 @@ line_m = core.std.Expr([line_m_a, line_m_b], 'x y +')
 line_m = core.std.Expr(line_m, 'x 30 < 0 x 3 * ?').std.Inflate().std.Inflate()
 adapt_m = vrdf.adaptive_mask(scaled, 60)
 
-# Déband & scenefiltering
+# Deband & scenefiltering
 db_a = core.neo_f3kdb.Deband(scaled, 17, 42, 48, 48, 24, 0, sample_mode=4)
 db_b = core.neo_f3kdb.Deband(scaled, 14, 48, 54, 54, 32, 0, sample_mode=4)
 db_c = core.neo_f3kdb.Deband(scaled, 17, 36, 36, 36, 24, 0, sample_mode=4)
@@ -118,7 +118,7 @@ grain = fvf.rfs(grain_a, grain_b, mappings=opening_a)
 grain = fvf.rfs(grain, grain_c, mappings=opening_b)
 grain = fvf.rfs(grain, grain_d, mappings=f'[{edstart} {edend}]')
 
-# Nom épisodes et carte à la fin
+# Episode name & endcard
 aa_b = lvf.upscaled_sraa(uv_shift16, 2, rep=13, sharp_downscale=False)
 tag = fvf.rfs(grain, aa_b, mappings=f'[{epnamestart} {epnameend}] [{cardstart} {cardend}]')
 tag = core.std.FreezeFrames(tag, epnamestart, epnameend, epnameend)

@@ -21,16 +21,16 @@ ac = acsuite.AC()
 
 src = lvf.src(r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_2/BDMV/STREAM/00006.m2ts')
 
-#asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_2/BDMV/STREAM/00006.mka'
-#ac.eztrim(src,[(24,34191)], asrc, "dororo12.mka")
+asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_2/BDMV/STREAM/00006.mka'
+ac.eztrim(src,[(24,34191)], asrc, "dororo12.mka")
 
 src = src[24:34191]
 
 # Keyframes for x264 --qpfile 
-#vrdf.generate_keyframes(src, 'dororo12_keyframes.log')
+vrdf.generate_keyframes(src, 'dororo12_keyframes.log')
 
 # Frame variables
-opstart, opend = 856, 2996 #Première frame lumineuse
+opstart, opend = 856, 2996 # opstart: first frame with light
 epnamestart, epnameend = opend+1, 3092
 edstart, edend = 31889, 34046
 cardstart, cardend = edend+1, src.num_frames-1
@@ -90,7 +90,7 @@ line_m = core.std.Expr([line_m_a, line_m_b], 'x y +')
 line_m = core.std.Expr(line_m, 'x 30 < 0 x 3 * ?').std.Inflate().std.Inflate()
 adapt_m = vrdf.adaptive_mask(scaled, 60)
 
-# Grain & scenefiltering
+# Deband & scenefiltering
 db_a = core.neo_f3kdb.Deband(scaled, 17, 42, 48, 48, 24, 0, sample_mode=4)
 db_b = core.neo_f3kdb.Deband(scaled, 14, 48, 54, 54, 32, 0, sample_mode=4)
 db_c = core.neo_f3kdb.Deband(scaled, 17, 36, 36, 36, 24, 0, sample_mode=4)

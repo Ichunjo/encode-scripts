@@ -21,17 +21,17 @@ ac = acsuite.AC()
 
 src = lvf.src(r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00003.m2ts')
 
-#asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00003.mka'
-#ac.eztrim(src,[(24,34189)], asrc,"dororo03.mka")
+asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00003.mka'
+ac.eztrim(src,[(24,34189)], asrc,"dororo03.mka")
 
 src = src[24:34189]
 src = src+src[-1]
 
 # Keyframes for x264 --qpfile 
-#vrdf.generate_keyframes(src, 'dororo03_keyframes.log')
+vrdf.generate_keyframes(src, 'dororo03_keyframes.log')
 
 # Frame variables
-opstart, opend = 2150, 4290 #Première frame lumineuse
+opstart, opend = 2150, 4290 # opstart: first frame with light
 epnamestart, epnameend = opend+1, 4386
 edstart, edend = 31888, 34044
 cardstart, cardend = edend+1, src.num_frames-1
@@ -78,12 +78,12 @@ den_b = core.std.MaskedMerge(uv_shift16, den_b, adapt_m)
 den = fvf.rfs(uv_shift16, den_a, mappings=opening)
 den = fvf.rfs(den, den_b, mappings=opening_a)
 
-# AA pour l'OP et scenefiltering 
+# Opening anti-aliasing & scenefiltering
 aa_a = lvf.upscaled_sraa(den, rep=13, sharp_downscale=False)
 aa_a = taa.TAAmbk(aa_a, aatype=0, aatypeu='Nnedi3', aatypev='Nnedi3')
 scaled = fvf.rfs(scaled, aa_a, mappings=opening)
 
-# Masque déband
+# Deband masks
 scaled8 = fvf.Depth(scaled, 8)
 line_m_a = taa.TAAmbk(scaled8, mtype=1, showmask=1).std.Inflate()
 line_m_b = kgf.retinex_edgemask(scaled8).rgvs.RemoveGrain(3).rgvs.RemoveGrain(3).std.Inflate().std.Inflate()
@@ -91,7 +91,7 @@ line_m = core.std.Expr([line_m_a, line_m_b], 'x y +')
 line_m = core.std.Expr(line_m, 'x 30 < 0 x 3 * ?').std.Inflate().std.Inflate()
 adapt_m = vrdf.adaptive_mask(scaled, 60)
 
-# Déband & scenefiltering
+# Deband & scenefiltering
 db_a = core.neo_f3kdb.Deband(scaled, 17, 42, 48, 48, 24, 0, sample_mode=4)
 db_b = core.neo_f3kdb.Deband(scaled, 14, 48, 54, 54, 32, 0, sample_mode=4)
 db_c = core.neo_f3kdb.Deband(scaled, 17, 36, 36, 36, 24, 0, sample_mode=4)
@@ -120,13 +120,13 @@ grain = fvf.rfs(grain_a, grain_b, mappings=opening_a)
 grain = fvf.rfs(grain, grain_c, mappings=opening_b)
 grain = fvf.rfs(grain, grain_d, mappings=f'[{edstart} {edend}]')
 
-# Nom épisodes et carte à la fin
+# Episode name & endcard
 aa_b = lvf.upscaled_sraa(uv_shift16, 2, rep=13, sharp_downscale=False)
 tag = fvf.rfs(grain, aa_b, mappings=f'[{epnamestart} {epnameend}] [{cardstart} {cardend}]')
 tag = core.std.FreezeFrames(tag, epnamestart, epnameend, epnameend)
 tag = core.std.FreezeFrames(tag, cardstart, cardend, cardend)
 
-# Restoration des éléments en 1080p
+# 1080p elements
 credit_m = vrdf.DRM(uv_shift16, 806, 'bicubic', 0, 1/2).std.Inflate()
 credit = fvf.rfs(tag, core.std.MaskedMerge(tag, uv_shift16, credit_m[15579:15580], 0), mappings='[15561 15619]')
 credit = fvf.rfs(credit, core.std.MaskedMerge(credit, uv_shift16, credit_m[16124:16125], 0), mappings='[16099 16158]')

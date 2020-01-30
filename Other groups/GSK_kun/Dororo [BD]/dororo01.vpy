@@ -21,13 +21,13 @@ ac = acsuite.AC()
 
 src = lvf.src(r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00001.m2ts')
 
-#asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00001.mka'
-#ac.eztrim(src,[(22,34188)], asrc,"dororo01.mka")
+asrc = r'[BDMV] どろろ Blu-ray BOX/上巻/DORORO_1/BDMV/STREAM/00001.mka'
+ac.eztrim(src,[(22,34188)], asrc,"dororo01.mka")
 
 src = src[22:34188] 
 
 # Keyframes for x264 --qpfile 
-#vrdf.generate_keyframes(src, 'dororo01_keyframes.log')
+vrdf.generate_keyframes(src, 'dororo01_keyframes.log')
 
 # Frame variables
 opstart, opend = 10711, 12851 # opstart: first frame with light
