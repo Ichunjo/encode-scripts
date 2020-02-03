@@ -28,8 +28,8 @@ def gradient_m(clip):
 src = core.dgdecodenv.DGSource(r"[BDMV] Fate Grand Order - Absolute Demonic Front Babylonia [Vol.1] [JP]/Disc2/BDMV/STREAM/00008.dgi")
 
 # Audio cuts
-#asrc = r'[BDMV] Fate Grand Order - Absolute Demonic Front Babylonia [Vol.1] [JP]/Disc2/BDMV/STREAM/00008.mka'
-#ac.eztrim(src,[(24,-28)], asrc,"fate_go_nced.mka")
+asrc = r'[BDMV] Fate Grand Order - Absolute Demonic Front Babylonia [Vol.1] [JP]/Disc2/BDMV/STREAM/00008.mka'
+ac.eztrim(src,[(24,-28)], asrc,"fate_go_nced.mka")
 
 src = src[24:-28]
 desc_str = 0.5
@@ -55,7 +55,7 @@ desc_good = core.std.MaskedMerge(desc, desc_shift, fvf.Depth(gradient_m(desc), 3
 
 # Rescale
 scaled = rescale(desc, fasterAA=True, nnedi3Mode=('nnedi3', 'opencl'), dx=1920, dy=1080, alpha=0.25, beta=0.3, gamma=500)
-scaled = core.std.ShufflePlanes([scaled, u, v], [0, 0, 0], vs.YUV)
+scaled = kgf.join([scaled, u, v])
 
 # Recover
 artefact = [
