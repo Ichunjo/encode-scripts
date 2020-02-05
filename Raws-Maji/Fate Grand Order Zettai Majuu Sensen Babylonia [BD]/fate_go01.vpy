@@ -6,9 +6,8 @@ import vardefunc as vrdf
 import modfunc as mdf
 import acsuite
 import psutil
-from descale import Descale
 from cooldegrain import CoolDegrainSF
-from insaneAA import rescale
+from math import ceil
 p_handle = psutil.Process()
 p_handle.cpu_affinity(list(range(0,23,2)))
 
@@ -18,31 +17,17 @@ core.num_threads = 12
 
 ac = acsuite.AC()
 
-# For some reasons I can't create a blank clip in GRAY10.
-# The goal here is to create a gradient mask to gradually shift the clip 
-# and simulate a shrinking.
-def gradient_m(clip):
-	blank = core.std.BlankClip(format=vs.GRAY16, length=1, width=clip.width, height=1)
-	blank = fvf.Depth(blank, 10)
-	maxval = 1023
-	color = 0
-	stripes = []
-	while color <= maxval:
-		stripes.append(core.std.BlankClip(blank, color=color))
-		color += 1
-	gradientMask = core.std.StackVertical(stripes)
-	return core.resize.Point(gradientMask, clip.width, clip.height)
-
 src = core.dgdecodenv.DGSource(r"[BDMV] Fate Grand Order - Absolute Demonic Front Babylonia [Vol.1] [JP]/Disc1/BDMV/STREAM/00001.dgi")
+asrc = r'[BDMV] Fate Grand Order - Absolute Demonic Front Babylonia [Vol.1] [JP]/Disc1/BDMV/STREAM/00001.mka'
 
 # # # # # # # # # #
 # Cuts, variables #
 # # # # # # # # # #
-asrc = r'[BDMV] Fate Grand Order - Absolute Demonic Front Babylonia [Vol.1] [JP]/Disc1/BDMV/STREAM/00001.mka'
 ac.eztrim(src,[(24,-24)], asrc,"fate_go01.mka")
-
 src = src[24:-24]
-desc_str = 0.5
+b, c = 0, 1/2
+desc_w, desc_h = 1551, 872.5
+y_shift = (src.height/desc_h)*0.25
 
 # # # # # # # # #
 # Chroma shift  #
@@ -54,51 +39,62 @@ shift = kgf.join(planes)
 # # # # # # # # # # # # # # # # # # # # # # # #
 # Denoise with CoolDegrain in single floating #
 # # # # # # # # # # # # # # # # # # # # # # # #
-den = CoolDegrainSF(shift, tr=1, thsad=48, blksize=8, overlap=4)
+den = CoolDegrainSF(shift, tr=2, thsad=60, blksize=8, overlap=4)
 
 # # # # # # # # # # # #
 # Descale 1551x872.5  #
 # # # # # # # # # # # #
-y, u, v = kgf.split(den)
+def gradient_function(w, h):
+	blank = core.std.BlankClip(format=vs.GRAYS, length=1, width=w, height=1)
+	stripes = []
+	black = 0
+	color = 1
+	while color >= black:
+		stripes.append(core.std.BlankClip(blank, color=color))
+		color -= 1 / (ceil(h) / 2)
+	gradient = core.std.StackVertical(stripes)
+	black = core.std.BlankClip(format=vs.GRAYS, length=1, width=w, height=ceil(h)/2)
+	return core.std.StackVertical([gradient, black])
 
-# Combined descale / downscale to avoid ringing artefacts
-desc = Descale(y, 1551, 873, 'bicubic', 0, 1/2)
-down = core.resize.Spline36(y, 1551, 873)
-desc = core.std.Expr([desc, down], f'x {desc_str} * y 1 {desc_str} - * +')
+# Mask top and bottom
+mask_top = gradient_function(desc_w, desc_h)
+mask_top = core.resize.Spline36(mask_top, src_top=-0.25)
+mask_bot = mask_top.std.FlipVertical()
+mask_bot = core.resize.Spline36(mask_bot, src_top=0.25)
+# Descale clips
+y = kgf.get_y(den)
+desc = 		core.descale.Debicubic(y, desc_w, ceil(desc_h), b, c, cache_size=5)
+desc_top = 	core.descale.Debicubic(y, desc_w, ceil(desc_h), b, c, src_top=-y_shift, cache_size=5)
+desc_bot = 	core.descale.Debicubic(y, desc_w, ceil(desc_h), b, c, src_top=y_shift, cache_size=5)
+# Merging
+desc = core.std.MaskedMerge(desc, desc_top, mask_top)
+desc = core.std.MaskedMerge(desc, desc_bot, mask_bot)
 
-# Slight shift to transform the height 873 -> 872.5 
-desc_shift = core.resize.Spline36(desc, src_top=0.5)
-
-# And merge with the gradient mask.
-desc_good = core.std.MaskedMerge(desc, desc_shift, fvf.Depth(gradient_m(desc), 32))
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Rescale by using a part of insaneAA which is much better in this case #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-scaled = rescale(desc, fasterAA=True, nnedi3Mode=('nnedi3', 'opencl'), dx=1920, dy=1080, alpha=0.25, beta=0.3, gamma=500)
-scaled = kgf.join([scaled, u, v])
-
-# Some artefacts are too obvious and I prefer not descale them
-artefact = [
-	vrdf.DRM(y, 872, 'bicubic', 0, 1/2, mthr=40, sw=0, sh=0),
-	vrdf.DRM(y, 873, 'bicubic', 0, 1/2, mthr=40, sw=0, sh=0),
-]
-
-# # # # # # # # #
-# Anti-aliasing #
-# # # # # # # # #
-aa_m = core.std.Expr(artefact, 'x y +')
-# But some of them are aliased so let's AA them
-aa = lvf.transpose_aa(fvf.Depth(den, 16))
-aa = core.std.MaskedMerge(fvf.Depth(scaled, 16), aa, fvf.Depth(aa_m, 16), 0)
+# # # # # #
+# Rescale #
+# # # # # #
+# Upscaled_sraa of lvsfunc with Repair in single floating
+scaled = mdf.upscaled_sraa_mod(desc, 2, 20, src.height, 16/9, False)
+# Mask top and bottom
+mask_top = gradient_function(src.width, src.height)
+mask_bot = mask_top.std.FlipVertical()
+# Upscale clips shifted
+scaled_top = core.resize.Spline36(scaled, src_top=-y_shift)
+scaled_bot = core.resize.Spline36(scaled, src_top=y_shift)
+# Merging
+scaled = core.std.MaskedMerge(scaled, scaled_top, mask_top)
+scaled = core.std.MaskedMerge(scaled, scaled_bot, mask_bot)
+# Merge the chroma back
+scaled = core.std.ShufflePlanes([scaled, den], [0, 1, 2], vs.YUV)
+scaled = fvf.Depth(scaled, 16)
 
 # # # # # # #
 # Debanding #
 # # # # # # #
 # Same as retinex_edgemask of kagefunc but I use tcannyCL here
-db_m = mdf.retinex_edgemask_mod(aa, opencl=True).rgvs.RemoveGrain(4)
-db = core.neo_f3kdb.Deband(aa, 17, 36, 36, 36, 24, 0, sample_mode=4)
-db = core.std.MaskedMerge(db, aa, db_m)
+db_m = mdf.retinex_edgemask_mod(scaled, opencl=True)
+db = core.neo_f3kdb.Deband(scaled, 17, 36, 36, 36, 24, 0, sample_mode=4)
+db = core.std.MaskedMerge(db, scaled, db_m)
 
 # # # # # # # #
 # Regraining  #
@@ -120,4 +116,5 @@ credit = fvf.rfs(credit, ref, mappings='[31338 33506]')
 # Final dither and output #
 # # # # # # # # # # # # # #
 final = fvf.Depth(credit, 10)
+
 final.set_output()
