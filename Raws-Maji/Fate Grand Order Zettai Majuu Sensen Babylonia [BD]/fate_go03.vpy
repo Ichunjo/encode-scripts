@@ -10,12 +10,9 @@ import acsuite
 import psutil
 from cooldegrain import CoolDegrainSF
 from math import ceil
-p_handle = psutil.Process()
-p_handle.cpu_affinity(list(range(0,23,2)))
 
 core = vs.core
 core.max_cache_size = 26000
-core.num_threads = 12
 
 ac = acsuite.AC()
 
@@ -49,8 +46,10 @@ shift = kgf.join(planes)
 # # # # # # # # # # # # # # # # # # # # # # # #
 adapt_m = vrdf.adaptive_mask(shift, 60)
 
-den_a = CoolDegrainSF(shift, tr=2, thsad=60, blksize=8, overlap=4)
-den_b = CoolDegrainSF(shift, tr=5, thsad=60, blksize=8, overlap=4)
+den_a = CoolDegrainSF(shift, tr=2, thsad=60, blksize=8, overlap=4, plane=0)
+den_a = core.knlm.KNLMeansCL(den_a, a=2, h=0.3, d=3, device_type='gpu', channels='UV')
+den_b = CoolDegrainSF(shift, tr=5, thsad=60, blksize=8, overlap=4, plane=0)
+den_b = core.knlm.KNLMeansCL(den_b, a=2, h=0.45, d=3, device_type='gpu', channels='UV')
 den_c = core.std.MaskedMerge(den_b, mvf.BM3D(shift, [2.5, 1.75], radius1=1), adapt_m)
 
 den = fvf.rfs(den_a, den_b, mappings=opening_a)

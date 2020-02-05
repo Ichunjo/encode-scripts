@@ -5,15 +5,11 @@ import fvsfunc as fvf
 import vardefunc as vrdf
 import modfunc as mdf
 import acsuite
-import psutil
 from cooldegrain import CoolDegrainSF
 from math import ceil
-p_handle = psutil.Process()
-p_handle.cpu_affinity(list(range(0,23,2)))
 
 core = vs.core
 core.max_cache_size = 26000
-core.num_threads = 12
 
 ac = acsuite.AC()
 
@@ -39,7 +35,8 @@ shift = kgf.join(planes)
 # # # # # # # # # # # # # # # # # # # # # # # #
 # Denoise with CoolDegrain in single floating #
 # # # # # # # # # # # # # # # # # # # # # # # #
-den = CoolDegrainSF(shift, tr=2, thsad=60, blksize=8, overlap=4)
+den = CoolDegrainSF(shift, tr=2, thsad=60, blksize=8, overlap=4, plane=0)
+den = core.knlm.KNLMeansCL(den, a=2, h=0.3, d=3, device_type='gpu', channels='UV')
 
 # # # # # # # # # # # #
 # Descale 1551x872.5  #
