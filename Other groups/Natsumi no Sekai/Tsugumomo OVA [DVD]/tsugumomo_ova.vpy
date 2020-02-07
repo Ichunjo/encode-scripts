@@ -7,7 +7,7 @@ import muvsfunc as muvf
 import fvsfunc as fvf
 import vardefunc as vrdf
 import debandshit as dbs
-from  nnedi3_rpow2CL import nnedi3_rpow2CL
+from nnedi3_rpow2CL import nnedi3_rpow2CL
 import acsuite
 
 core = vs.core
