@@ -4,45 +4,51 @@ import kagefunc as kgf
 import havsfunc as hvf
 import fvsfunc as fvf
 import vardefunc as vrdf
+import modfunc as mdf
 import descale as dsc
 import acsuite
-from nnedi3_rpow2CL import nnedi3_rpow2CL
 from cooldegrain import CoolDegrain
+from vsTAAmbk import TAAmbk
 
 core = vs.core
-core.max_cache_size = 32000
+core.max_cache_size = 26000
 
 ac = acsuite.AC()
 
-src_ncop = 	lvf.src(r"[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00004.m2ts")
+src_ncop = 	core.dgdecodenv.DGSource(r"[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00004.dgi")
 
-asrc = r'[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00004.mka'
-ac.eztrim(src_ncop,[(24,-24)], asrc,"oresuki_ncop.mka")
+#asrc = r'[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00004.mka'
+#ac.eztrim(src_ncop,[(24,-24)], asrc,"oresuki_ncop.mka")
 
-src_ncop = 	src_ncop[24:-24]
+src = src_ncop[24:-24]
 
-vrdf.generate_keyframes(src_ncop, 'oresuki_ncop_keyframes.log')
+#vrdf.generate_keyframes(src, 'oresuki_ncop_keyframes.log')
 
-fe = core.edgefixer.ContinuityFixer(src_ncop, [2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1])
+#########
+desc_str = 0.5
 
-fe16 = fvf.Depth(fe, 16)
+fe = core.edgefixer.ContinuityFixer(src, [2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1])
 
-desc_y = dsc.Descale(fe16, 1280, 720, 'bicubic', 0, 1/2, gray=True)
+y = kgf.get_y(fvf.Depth(fe, 32))
 
-den_y = CoolDegrain(desc_y, tr=1, thsad=48, thsadc=0, bits=16, blksize=8, overlap=4)
-den_uv = CoolDegrain(fe16, tr=1, thsad=0, thsadc=48, bits=16, blksize=8, overlap=4)
+desc_sharp =    dsc.Descale(y, 1280, 720, 'bilinear')
+desc_regular =  dsc.Descale(y, 1280, 720, 'bicubic', 0, 1/2)
+desc_y =        core.std.Expr([desc_sharp, desc_regular], f'x {desc_str} * y 1 {desc_str} - * +')
 
-scaled_y = nnedi3_rpow2CL(den_y, 2, nns=4).resize.Spline36(1920, 1080)
+den_y =     CoolDegrain(desc_y, tr=1, thsad=48, thsadc=0, bits=16, blksize=8, overlap=4)
+den_uv =    CoolDegrain(fe, tr=1, thsad=0, thsadc=60, bits=16, blksize=8, overlap=4)
 
-scaled = core.std.ShufflePlanes([scaled_y, den_uv], [0, 1, 2], vs.YUV)
+line_m = kgf.retinex_edgemask(den_y).std.Binarize(9500)
+line_m = line_m.rgvs.RemoveGrain(3).rgvs.RemoveGrain(3).rgvs.RemoveGrain(3).std.Inflate()
+darken = hvf.FastLineDarkenMOD(den_y, strength=48, protection=5, luma_cap=191, threshold=4, thinning=0)
+aa = TAAmbk(darken, aatype='Nnedi3', mtype=0, down8=False)
+aa = core.std.MaskedMerge(den_y, aa, line_m)
 
-darken = hvf.FastLineDarkenMOD(scaled, strength=48, protection=7, luma_cap=191, threshold=4, thinning=0)
+full = mdf.to_444(den_uv, 1280, 720, False)
+scaled = kgf.join([den_y, full[0], full[1]])
 
-line_m = kgf.retinex_edgemask(scaled)
 db = core.neo_f3kdb.Deband(scaled, 16, 30, 30, 30, 12, 0, sample_mode=4)
-db = core.std.MaskedMerge(db, darken, line_m)
-
-grain = kgf.adaptive_grain(db, 0.1, luma_scaling=8)
+grain = kgf.adaptive_grain(db)
 
 final = fvf.Depth(grain, 10)
 
