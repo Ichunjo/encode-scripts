@@ -19,8 +19,8 @@ src = 		core.dgdecodenv.DGSource(r"[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake 
 src_ncop = 	core.dgdecodenv.DGSource(r"[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00004.dgi")
 src_nced = 	core.dgdecodenv.DGSource(r"[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00005.dgi")
 
-#asrc = r'[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00002.mka'
-#ac.eztrim(src,[(0,34045)], asrc,"oresuki02.mka")
+asrc = r'[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00002.mka'
+ac.eztrim(src,[(0,34045)], asrc,"oresuki02.mka")
 
 src = 		src[0:34045]
 src = 		src+src[-1]
@@ -31,9 +31,9 @@ opstart, opend = 456, 2613
 edstart, edend = 31767, 33924
 desc_str = 0.5
 desc_w, desc_h = 1280, 720
-#vrdf.generate_keyframes(src, 'oresuki02_keyframes.log')
+vrdf.generate_keyframes(src, 'oresuki02_keyframes.log')
 
-fe = core.edgefixer.ContinuityFixer(src, [2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1])
+fe = core.edgefixer.ContinuityFixer(src, [2,1,1], [2,1,1], [2,1,1], [2,1,1])
 
 y = kgf.get_y(fvf.Depth(fe, 32))
 
@@ -50,7 +50,7 @@ darken = hvf.FastLineDarkenMOD(den_y, strength=48, protection=5, luma_cap=191, t
 aa = TAAmbk(darken, aatype='Nnedi3', mtype=0, down8=False, opencl=True)
 aa = core.std.MaskedMerge(den_y, aa, line_m)
 
-u, v = mdf.to_444(den_uv, desc_w, desc_h, False)
+u, v = vrdf.to444(den_uv, 1280, 720, False)
 scaled = kgf.join([den_y, u, v])
 
 db = core.neo_f3kdb.Deband(scaled, 16, 30, 30, 30, 12, 0, sample_mode=4)

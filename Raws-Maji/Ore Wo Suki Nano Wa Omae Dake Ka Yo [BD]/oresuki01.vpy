@@ -17,16 +17,16 @@ ac = acsuite.AC()
 
 src = core.dgdecodenv.DGSource(r"[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00001.dgi")
 
-#asrc = r'[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00001.mka'
-#ac.eztrim(src,[(0,-25)], asrc,"oresuki01.mka")
+asrc = r'[BDMV][191225][Ore Wo Suki Nano Wa Omae Dake Ka Yo][Vol.01]/BDMV/STREAM/00001.mka'
+ac.eztrim(src,[(0,-25)], asrc,"oresuki01.mka")
 
 src = src[:-25]
 
 desc_str = 0.5
 desc_w, desc_h = 1280, 720
-#vrdf.generate_keyframes(src, 'oresuki01_keyframes.log')
+vrdf.generate_keyframes(src, 'oresuki01_keyframes.log')
 
-fe = core.edgefixer.ContinuityFixer(src, [2, 1, 1], [2, 1, 1], [2, 1, 1], [2, 1, 1])
+fe = core.edgefixer.ContinuityFixer(src, [2,1,1], [2,1,1], [2,1,1], [2,1,1])
 
 y = kgf.get_y(fvf.Depth(fe, 32))
 
@@ -43,7 +43,7 @@ darken = hvf.FastLineDarkenMOD(den_y, strength=48, protection=5, luma_cap=191, t
 aa = TAAmbk(darken, aatype='Nnedi3', mtype=0, down8=False)
 aa = core.std.MaskedMerge(den_y, aa, line_m)
 
-u, v = mdf.to_444(den_uv, desc_w, desc_h, False)
+u, v = vrdf.to444(den_uv, 1280, 720, False)
 scaled = kgf.join([den_y, u, v])
 
 db = core.neo_f3kdb.Deband(scaled, 16, 30, 30, 30, 12, 0, sample_mode=4)
@@ -54,9 +54,9 @@ fe16 = fvf.Depth(fe, 16)
 credit_m = core.resize.Spline36(vrdf.DRM(fe16, desc_h, 'bicubic', 0, 1/2).std.Inflate(), desc_w, desc_h)
 
 ref = core.resize.Spline36(kgf.get_y(fe16), desc_w, desc_h)
-y = kgf.get_y(grain)
+grain_y = kgf.get_y(grain)
 
-credit = fvf.rfs(y, core.std.MaskedMerge(y, ref, credit_m, 0),          mappings='[0 725]')
+credit = fvf.rfs(grain_y, core.std.MaskedMerge(grain_y, ref, credit_m, 0),      mappings='[0 725]')
 credit = fvf.rfs(credit, core.std.MaskedMerge(credit, ref, credit_m, 0),        mappings='[833 933]')
 credit = fvf.rfs(credit, core.std.MaskedMerge(credit, ref, credit_m[20670], 0), mappings='[20630 20677]')
 credit = fvf.rfs(credit, core.std.MaskedMerge(credit, ref, credit_m, 0),        mappings='[20678 20737]')
