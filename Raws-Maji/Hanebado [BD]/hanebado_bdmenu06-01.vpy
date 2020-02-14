@@ -10,9 +10,9 @@ core = vs.core
 core.max_cache_size = 26000
 core.num_threads = 18
 
-src = lvf.src(r'[BDMV][181017][Hanebado!][Vol.2]/BDMV/STREAM/00009.m2ts')
+src = lvf.src(r'[BDMV][190213][Hanebado!][Vol.6]/BDMV/STREAM/00004.m2ts')
 
-vrdf.generate_keyframes(src, 'hanebado_bdmenu02_keyframes.log')
+vrdf.generate_keyframes(src, 'hanebado_bdmenu06-01_keyframes.log')
 
 src16 = fvf.Depth(src, 16)
 
