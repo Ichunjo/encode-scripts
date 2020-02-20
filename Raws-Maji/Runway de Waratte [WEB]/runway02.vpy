@@ -29,7 +29,7 @@ src = core.std.MaskedMerge(src_a, src_b, hardsubmask)
 
 src_fade_a = kgf.hardsubmask_fades(src_a, src_b, highpass=2000)
 src_fade_a = core.std.MaskedMerge(src_a, src_b, src_fade_a)
-src = fvf.rfs(src, src_fade_a, mappings='[1953 2045] [3619 3706] [34762 35244]')
+src = fvf.rfs(src, src_fade_a, mappings='[1953 2045] [3619 3706] [29556 29603] [34762 35244]')
 # scomp2 = lvf.stack_compare(src, src_b, height=540)
 
 opstart, opend = 1438, 3596
@@ -49,8 +49,8 @@ desc_y = fvf.rfs(
 
 planes = split(src)
 planes[1], planes[2] = [
-    core.resize.Spline36(plane, desc_y.width / 2, desc_y.height / 2, 
-        src_left=vrdf.GetChromaShift(src.height, desc_y.height))
+    core.resize.Spline36(
+        plane, desc_y.width / 2, desc_y.height / 2, src_left=vrdf.GetChromaShift(src.height, desc_y.height))
     for plane in planes[1:]
 ]
 
