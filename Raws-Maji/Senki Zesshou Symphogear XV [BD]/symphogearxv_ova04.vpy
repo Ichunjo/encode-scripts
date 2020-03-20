@@ -14,7 +14,7 @@ ac = acsuite.AC()
 asrc = r'SYMPHOGEAR_XV_VOL6/BDMV/STREAM/00007.mka'
 ac.eztrim(src,[(24,-24)], 	asrc,"symphogearxv_ova04.mka")
 
-desc_w, desc_h = 1551, 872.5
+desc_w, desc_h = 1551, 873
 y_shift = (src.height/desc_h)*0.25
 
 src = src[24:-24]
@@ -25,7 +25,7 @@ den = fvf.Depth(den, 32)
 planes = lvf.split(den)
 
 
-desc_y = core.fmtc.resample(planes[0], desc_w, desc_h+0.5, sy=-y_shift, sh=-y_shift, kernel='bicubic', a1=0, a2=1/2, invks=True)
+desc_y = core.fmtc.resample(planes[0], desc_w, desc_h, sy=-y_shift, sh=-y_shift, kernel='bicubic', a1=0, a2=1/2, invks=True)
 upsc_y = nnedi3_rpow2(desc_y, 2, 1920, 1080, kernel='spline64', nsize=4, nns=4, qual=2)
 planes[1], planes[2] = [core.fmtc.resample(plane, sy=-y_shift/2, sh=-y_shift/2, kernel='spline64') for plane in planes[1:]]
 scaled_a = lvf.join([upsc_y, planes[1], planes[2]])
