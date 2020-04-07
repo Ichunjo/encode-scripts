@@ -4,11 +4,10 @@ import fvsfunc as fvf
 import vardefunc as vrdf
 import vsTAAmbk as taa
 import debandshit as dbs
-import havsfunc as hvf
 from cooldegrain import CoolDegrain
 from mvsfunc import GetMatrix
 core = vs.core
-core.max_cache_size = 32000
+core.max_cache_size = 16384
 
 src_a = core.dgdecodenv.DGSource(r"[HorribleSubs] Isekai Quartet S2 - 04 [1080p].dgi")
 endcard = core.imwri.Read(r"endcard04.png")

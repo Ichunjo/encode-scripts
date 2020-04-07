@@ -4,7 +4,6 @@ import fvsfunc as fvf
 import vardefunc as vrdf
 import vsTAAmbk as taa
 import debandshit as dbs
-import havsfunc as hvf
 from cooldegrain import CoolDegrain
 from mvsfunc import GetMatrix
 from adjust import Tweak
@@ -42,7 +41,6 @@ grain = core.grain.Add(dimming, 0.3, constant=True)
 # Endcard
 endcard = core.std.AssumeFPS(endcard, grain)
 endcard = core.resize.Spline36(endcard, grain.width, grain.height, grain.format, matrix_s=GetMatrix(src))
-#endcard = lvf.upscaled_sraa(endcard, 2, sharp_downscale=False)
 endcard = core.neo_f3kdb.Deband(endcard, 18, 36, 36, 36, 32, 0)
 endcard = endcard*223
 
