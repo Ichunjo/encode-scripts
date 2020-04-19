@@ -46,7 +46,7 @@ y_m = core.resize.Bicubic(y_m, 960, 540)
 def _demangle(c):
     args = dict(nsize=1, nns=4, qual=2)
     c = c.std.Transpose().nnedi3.nnedi3(0, True, **args) \
-              .std.Transpose().nnedi3.nnedi3(0, True, **args)
+            .std.Transpose().nnedi3.nnedi3(0, True, **args)
     return core.resize.Bicubic(c, 1920, 1080, src_top=.5, src_left=.5)
 
 y_m, u, v = map(_demangle, (y_m, u, v))
