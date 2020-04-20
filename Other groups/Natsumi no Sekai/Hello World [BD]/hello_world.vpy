@@ -16,8 +16,8 @@ def _nneedi3_clamp(clip: vs.VideoNode, strength: int = 1, mask: vs.VideoNode = N
 
     y = lvf.get_y(clip)
 
-    strong = TAAmbk(y, aatype='Eedi3', alpha=0.25, beta=0.5, gamma=200, nrad=2, 
-                    mdis=20, mtype=0, opencl=False)
+    strong = TAAmbk(y, aatype='Eedi3', alpha=0.25, beta=0.4, gamma=500, nrad=1,
+                    mdis=15, mtype=0, opencl=False)
     weak = TAAmbk(y, aatype='Nnedi3', nsize=3, nns=3, qual=1, mtype=0, opencl=True)
     expr = 'x z - y z - * 0 < y x y {0} + min y {0} - max ?'.format(thr)
 
