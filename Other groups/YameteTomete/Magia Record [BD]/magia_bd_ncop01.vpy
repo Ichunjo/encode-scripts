@@ -1,5 +1,5 @@
 """
-Magia NCED01
+Magia NCOP01
 """
 from vsTAAmbk import TAAmbk
 from cooldegrain import CoolDegrain
@@ -28,17 +28,17 @@ def _nneedi3_clamp(clip: vs.VideoNode, strength: int = 1, mask: vs.VideoNode = N
     merged = core.std.MaskedMerge(y, aa, mask)
     return core.std.ShufflePlanes([merged, clip], [0, 1, 2], vs.YUV)
 
-src = lvf.src('[BDMV][200304][Magia Record][Vol.1]/BD_VIDEO/BDMV/STREAM/00006.m2ts')
-asrc = r"[BDMV][200304][Magia Record][Vol.1]/BD_VIDEO/BDMV/STREAM/00006.mka"
-eztrim(src, (24, -24), asrc, "magia_bd_nced.mka")
+src = lvf.src('[BDMV][200304][Magia Record][Vol.1]/BD_VIDEO/BDMV/STREAM/00005.m2ts')
+asrc = r"[BDMV][200304][Magia Record][Vol.1]/BD_VIDEO/BDMV/STREAM/00004.mka"
+eztrim(src, (24, -24), asrc, "magia_bd_ncop01.mka")
 
 src = src[24:-24]
 src = fvf.Depth(src, 16)
 
-den_y_a = CoolDegrain(src, tr=2, thsad=48, blksize=8, overlap=4, plane=0)
-den_y_b = CoolDegrain(src, tr=3, thsad=96, blksize=8, overlap=4, plane=0)
-den_y = fvf.rfs(den_y_a, den_y_b, mappings='[1870 1900]')
+den_y = CoolDegrain(src, tr=2, thsad=48, blksize=8, overlap=4, plane=0)
 den = core.knlm.KNLMeansCL(den_y, a=2, h=0.25, d=3, device_type='gpu', channels='UV')
+
+
 
 ref = fvf.Depth(den, 8, 'none')
 line_m_a = TAAmbk(ref, mtype=1, showmask=1)
@@ -51,10 +51,9 @@ line_m = fvf.Depth(line_m, 16, 'none')
 aa = _nneedi3_clamp(den, mask=line_m)
 
 
+
 db = core.neo_f3kdb.Deband(aa, 17, 42, 42, 42, 18, 0, sample_mode=4)
 db = core.std.MaskedMerge(db, aa, line_m)
-db_b = core.neo_f3kdb.Deband(db, 18, 48, 48, 48, 0, 0)
-db = fvf.rfs(db, db_b, mappings='[1870 1900]')
 
 grain = kgf.adaptive_grain(db, 0.25, luma_scaling=10)
 
