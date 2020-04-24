@@ -1,46 +1,38 @@
-import vapoursynth as vs
+from cooldegrain import CoolDegrain
+from edi_rpow2 import znedi3_rpow2
+from vsTAAmbk import TAAmbk
+from acsuite import eztrim
 import lvsfunc as lvf
 import kagefunc as kgf
 import fvsfunc as fvf
 import havsfunc as hvf
-import vardefunc as vrdf
-import vsTAAmbk as taa
+import vardefunc as vrf
 import descale as dsc
-import debandshit as dbs
-from vsutil import iterate, join, split
-from cooldegrain import CoolDegrain
-from edi_rpow2 import znedi3_rpow2
-
-import acsuite
-ac = acsuite.AC()
-
+import vapoursynth as vs
 
 core = vs.core
-core.max_cache_size = 168384
+core.max_cache_size = 16384
 
 src = core.dgdecodenv.DGSource(r"BRMM_10239BD/STREAM/00001.dgi")
 asrc = r"BRMM_10239BD/STREAM/00001.wav"
-ac.eztrim(src, [(0,34046)], asrc, "bangdreamS03E06.mka")
+eztrim(src, (0, 34046), asrc, "bangdreamS03E06.mka")
 
 src = src[:34046]
-
-# Keyframes
-vrdf.generate_keyframes(src, 'bangdreamS03E05_keyframes.log')
 
 # Variables
 opstart, opend = 1176, 3332
 edstart, edend = 31528, 33685
 flashback = '[18229 18765]'
-live = 		'[24467 25005] [26515 29288] [33842 33885]'
+live = '[24467 25005] [26515 29288] [33842 33885]'
 
 # Dither
 src32 = fvf.Depth(src, 32)
 src16 = fvf.Depth(src, 16)
 
 # Chroma shift
-planes = split(src32)
+planes = lvf.split(src32)
 planes[1], planes[2] = [core.resize.Spline36(plane, src_left=0.25) for plane in planes[1:]]
-uv_shift = join(planes)
+uv_shift = lvf.join(planes)
 
 # Descale
 desc_y = dsc.Descale(src16, 1432, 806, 'bilinear', gray=True)
@@ -55,7 +47,7 @@ den_uv = core.knlm.KNLMeansCL(uv_shift, a=2, h=0.65, d=3, device_type='gpu', cha
 # AA & upscale
 line_m = kgf.retinex_edgemask(src16).std.Binarize(8500)
 line_m = core.rgvs.RemoveGrain(line_m, 3).rgvs.RemoveGrain(3).rgvs.RemoveGrain(3)
-line_m = iterate(line_m, core.std.Inflate, 3)
+line_m = lvf.iterate(line_m, core.std.Inflate, 3)
 
 scaled_y_line = lvf.upscaled_sraa(sharp_y, 2, None, 1080, 16/9, False)
 scaled_y_tex = znedi3_rpow2(sharp_y, 2, nsize=2).resize.Spline36(1920, 1080)
@@ -66,10 +58,7 @@ merged = core.std.ShufflePlanes([scaled_y, fvf.Depth(den_uv, 16)], [0, 1, 2], vs
 
 # Déband with mask
 db_a = core.neo_f3kdb.Deband(merged, 16, 36, 36, 36, 28, 0, sample_mode=4)
-#db_b = dbs.f3kbilateral(merged, 20, 56, 48)
-#db_b = core.neo_f3kdb.Deband(db_b, grainy=32, preset='depth')
 db = core.std.MaskedMerge(db_a, merged, line_m)
-#db = fvf.rfs(db, db_b, mappings='[00000 000]')
 
 # Grain
 grain_a = kgf.adaptive_grain(db, 0.3, luma_scaling=8)
@@ -79,13 +68,13 @@ grain = fvf.rfs(grain_a, grain_b, mappings=flashback)
 grain = fvf.rfs(grain, grain_c, mappings=live)
 
 # 1080p things
-c_mask = vrdf.DRM(src16, 806, 'bilinear', mthr=80, sw=2, sh=2).std.Inflate()
+c_mask = vrf.drm(src16, 806, 'bilinear', mthr=80, sw=2, sh=2).std.Inflate()
 credit = fvf.rfs(grain, core.std.MaskedMerge(grain, src16, c_mask), mappings=f'[{opstart+460} {opstart+524}]')
 credit = fvf.rfs(credit, core.std.MaskedMerge(credit, src16, c_mask[3464]), mappings='[3339 3488]')
 credit = fvf.rfs(credit, core.std.MaskedMerge(credit, src16, c_mask[33886]), mappings='[33886 33964]')
 
 # src a mild aa since the ED seems 1080p native
-aa_ed = taa.TAAmbk(src16, aatype='Nnedi3', nsize=4, nns=4, mytpe=1, down8=False, opencl=True)
+aa_ed = TAAmbk(src16, aatype='Nnedi3', nsize=4, nns=4, mytpe=1, down8=False, opencl=True)
 aa_ed = fvf.rfs(credit, aa_ed, mappings=f'[{edstart} {edend}]')
 
 final = fvf.Depth(aa_ed, 10)
