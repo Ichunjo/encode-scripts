@@ -1,0 +1,2 @@
+x264
+--input-depth 10 --output-depth 10 --input-csp i420 --output-csp i420 --partitions all --colormatrix bt709 --colorprim bt709 --transfer bt709 --ref 16 --deblock -1:-1 --me umh --subme 10 --psy-rd 1.0:0.0 --merange 24 --trellis 2 --no-dct-decimate --no-fast-pskip --bframes 16 --b-adapt 2 --direct auto --keyint 240 --min-keyint 12 --rc-lookahead 60 --crf 15 --qcomp 0.7 --aq-mode 3 --aq-strength 0.85
