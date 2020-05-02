@@ -4,10 +4,9 @@
 from functools import partial
 from vsTAAmbk import TAAmbk
 from cooldegrain import CoolDegrain
-from adptvgrnMod import adptvgrnMod
+from modfunc import adptvgrnMod_mod
 from G41Fun import Tweak
 from acsuite import eztrim
-import vardefunc as vrf
 import kagefunc as kgf
 import fvsfunc as fvf
 import lvsfunc as lvf
@@ -20,7 +19,7 @@ def _nneedi3_clamp(clip: vs.VideoNode, strength: int = 1):
     bits = clip.format.bits_per_sample - 8
     thr = strength * (1 >> bits)
 
-    y = vrf.get_y(clip)
+    y = kgf.get_y(clip)
 
     strong = TAAmbk(y, aatype='Eedi3', alpha=0.25, beta=0.5, gamma=40, nrad=2,
                     mdis=20, mtype=0, opencl=False)
@@ -44,7 +43,7 @@ src = fvf.Depth(src, 16)
 den = CoolDegrain(src, tr=2, thsad=48, blksize=8, overlap=4, plane=4)
 
 aa_a = _nneedi3_clamp(den)
-aa_b = lvf.upscaled_sraa(den, rep=6, sharp_downscale=False)
+aa_b = lvf.sraa(den, rep=6, sharp_downscale=False)
 aa = lvf.rfs(aa_a, aa_b, [(29453, 29476), (29510, 29532), (29640, 29663),
                           (29775, 29798), (29866, 29889), (30011, 30034)])
 
@@ -57,7 +56,7 @@ db = core.neo_f3kdb.Deband(aa, 17, 42, 42, 42, 12, 0, sample_mode=4, keep_tv_ran
 db = core.std.MaskedMerge(db, aa, line_m)
 
 grain_a = kgf.adaptive_grain(db, 0.25, luma_scaling=10)
-grain_b = adptvgrnMod(db, 1, size=1.5, luma_scaling=0, grain_chroma=False)
+grain_b = adptvgrnMod_mod(db, 1, size=1.5, luma_scaling=0)
 grain = lvf.rfs(grain_a, grain_b, [(5149, 5598), (8691, 10137)])
 
 crop = core.std.Crop(grain, 240, 240, 0, 0)
@@ -71,15 +70,19 @@ endcard = core.std.AssumeFPS(endcard, src)
 endcard = core.std.CropRel(endcard, left=10, top=17, right=17, bottom=23)
 
 endcard = core.resize.Bicubic(endcard, src.width, src.height, vs.RGBS, dither_type='error_diffusion')
-endcard = vrf.iterate(endcard, partial(core.w2xc.Waifu2x, noise=3, scale=1, photo=True), 4)
+endcard = kgf.iterate(endcard, partial(core.w2xc.Waifu2x, noise=3, scale=1, photo=True), 4)
 
-endcard = core.resize.Bicubic(endcard, format=vs.YUV420P16, matrix_s='709', dither_type='error_diffusion')
+
+src_f = core.register_format(src.format.color_family, vs.FLOAT, 32,
+                             src.format.subsampling_w, src.format.subsampling_h)
+endcard = core.resize.Bicubic(endcard, format=src_f, matrix_s='709', dither_type='error_diffusion')
+
 endcard = Tweak(endcard, sat=1.2, bright=-0.05, cont=1.2)
 
 
 
-final = borders + endcard * 120
-final = fvf.Depth(final, 10)
+final = core.std.Splice([borders, endcard * 120], True)
+final = core.resize.Bicubic(final, format=vs.YUV420P10, dither_type='error_diffusion')
 final = core.std.Limiter(final, 16, [235 << 2, 240 << 2])
 
 final.set_output(0)
