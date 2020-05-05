@@ -1,3 +1,4 @@
+from vsutil import iterate, join, split
 from cooldegrain import CoolDegrain
 from edi_rpow2 import znedi3_rpow2
 from vsTAAmbk import TAAmbk
@@ -32,9 +33,9 @@ src32 = fvf.Depth(src, 32)
 src16 = fvf.Depth(src, 16)
 
 # Chroma shift
-planes = lvf.split(src32)
+planes = split(src32)
 planes[1], planes[2] = [core.resize.Spline36(plane, src_left=0.25) for plane in planes[1:]]
-uv_shift = lvf.join(planes)
+uv_shift = join(planes)
 
 
 src16 = fvf.rfs(src16, mvf.BM3D(src16, [7.5, 0], profile1='lc'), mappings='[26955 27067]')
@@ -52,7 +53,7 @@ den_uv = core.knlm.KNLMeansCL(uv_shift, a=2, h=0.65, d=3, device_type='gpu', cha
 # AA & upscale
 line_m = kgf.retinex_edgemask(src16).std.Binarize(8500)
 line_m = core.rgvs.RemoveGrain(line_m, 3).rgvs.RemoveGrain(3).rgvs.RemoveGrain(3)
-line_m = lvf.iterate(line_m, core.std.Inflate, 3)
+line_m = iterate(line_m, core.std.Inflate, 3)
 
 scaled_y_line = lvf.upscaled_sraa(sharp_y, 2, None, 1080, 16/9, False)
 scaled_y_tex = znedi3_rpow2(sharp_y, 2, nsize=2).resize.Spline36(1920, 1080)
