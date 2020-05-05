@@ -33,8 +33,8 @@ path = '[BDMV][200304][Magia Record][Vol.1]/BD_VIDEO/BDMV/STREAM/00001'
 src = lvf.src(path + '.m2ts')
 asrc = path + '.mka'
 blank = "blank.wav"
-eztrim(src, (0, -48), asrc, "magia_bd01a.mka")
-eztrim(src, (0, 119), blank, "magia_bd01b.mka")
+eztrim(src, (0, -48), asrc, "magia_bd01a.wav")
+eztrim(src, (0, 119), blank, "magia_bd01b.wav")
 
 
 src = src[:-48]
@@ -56,7 +56,7 @@ db = core.neo_f3kdb.Deband(aa, 17, 42, 42, 42, 12, 0, sample_mode=4, keep_tv_ran
 db = core.std.MaskedMerge(db, aa, line_m)
 
 grain_a = kgf.adaptive_grain(db, 0.25, luma_scaling=10)
-grain_b = adptvgrnMod_mod(db, 1, size=1.5, luma_scaling=0)
+grain_b = adptvgrnMod_mod(db, 2, size=2, luma_scaling=2, static=False)
 grain = lvf.rfs(grain_a, grain_b, [(5149, 5598), (8691, 10137)])
 
 crop = core.std.Crop(grain, 240, 240, 0, 0)
