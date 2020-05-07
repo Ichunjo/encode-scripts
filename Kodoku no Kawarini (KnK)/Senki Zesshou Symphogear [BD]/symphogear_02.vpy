@@ -32,7 +32,7 @@ def _sraa(clip: vs.VideoNode, znedi: bool = True) -> vs.VideoNode:
 path = '戦姫絶唱シンフォギア/戦姫絶唱シンフォギア 1/KIXA_90182/BDMV/STREAM/00002'
 src = lvf.src(path + '.m2ts')
 asrc = path + '.mka'
-eztrim(src, (0, 34048), asrc, "symphogear_02_cut.mka")
+eztrim(src, (0, 34048), asrc, "symphogear_02_cut.wav")
 
 src = src[:34048]
 opstart, opend = 552, 2709
