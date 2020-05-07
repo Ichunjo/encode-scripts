@@ -98,7 +98,7 @@ cred_y = lvf.rfs(aa_y, core.std.MaskedMerge(aa_y, y, cred_m, 0), [(36, 335), (47
 # Chroma stuff & merge
 cred = core.std.ShufflePlanes([cred_y, ef], [0, 1, 2], vs.YUV)
 den_uv = core.knlm.KNLMeansCL(cred, a=2, h=0.5, d=3, device_type='gpu', channels='UV')
-warp_uv = lvf.util.quick_resample(den_uv, xvs.WarpFixChromaBlend, thresh=128)
+warp_uv = lvf.util.quick_resample(den_uv, xvs.WarpFixChromaBlend, thresh=64)
 
 merged = warp_uv
 
