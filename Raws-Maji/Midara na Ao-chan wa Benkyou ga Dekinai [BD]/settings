@@ -1,0 +1,5 @@
+x264
+--sar 1:1 --input-depth 10 --output-depth 10 --input-csp i444 --output-csp i444 --partitions all --colormatrix bt709 --colorprim bt709 --transfer bt709 --threads 20 --ref 16 --deblock -1:-1 --me umh --subme 10 --psy-rd 1.0:0.00 --merange 24 --trellis 2 --no-dct-decimate --no-fast-pskip --bframes 16 --b-adapt 2 --direct auto --keyint 360 --min-keyint 23 --rc-lookahead 60 --crf 13 --qcomp 0.7 --aq-mode 3 --aq-strength 0.8
+
+BDMenu
+--input-range pc --sar 1:1 --output-csp i444 --output-depth 10 --colormatrix bt709 --colorprim bt709 --transfer bt709 --partitions none --no-8x8dct --preset ultrafast --threads 1 --no-cabac --ref 1 --no-deblock --me dia --subme 0 --no-psy --merange 4 --trellis 0 --no-fast-pskip --bframes 0 --direct none --no-weightb --weightp 0 --no-scenecut --keyint 999 --min-keyint 1 --qp 0 --rc-lookahead 250 --no-mbtree
