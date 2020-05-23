@@ -1,5 +1,5 @@
 # Encode scripts
-It's a mess and I'm too lazzy to make a proper thing but if my scripts can be useful to you, I'm glad you did.
+~~It's a mess (not that much actually)~~ and I'm too lazzy to make a proper thing but if my scripts can be useful to you, I'm glad you did.
 
 # Contact
 I'm not perfect and I can do dumbs things. If you want to contact me about errors or something don't hesitate.<br>
