@@ -1,8 +1,8 @@
 """
 Azur Lane script
 """
+import sys
 from pymkv import MKVFile, MKVTrack
-
 
 from vsutil import get_y, depth, core, vs
 from acsuite import eztrim
@@ -19,51 +19,53 @@ import lvsfunc as lvf
 core.max_cache_size = 1024 * 16
 
 PATH = r"アズールレーン\[200219]アニメ『アズールレーン』VOLUME 3\BD3\BDMV\STREAM\00001"
-SRC = lvf.src(PATH + ".m2ts")
+SRC = PATH + ".m2ts"
+SRC_CLIP = lvf.src(SRC)
 
 FRAME_START, FRAME_END = 24, -23
-SRC_C = SRC[FRAME_START:FRAME_END]
+SRC_CUT = SRC_CLIP[FRAME_START:FRAME_END]
 
 OPSTART, OPEND = 888, 3044
-EDSTART, EDEND = 32129, SRC_C.num_frames - 1
+EDSTART, EDEND = 32129, SRC_CUT.num_frames - 1
 
 
-NAME = vrf.Path(__file__).stem
-A_SRC = PATH + '.mka'
+NAME = sys.argv[0][:-3]
+A_SRC = PATH + '.wav'
 A_SRC_CUT = PATH + '_cut_track_1.wav'
 A_ENC_CUT = PATH + '.m4a'
 QPFILE = NAME + '_qpfile.log'
 OUTPUT = NAME + '.264'
-CHAPTER = 'アズールレーン/CHAPTER' + NAME[-2:] + '.txt'
+CHAPTER = 'アズールレーン/chapter' + NAME[-2:] + '.txt'
 OUTPUT_FINAL = NAME + '.mkv'
 
 X264 = r"C:\Encode Stuff\x264_tmod_Broadwell_r3000\mcf\x264_x64.exe"
 X264_ARGS = dict(
-    QPFILE=QPFILE, threads=18, ref=16, trellis=2, bframes=16, b_adapt=2,
+    qpfile=QPFILE, threads=18, ref=16, trellis=2, bframes=16, b_adapt=2,
     direct="auto", deblock="-1:-1", me="umh", subme=10, psy_rd="0.90:0.00", merange=24,
     keyint=360, min_keyint=1, rc_lookahead=60, crf=15, qcomp=0.7, aq_mode=3, aq_strength=0.9
 )
 
 def do_filter():
+    """Vapoursynth filtering"""
     def _nneedi3_clamp(clip: vs.VideoNode, strength: int = 1):
         bits = clip.format.bits_per_sample - 8
         thr = strength * (1 >> bits)
 
-        y = get_y(clip)
+        luma = get_y(clip)
 
-        strong = TAAmbk(y, aatype='Eedi3', alpha=0.4, beta=0.4)
-        weak = TAAmbk(y, aatype='Nnedi3')
+        strong = TAAmbk(luma, aatype='Eedi3', alpha=0.4, beta=0.4)
+        weak = TAAmbk(luma, aatype='Nnedi3')
         expr = 'x z - y z - * 0 < y x y {0} + min y {0} - max ?'.format(thr)
 
-        clip_aa = core.std.Expr([strong, weak, y], expr)
+        clip_aa = core.std.Expr([strong, weak, luma], expr)
         return core.std.ShufflePlanes([clip_aa, clip], [0, 1, 2], vs.YUV)
 
-    src = SRC_C
+    src = SRC_CUT
 
 
 
     interpolate = core.resize.Bicubic(src, src_left=3)
-    src = src[:EDSTART+1005] + interpolate[EDSTART+1005] + src[EDSTART+1005:-1]
+    src = src[:EDSTART+1006] + interpolate[EDSTART+1006] + src[EDSTART+1006:-1]
 
     src = depth(src, 16)
 
@@ -96,22 +98,28 @@ def do_filter():
     final = depth(grain, 10)
 
     return final
-    # final.set_output(0)
-    # src.set_output(1)
 
 
 def do_encode(filtered):
-    eztrim(SRC, (FRAME_START, FRAME_END), A_SRC, mkvextract_path="mkvextract")
+    """Compression with x264"""
+    print("Qpfile generating")
+    vrf.gk(SRC_CUT, QPFILE)
+
+    print("\n\n\nVideo encode")
+    vrf.encode(filtered, X264, OUTPUT, **X264_ARGS)
+
+    print("\n\n\nAudio extraction")
+    eac3to_args = ['eac3to', SRC, '2:', A_SRC, '-log=NUL']
+    vrf.subprocess.run(eac3to_args, text=True, check=True, encoding='utf-8')
+
+    print("\n\n\nAudio cut")
+    eztrim(SRC_CLIP, (FRAME_START, FRAME_END), A_SRC, mkvextract_path="mkvextract")
+
+    print("\n\n\nAudio encode")
     qaac_args = ['qaac64', A_SRC_CUT, '-V', '127', '--no-delay', '-o', A_ENC_CUT]
     vrf.subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
 
-
-    vrf.gk(SRC_C, QPFILE)
-
-
-    vrf.encode(filtered, X264, OUTPUT, **X264_ARGS)
-
-
+    print("\nFinal mux")
     mkv = MKVFile()
     mkv.add_track(MKVTrack(OUTPUT, language="jpn", default_track=True))
     mkv.add_track(MKVTrack(A_ENC_CUT, language="jpn", default_track=True))
