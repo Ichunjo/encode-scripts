@@ -1,4 +1,4 @@
-"""Azur Lane script"""
+"""Null Peta OVA script"""
 __author__ = 'Vardë'
 
 import sys
@@ -45,7 +45,8 @@ def do_filter():
     def _fsrcnnx(clip: vs.VideoNode, width: int, height: int) -> vs.VideoNode:
         blank = core.std.BlankClip(clip, format=vs.GRAY16, color=128 << 8)
         clip = join([clip, blank, blank])
-        clip = core.placebo.Shader(clip, 'FSRCNNX_x2_56-16-4-1.glsl', clip.width * 2, clip.height * 2)
+        clip = core.placebo.Shader(clip, 'FSRCNNX_x2_56-16-4-1.glsl',
+                                   clip.width * 2, clip.height * 2)
         return core.resize.Spline36(get_y(clip), width, height)
 
     src = SRC_CUT
@@ -74,7 +75,6 @@ def do_filter():
 
 
 
-
     antialias = join([lvf.sraa(plane) for plane in split(merge)])
     antialias = lvf.rfs(merge, antialias, [(2836, 2870)])
 
@@ -96,12 +96,10 @@ def do_filter():
     deband = core.std.MergeDiff(deband, diff)
 
 
-
-
     grain = kgf.adaptive_grain(deband, 0.25, luma_scaling=8)
     final = depth(grain, 10)
 
-    return final, deband_mask
+    return final
 
 
 def do_encode(filtered):
