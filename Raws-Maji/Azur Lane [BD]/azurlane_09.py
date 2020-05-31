@@ -18,16 +18,15 @@ import lvsfunc as lvf
 
 core.max_cache_size = 1024 * 16
 
-PATH = r"アズールレーン\[200219]アニメ『アズールレーン』VOLUME 3\BD3\BDMV\STREAM\00001"
+PATH = r"アズールレーン\[200415]アニメ『アズールレーン』VOLUME 5\BD5\BDMV\STREAM\00000"
 SRC = PATH + ".m2ts"
 SRC_CLIP = lvf.src(SRC)
 
-FRAME_START, FRAME_END = 24, -23
+FRAME_START, FRAME_END = 24, -24
 SRC_CUT = SRC_CLIP[FRAME_START:FRAME_END]
 
-OPSTART, OPEND = 888, 3044
-EDSTART, EDEND = 32129, SRC_CUT.num_frames - 1
-
+OPSTART, OPEND = 2374, 4530
+EDSTART, EDEND = 32128, SRC_CUT.num_frames - 1
 
 A_SRC = PATH + '.wav'
 A_SRC_CUT = PATH + '_cut_track_1.wav'
@@ -62,10 +61,15 @@ def do_filter():
 
     src = SRC_CUT
 
-
-
     interpolate = core.resize.Bicubic(src, src_left=3)
-    src = src[:EDSTART+1006] + interpolate[EDSTART+1006] + src[EDSTART+1006:-1]
+    f_1, f_2 = 1006, 2006
+    src = src[:EDSTART+f_1] + interpolate[EDSTART+f_1] + src[EDSTART+f_1:EDSTART+f_2] \
+        + interpolate[EDSTART+f_2] + src[EDSTART+f_2:]
+
+    # Fix bandings in motion
+    src = core.std.FreezeFrames(src, 198, 202, 198)
+    src = core.std.FreezeFrames(src, 203, 204, 203)
+    src = core.std.FreezeFrames(src, 205, 207, 207)
 
     src = depth(src, 16)
 
@@ -86,18 +90,18 @@ def do_filter():
 
 
 
-
     db_m = lvf.denoise.detail_mask(aa.std.Median(), brz_a=3000, brz_b=1500)
 
-
     db_a = dbs.f3kpf(aa, 17)
-    db = core.std.MaskedMerge(db_a, aa, db_m)
+    db_b = core.placebo.Deband(aa, radius=18, threshold=5, iterations=1, grain=6, planes=1|2|4)
+    db = lvf.rfs(db_a, db_b, [(198, 207)])
+    db = core.std.MaskedMerge(db, aa, db_m)
 
     grain = mdf.adptvgrnMod_mod(db, 0.2, size=1.25, sharp=60, luma_scaling=8)
 
     final = depth(grain, 10)
 
-    return final
+    return final, src
 
 
 def do_encode(filtered):
@@ -129,4 +133,4 @@ def do_encode(filtered):
 
 if __name__ == "__main__":
     FILTERED = do_filter()
-    do_encode(FILTERED)
+    do_encode(FILTERED[0])

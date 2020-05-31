@@ -18,16 +18,15 @@ import lvsfunc as lvf
 
 core.max_cache_size = 1024 * 16
 
-PATH = r"アズールレーン\[200219]アニメ『アズールレーン』VOLUME 3\BD3\BDMV\STREAM\00001"
+PATH = r"アズールレーン\[200318]アニメ『アズールレーン』VOLUME 4\BD4\BDMV\STREAM\00001"
 SRC = PATH + ".m2ts"
 SRC_CLIP = lvf.src(SRC)
 
 FRAME_START, FRAME_END = 24, -23
 SRC_CUT = SRC_CLIP[FRAME_START:FRAME_END]
 
-OPSTART, OPEND = 888, 3044
+OPSTART, OPEND = 1606, 3764
 EDSTART, EDEND = 32129, SRC_CUT.num_frames - 1
-
 
 A_SRC = PATH + '.wav'
 A_SRC_CUT = PATH + '_cut_track_1.wav'
@@ -60,12 +59,32 @@ def do_filter():
         clip_aa = core.std.Expr([strong, weak, luma], expr)
         return core.std.ShufflePlanes([clip_aa, clip], [0, 1, 2], vs.YUV)
 
+    def _hell_deband(clip: vs.VideoNode):
+        clip = depth(clip, 32)
+        preden = vrf.knlmcl(clip, 2, 2, bits=32)
+        diff = core.std.MakeDiff(clip, preden)
+        deband = core.placebo.Deband(preden, radius=20, threshold=28, iterations=3, grain=8, planes=1|2|4)
+        merge = core.std.MergeDiff(deband, diff)
+        return depth(merge, 16)
+
+    def _hell_mask(mask: vs.VideoNode, pand: int):
+        mask = lvf.scale.iterate(mask, core.std.Median, 2)
+        mask = hvf.mt_expand_multi(mask, 'ellipse', 0, sw=pand, sh=pand)
+        mask = hvf.mt_inpand_multi(mask, 'ellipse', 0, sw=pand - int(pand/2), sh=pand - int(pand/2))
+        mask = core.std.Expr(mask, 'x 25000 < 0 x 6 * ?')
+        return mask
+
     src = SRC_CUT
 
-
-
     interpolate = core.resize.Bicubic(src, src_left=3)
-    src = src[:EDSTART+1006] + interpolate[EDSTART+1006] + src[EDSTART+1006:-1]
+    f_1, f_2 = 1006, 2006
+    src = src[:EDSTART+f_1] + interpolate[EDSTART+f_1] + src[EDSTART+f_1:EDSTART+f_2] \
+        + interpolate[EDSTART+f_2] + src[EDSTART+f_2:-2]
+
+    # Fix bandings in motion
+    src = core.std.FreezeFrames(src, 29782, 29786, 29782)
+    src = core.std.FreezeFrames(src, 29787, 29788, 29787)
+    src = core.std.FreezeFrames(src, 29789, 29791, 29791)
 
     src = depth(src, 16)
 
@@ -86,18 +105,20 @@ def do_filter():
 
 
 
-
     db_m = lvf.denoise.detail_mask(aa.std.Median(), brz_a=3000, brz_b=1500)
 
-
     db_a = dbs.f3kpf(aa, 17)
-    db = core.std.MaskedMerge(db_a, aa, db_m)
+    db_b = core.std.MaskedMerge(_hell_deband(aa), aa, _hell_mask(db_m, 60))
+    db_c = core.placebo.Deband(aa, radius=18, threshold=5, iterations=1, grain=6, planes=1|2|4)
+    db = lvf.rfs(db_a, db_b, [(7535, 7894), (8579, 8947), (9602, 9769)])
+    db = lvf.rfs(db, db_c, [(29782, 29791)])
+    db = core.std.MaskedMerge(db, aa, db_m)
 
     grain = mdf.adptvgrnMod_mod(db, 0.2, size=1.25, sharp=60, luma_scaling=8)
 
     final = depth(grain, 10)
 
-    return final
+    return final, src
 
 
 def do_encode(filtered):
@@ -129,4 +150,4 @@ def do_encode(filtered):
 
 if __name__ == "__main__":
     FILTERED = do_filter()
-    do_encode(FILTERED)
+    do_encode(FILTERED[0])
