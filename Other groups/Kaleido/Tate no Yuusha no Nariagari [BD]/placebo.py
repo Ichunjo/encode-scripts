@@ -2,7 +2,7 @@ from vsutil import core, vs, depth, join, split, get_depth
 
 
 def Deband(clip: vs.VideoNode, radius: int = 17, threshold: float = 4,
-           iterations: int = 1, grain: float = 4, chroma=True)-> vs.VideoNode:
+           iterations: int = 1, grain: float = 4, chroma: bool = True)-> vs.VideoNode:
     """Wrapper for placebo.Deband because at the moment, processing one plane is faster.
 
     Args:
