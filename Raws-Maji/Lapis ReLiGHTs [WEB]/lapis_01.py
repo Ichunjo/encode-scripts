@@ -1,29 +1,33 @@
-"""Lapis script"""
+"""Lapis ReLight script"""
 __author__ = 'Vardë'
 
 import sys
+from pathlib import Path
 from pymkv import MKVFile, MKVTrack
 from acsuite import eztrim
 
-from vsutil import vs, core, depth, get_y, get_w
-
+import G41Fun as gf
 import kagefunc as kgf
 import debandshit as dbs
 import vardefunc as vdf
-import G41Fun as gf
+
+from vsutil import depth, get_y, get_w
 import lvsfunc as lvf
+import vapoursynth as vs
+
+core = vs.core
 
 
 X264 = r'C:\Encode Stuff\x264_tmod_Broadwell_r3007\mcf\x264_x64.exe'
 
-NAME = vdf.Path(sys.argv[0]).stem
+NAME = Path(sys.argv[0]).stem
 OUTPUT = NAME + '.264'
 
 NUM = NAME[-2:]
 VIDEO_FILES = ['FUNI/[HorribleSubs] Lapis ReLiGHTs - {} [1080p].mkv'.format(NUM),
                'WKN/Lapis ReLIGHTs E{} [1080p][AAC][JapDub][GerSub][Web-DL].mkv'.format(NUM)]
 CLIPS_SRC = [lvf.src(c) for c in VIDEO_FILES]
-AUDIO_SRC = vdf.Path(VIDEO_FILES[1]).stem + 'mka'
+AUDIO_SRC = Path(VIDEO_FILES[1]).stem + 'mka'
 
 X264_ARGS = dict(
     threads=27, ref=16, trellis=2, bframes=16, b_adapt=2,
