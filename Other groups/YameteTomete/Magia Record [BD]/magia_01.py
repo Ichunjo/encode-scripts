@@ -1,23 +1,29 @@
 """Magia Record script"""
 __author__ = 'Vardë'
 
+import os
 import sys
+import subprocess
 from typing import NamedTuple
 from functools import partial
-from pymkv import MKVFile, MKVTrack
+from pathlib import Path
+
 from acsuite import eztrim
 
-from vsutil import depth, vs, core, get_y, iterate
-
+from adptvgrnMod import adptvgrnMod
 from cooldegrain import CoolDegrain
-from modfunc import adptvgrnMod_mod
-from G41Fun import Tweak
+from G41Fun import mClean, Tweak
 import vardefunc as vdf
 import kagefunc as kgf
+
+from vsutil import depth, get_y, iterate
 import lvsfunc as lvf
+import vapoursynth as vs
 
-X264 = r'C:\Encode Stuff\x264_tmod_r3007\mcf\x64\x264_x64.exe'
+core = vs.core
 
+X264 = r'C:\Encode Stuff\x264_tmod_Broadwell_r3007\mcf\x264_x64.exe'
+# X264 = r'C:\Encode Stuff\x264_tmod_r3007\mcf\x64\x264_x64.exe'
 class InfosBD(NamedTuple):
     path: str
     src: str
@@ -37,21 +43,20 @@ class InfosBD(NamedTuple):
 
 def infos_bd(path, frame_start, frame_end) -> InfosBD:
     src = path + '.m2ts'
-    src_clip = lvf.src(path + '.m2ts')
+    src_clip = lvf.src(src)
     src_cut = src_clip[frame_start:frame_end]
-    a_src = path + '.mka'
+    a_src = path + '_track_{}.wav'
     a_src_cut = path + '_cut_track_{}.wav'
-    a_enc_cut = path + '_track_{}.m4a'
-    name = sys.argv[0][:-3]
+    a_enc_cut = path + '_track_{}'
+    name = Path(sys.argv[0]).stem
     qpfile = name + '_qpfile.log'
     output = name + '.264'
-    chapter = 'chapters/magia_' + name[-2:] + '.txt'
+    chapter = 'chapters/' + name + '.txt'
     output_final = name + '.mkv'
     return InfosBD(path, src, src_clip, frame_start, frame_end, src_cut, a_src, a_src_cut, a_enc_cut,
                    name, qpfile, output, chapter, output_final)
 
 JPBD = infos_bd(r'[BDMV][200304][Magia Record][Vol.1]\BD_VIDEO\BDMV\STREAM\00001', 0, -48)
-BLANK = 'blank.wav'
 X264_ARGS = dict(
     qpfile=JPBD.qpfile, threads=18, ref=16, trellis=2, bframes=16, b_adapt=2,
     direct='auto', deblock='-1:-1', me='tesa', subme=10, psy_rd='1.0:0.00', merange=32,
@@ -102,12 +107,12 @@ def do_filter():
 
     antialias_a = _nneedi3_clamp(denoise)
 
-    antialias_b = lvf.sraa(denoise, rep=6, sharp_downscale=False)
+    antialias_b = lvf.sraa(denoise, rep=6)
     antialias = lvf.rfs(antialias_a, antialias_b, [(29453, 29476), (29510, 29532), (29640, 29663),
                                                    (29775, 29798), (29866, 29889), (30011, 30034)])
 
 
-    predenoise = CoolDegrain(antialias, tr=1, thsad=96, blksize=8, overlap=4, plane=0)
+    predenoise = mClean(antialias, thSAD=200, chroma=False)
     detail_mask = lvf.denoise.detail_mask(predenoise, rad=2, radc=2, brz_a=3250, brz_b=1250)
     ret_mask = kgf.retinex_edgemask(predenoise).std.Binarize(9250).std.Median().std.Inflate()
     line_mask = core.std.Expr([detail_mask, ret_mask], 'x y max')
@@ -118,7 +123,7 @@ def do_filter():
 
 
     grain_a = kgf.adaptive_grain(deband, 0.25, luma_scaling=10)
-    grain_b = adptvgrnMod_mod(deband, 2, size=2, luma_scaling=2, static=False)
+    grain_b = adptvgrnMod(deband, 2, size=2, luma_scaling=2, static=False, grain_chroma=False)
     grain = lvf.rfs(grain_a, grain_b, [(5149, 5598), (8691, 10137)])
 
 
@@ -137,44 +142,113 @@ def do_filter():
     return depth(final, 10), endcard_length
 
 
-def do_encode(data):
+def do_encode(filtered):
     """Compression with x264"""
-    filtered = data[0]
-    endcard_length = data[1]
-
     print('Qpfile generating')
     vdf.gk(JPBD.src_cut, JPBD.qpfile)
+
+
 
     print('\n\n\nVideo encoding')
     vdf.encode(filtered, X264, JPBD.output, **X264_ARGS)
 
+
+
     print('\n\n\nAudio extraction')
-    mka = MKVFile()
-    mka.add_track(MKVTrack(JPBD.src, 1))
-    mka.add_track(MKVTrack(JPBD.src, 2))
-    mka.mux(JPBD.a_src)
+    eac3to_args = ['eac3to', JPBD.src,
+                   '2:', JPBD.a_src.format(1),
+                   '3:', JPBD.a_src.format(2),
+                   '-log=NUL']
+    subprocess.run(eac3to_args, text=True, check=True, encoding='utf-8')
 
-    print('\n\n\nAudio cutting')
-    eztrim(JPBD.src_clip, (JPBD.frame_start, JPBD.frame_end), JPBD.a_src, mkvextract_path='mkvextract')
-    eztrim(JPBD.src_clip, (0, endcard_length), 'blank.wav', mkvextract_path='mkvextract')
 
-    print('\n\n\nAudio encoding')
-    for i in range(1, len(mka.tracks) + 1):
-        qaac_args = ['qaac', JPBD.a_src_cut.format(i), '-V', '127', '--no-delay', '-o', JPBD.a_enc_cut.format(i)]
-        vdf.subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
-    qaac_args = ['qaac', 'blank_cut_track_1.wav', '-V', '127', '--no-delay', '-o', 'blank_cut.m4a']
-    vdf.subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
+
+    print('\n\n\nAudio cutting & encoding')
+    for i in range(1, 2+1):
+        eztrim(JPBD.src_clip, (JPBD.frame_start, JPBD.frame_end),
+               JPBD.a_src.format(i),
+               JPBD.a_src_cut.format(i))
+
+        # Encode in AAC
+        qaac_args = ['qaac', JPBD.a_src_cut.format(i),
+                     '-V', '127', '--no-delay',
+                     '-o', JPBD.a_enc_cut.format(i) + '.m4a']
+        subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
+
+        # Encode in Opus
+        opus_args = ['opusenc', '--bitrate', '192',
+                     JPBD.a_src_cut.format(i),
+                     JPBD.a_enc_cut.format(i) + '.opus']
+        subprocess.run(opus_args, text=True, check=True, encoding='utf-8')
+
+    # Blanck cut and encode
+    eztrim(JPBD.src_clip, (0, ENDCARD_LENGTH),
+           'blank.wav', 'blank_cut.wav')
+    qaac_args = ['qaac', 'blank_cut.wav',
+                 '-V', '127', '--no-delay',
+                 '-o', 'blank_cut.m4a']
+    subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
+
+    opus_args = ['opusenc', '--bitrate', '192',
+                 'blank_cut.wav',
+                 'blank_cut.opus']
+    subprocess.run(opus_args, text=True, check=True, encoding='utf-8')
+
+    # Recup encoder name
+    ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder',
+                    '-print_format', 'default=nokey=1:noprint_wrappers=1', JPBD.a_enc_cut.format(1) + '.m4a']
+    encoder_name = subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')
+    fil = open("tags_aac.xml", 'w')
+    fil.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
+                  '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
+                  '</Tag>', '</Tags>'])
+    fil.close()
+
+    opus_args = ['opusenc', '-V']
+    encoder_name = subprocess.check_output(opus_args, shell=True, encoding='utf-8').splitlines()[0]
+    fil = open("tags_opus.xml", 'w')
+    fil.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
+                  '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}, VBR 192k</String>', '</Simple>',
+                  '</Tag>', '</Tags>'])
+    fil.close()
+
+
 
     print('\nFinal muxing')
-    mkv_args = ['mkvmerge', '-o', JPBD.output_final,
-                '--language', '0:jpn', JPBD.output,
-                '--language', '0:jpn', JPBD.a_enc_cut.format(1), '+', 'blank_cut.m4a',
-                '--language', '0:jpn', '--track-name', '0:Commentary', JPBD.a_enc_cut.format(2), '+', 'blank_cut.m4a',
-                '--chapter-language', 'jpn', '--chapters', JPBD.chapter
+    mkv_args = ['mkvmerge', '-o', JPBD.name + '_aac.mkv',
+                '--language', '0:jpn', '--track-name', '0:AVC BDRip by Vardë@YameteTomete', JPBD.output,
+                '--tags', '0:tags_aac.xml', '--language', '0:jpn', '--track-name', '0:AAC 2.0', JPBD.a_enc_cut.format(1) + '.m4a', '+', 'blank_cut.m4a',
+                '--tags', '0:tags_aac.xml', '--language', '0:jpn', '--track-name', '0:AAC 2.0 Commentary', JPBD.a_enc_cut.format(2) + '.m4a', '+', 'blank_cut.m4a',
+                '--chapter-language', 'en', '--chapters', JPBD.chapter
                 ]
-    vdf.subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
+    subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
+
+    mkv_args = ['mkvmerge', '-o', JPBD.name + '_opus.mkv',
+                '--language', '0:jpn', '--track-name', '0:AVC BDRip by Vardë@YameteTomete', JPBD.output,
+                '--tags', '0:tags_opus.xml', '--language', '0:jpn', '--track-name', '0:Opus 2.0', JPBD.a_enc_cut.format(1) + '.opus', '+', 'blank_cut.opus',
+                '--tags', '0:tags_opus.xml', '--language', '0:jpn', '--track-name', '0:Opus 2.0 Commentary', JPBD.a_enc_cut.format(2) + '.opus', '+', 'blank_cut.opus',
+                '--chapter-language', 'en', '--chapters', JPBD.chapter
+                ]
+    subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
+
+
+
+    # Clean up
+    files = ['tags_aac.xml', 'tags_opus.xml',
+             'blank_cut.wav', 'blank_cut.m4a', 'blank_cut.opus']
+    for file in files:
+        if os.path.exists(file):
+            os.remove(file)
+
+    for i in range(1, 2+1):
+        files = [JPBD.a_src.format(i), JPBD.a_src_cut.format(i),
+                 JPBD.a_enc_cut.format(i) + '.m4a', JPBD.a_enc_cut.format(i) + '.opus']
+        for file in files:
+            if os.path.exists(file):
+                os.remove(file)
+
 
 
 if __name__ == '__main__':
-    DATA = do_filter()
-    do_encode(DATA)
+    FILTERED, ENDCARD_LENGTH = do_filter()
+    do_encode(FILTERED)

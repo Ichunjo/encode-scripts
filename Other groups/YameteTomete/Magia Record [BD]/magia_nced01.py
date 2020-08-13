@@ -1,11 +1,11 @@
 """Magia Record script"""
 __author__ = 'Vardë'
 
-import os
 import sys
 import subprocess
 from typing import NamedTuple
 from acsuite import eztrim
+
 
 from cooldegrain import CoolDegrain
 from G41Fun import mClean
@@ -52,7 +52,7 @@ def infos_bd(path, frame_start, frame_end) -> InfosBD:
     return InfosBD(path, src, src_clip, frame_start, frame_end, src_cut, a_src, a_src_cut, a_enc_cut,
                    name, qpfile, output, chapter, output_final)
 
-JPBD = infos_bd(r'[BDMV][200304][Magia Record][Vol.1]\BD_VIDEO\BDMV\STREAM\00005', 24, -24)
+JPBD = infos_bd(r'[BDMV][200304][Magia Record][Vol.1]\BD_VIDEO\BDMV\STREAM\00006', 24, -24)
 BLANK = 'blank.wav'
 X264_ARGS = dict(
     threads=18, ref=16, trellis=2, bframes=16, b_adapt=2,
@@ -86,8 +86,11 @@ def do_filter():
 
     src = JPBD.src_cut
     src = depth(src, 16)
+    edstart = 0
 
-    denoise = CoolDegrain(src, tr=2, thsad=48, blksize=8, overlap=4, plane=4)
+    denoise_a = CoolDegrain(src, tr=2, thsad=48, blksize=8, overlap=4, plane=4)
+    denoise_b = CoolDegrain(src, tr=3, thsad=96, blksize=8, overlap=4, plane=4)
+    denoise = lvf.rfs(denoise_a, denoise_b, [(edstart+1870, edstart+1900)])
 
 
     antialias = _nneedi3_clamp(denoise)
@@ -99,11 +102,14 @@ def do_filter():
     line_mask = core.std.Expr([detail_mask, ret_mask], 'x y max')
 
 
-    deband = core.neo_f3kdb.Deband(antialias, 17, 42, 42, 42, 12, 0, sample_mode=4, keep_tv_range=True)
-    deband = core.std.MaskedMerge(deband, antialias, line_mask)
+    deband_a = core.neo_f3kdb.Deband(antialias, 17, 42, 42, 42, 12, 0, sample_mode=4, keep_tv_range=True)
+    deband_a = core.std.MaskedMerge(deband_a, antialias, line_mask)
+    deband_b = core.neo_f3kdb.Deband(deband_a, 18, 48, 48, 48, 0, 0, sample_mode=2, keep_tv_range=True)
+    deband = lvf.rfs(deband_a, deband_b, [(edstart+1870, edstart+1900)])
 
 
     grain = kgf.adaptive_grain(deband, 0.25, luma_scaling=10)
+
 
     final = core.resize.Bicubic(grain, format=vs.YUV420P10, dither_type='error_diffusion')
     final = core.std.Limiter(final, 16, [235 << 2, 240 << 2])
@@ -116,64 +122,33 @@ def do_encode(filtered):
     print('Qpfile generating')
     vdf.gk(JPBD.src_cut, JPBD.qpfile)
 
-
     print('\n\n\nVideo encoding')
     vdf.encode(filtered, X264, JPBD.output, **X264_ARGS)
-
 
     print('\n\n\nAudio extraction')
     eac3to_args = ['eac3to', JPBD.src, '2:', JPBD.a_src, '-log=NUL']
     subprocess.run(eac3to_args, text=True, check=True, encoding='utf-8')
 
-
     print('\n\n\nAudio cutting')
     eztrim(JPBD.src_clip, (JPBD.frame_start, JPBD.frame_end), JPBD.a_src, JPBD.a_src_cut.format(1))
-
 
     print('\n\n\nAudio encoding')
     qaac_args = ['qaac', JPBD.a_src_cut.format(1), '-V', '127', '--no-delay', '-o', JPBD.a_enc_cut.format(1) + '.m4a']
     subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
-
-    ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder', '-print_format', 'default=nokey=1:noprint_wrappers=1', JPBD.a_enc_cut.format(1) + '.m4a']
-    encoder_name = subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')
-    f = open("tags_aac.xml", 'w')
-    f.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
-                  '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
-                  '</Tag>', '</Tags>'])
-    f.close()
-
-
-
     opus_args = ['opusenc', '--bitrate', '192', JPBD.a_src_cut.format(1), JPBD.a_enc_cut.format(1) + '.opus']
     subprocess.run(opus_args, text=True, check=True, encoding='utf-8')
-
-    opus_args = ['opusenc', '-V']
-    encoder_name = subprocess.check_output(opus_args, shell=True, encoding='utf-8').splitlines()[0]
-
-    f = open("tags_opus.xml", 'w')
-    f.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
-                  '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}, VBR 192k</String>', '</Simple>',
-                  '</Tag>', '</Tags>'])
-    f.close()
-
-
 
     print('\nFinal muxing')
     mkv_args = ['mkvmerge', '-o', JPBD.name + '_aac.mkv',
                 '--language', '0:jpn', JPBD.output,
-                '--tags', '0:tags_aac.xml', '--language', '0:jpn', JPBD.a_enc_cut.format(1) + '.m4a'
+                '--language', '0:jpn', JPBD.a_enc_cut.format(1) + '.m4a'
                 ]
     subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
     mkv_args = ['mkvmerge', '-o', JPBD.name + '_opus.mkv',
                 '--language', '0:jpn', JPBD.output,
-                '--tags', '0:tags_opus.xml', '--language', '0:jpn', JPBD.a_enc_cut.format(1) + '.opus'
+                '--language', '0:jpn', JPBD.a_enc_cut.format(1) + '.opus'
                 ]
     subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
-
-
-    _ = [os.remove(f) for f in [JPBD.a_src, JPBD.a_src_cut.format(1),
-                                JPBD.a_enc_cut.format(1) + '.m4a', JPBD.a_enc_cut.format(1) + '.opus',
-                                'tags_aac.xml', 'tags_opus.xml']]
 
 
 if __name__ == '__main__':
