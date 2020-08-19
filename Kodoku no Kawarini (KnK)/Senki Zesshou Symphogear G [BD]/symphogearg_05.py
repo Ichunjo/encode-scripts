@@ -42,7 +42,7 @@ class InfosBD(NamedTuple):
 
 def infos_bd(path, frame_start, frame_end) -> InfosBD:
     src = path + '.m2ts'
-    src_clip = lvf.src(src)
+    src_clip = lvf.src(path + '.m2ts')
     src_cut = src_clip[frame_start:frame_end]
     a_src = path + '.wav'
     a_src_cut = path + '_cut_track_{}.wav'
@@ -60,6 +60,7 @@ JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131204] 戦姫絶唱�
 HENSHIN = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][140108] 戦姫絶唱シンフォギアG 4\KIXA_90353\BDMV\STREAM\00005', 0, -24)
 JPBD_NCOP = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00006', 24, -24)
 JPBD_NCED = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00010', 24, -24)
+X265 = 'x265'
 
 
 def hybrid_denoise(clip: vs.VideoNode, knlm_h: float = 0.5, sigma: float = 2,
@@ -262,28 +263,29 @@ def do_filter():
 def do_encode(clip: vs.VideoNode)-> None:
     """Compression with x265"""
     print('\n\n\nVideo encoding')
-    x265_args = [
-        "x265", "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
-        "--colormatrix", "bt709", "--colorprim", "bt709", "--transfer", "bt709", "--range", "limited",
-        "--min-luma", str(16<<2), "--max-luma", str(235<<2),
-        "--fps", f"{clip.fps_num}/{clip.fps_den}",
-        "-o", JPBD.output, "-",
-        "--frame-threads", "16",
-        "--no-sao", "--fades",
-        "--preset", "slower",
-        "--crf", "15", "--qcomp", "0.70",
-        "--bframes", "16",
-        "--psy-rd", "2.0", "--psy-rdoq", "1.0",
-        "--deblock", "-1:-1",
-        "--rc-lookahead", "96",
-        "--min-keyint", "23", "--keyint", "360",
-        "--aq-mode", "3", "--aq-strength", "1.0"
-        ]
-    print("Encoder command: ", " ".join(x265_args), "\n")
-    process = subprocess.Popen(x265_args, stdin=subprocess.PIPE)
-    clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue:
-                print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
-    process.communicate()
+    if not os.path.exists(JPBD.output):
+        x265_args = [
+            X265, "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
+            "--colormatrix", "bt709", "--colorprim", "bt709", "--transfer", "bt709", "--range", "limited",
+            "--min-luma", str(16<<2), "--max-luma", str(235<<2),
+            "--fps", f"{clip.fps_num}/{clip.fps_den}",
+            "-o", JPBD.output, "-",
+            "--frame-threads", "16",
+            "--no-sao", "--fades",
+            "--preset", "slower",
+            "--crf", "15", "--qcomp", "0.70",
+            "--bframes", "16",
+            "--psy-rd", "2.0", "--psy-rdoq", "1.0",
+            "--deblock", "-1:-1",
+            "--rc-lookahead", "96",
+            "--min-keyint", "23", "--keyint", "360",
+            "--aq-mode", "3", "--aq-strength", "1.0"
+            ]
+        print("Encoder command: ", " ".join(x265_args), "\n")
+        process = subprocess.Popen(x265_args, stdin=subprocess.PIPE)
+        clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue:
+                    print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
+        process.communicate()
 
     print('\n\n\nAudio extraction')
     eac3to_args = ['eac3to', JPBD.src, '2:', JPBD.a_src, '-log=NUL']
@@ -296,23 +298,28 @@ def do_encode(clip: vs.VideoNode)-> None:
     qaac_args = ['qaac', JPBD.a_src_cut.format(1), '-V', '127', '--no-delay', '-o', JPBD.a_enc_cut.format(1)]
     subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
 
-    ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder', '-print_format',
-                    'default=nokey=1:noprint_wrappers=1', JPBD.a_enc_cut.format(1)]
+    ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder', '-print_format', 'default=nokey=1:noprint_wrappers=1', JPBD.a_enc_cut.format(1)]
     encoder_name = subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')
-    fil = open("tags_aac.xml", 'w')
-    fil.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
-                    '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
-                    '</Tag>', '</Tags>'])
-    fil.close()
+    f = open("tags_aac.xml", 'w')
+    f.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
+                  '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
+                  '</Tag>', '</Tags>'])
+    f.close()
 
     print('\nFinal muxing')
     mkv_args = ['mkvmerge', '-o', JPBD.output_final,
-                '--track-name', '0:HEVC BDRip by Vardë', '--language', '0:jpn', JPBD.output,
+                '--track-name', '0:HEVC BDRip by Vardë@Kodoku-no-Kawarini', '--language', '0:jpn', JPBD.output,
                 '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', JPBD.a_enc_cut.format(1),
                 '--chapter-language', 'fra', '--chapters', JPBD.chapter]
     subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
-    _ = [os.remove(f) for f in [JPBD.a_src, JPBD.a_src_cut.format(1),
-                                JPBD.a_enc_cut.format(1), 'tags_aac.xml']]
+
+    # Clean up
+    files = [JPBD.a_src, JPBD.a_src_cut.format(1),
+             JPBD.a_enc_cut.format(1), 'tags_aac.xml']
+    for file in files:
+        if os.path.exists(file):
+            os.remove(file)
+
 
 
 if __name__ == '__main__':

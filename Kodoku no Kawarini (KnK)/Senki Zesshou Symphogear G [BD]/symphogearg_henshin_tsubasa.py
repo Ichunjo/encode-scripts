@@ -14,10 +14,9 @@ import muvsfunc as muvf
 import havsfunc as hvf
 import mvsfunc as mvf
 import G41Fun as gf
-import placebo
 import xvs
 
-from vsutil import depth, get_y, get_w, iterate
+from vsutil import depth, get_y, get_w
 import lvsfunc as lvf
 import vapoursynth as vs
 
@@ -41,7 +40,7 @@ class InfosBD(NamedTuple):
 
 def infos_bd(path, frame_start, frame_end) -> InfosBD:
     src = path + '.m2ts'
-    src_clip = lvf.src(path + '.m2ts', force_lsmas=True, ff_loglevel=3)
+    src_clip = lvf.src(path + '.m2ts')
     src_cut = src_clip[frame_start:frame_end]
     a_src = path + '.wav'
     a_src_cut = path + '_cut_track_{}.wav'
@@ -54,12 +53,8 @@ def infos_bd(path, frame_start, frame_end) -> InfosBD:
                    src_cut, a_src, a_src_cut, a_enc_cut,
                    name, output, chapter, output_final)
 
-
-JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131204] 戦姫絶唱シンフォギアG 3\KIXA_90352\BDMV\STREAM\00004', 0, -24)
-JPBD_NCOP = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00006', 24, -24)
-JPBD_NCED = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00010', 24, -24)
+JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][140108] 戦姫絶唱シンフォギアG 4\KIXA_90353\BDMV\STREAM\00005', 1968, 3024-24)
 X265 = 'x265'
-
 
 def hybrid_denoise(clip: vs.VideoNode, knlm_h: float = 0.5, sigma: float = 2,
                    knlm_args: Optional[Dict[str, Any]] = None,
@@ -78,10 +73,6 @@ def hybrid_denoise(clip: vs.VideoNode, knlm_h: float = 0.5, sigma: float = 2,
 
     return vdf.merge_chroma(luma, chroma)
 
-def _rescale_mask(original: vs.VideoNode, upscaled: vs.VideoNode, thr: float)-> vs.VideoNode:
-    mask = core.std.Expr([original, upscaled], 'x y - abs').std.Binarize(thr)
-    mask = iterate(mask, core.std.Maximum, 3)
-    return iterate(mask, core.std.Inflate, 2)
 
 def single_rate_antialiasing(clip: vs.VideoNode, rep: Optional[int] = None,
                              **eedi3_args: Any)-> vs.VideoNode:
@@ -101,18 +92,16 @@ def single_rate_antialiasing(clip: vs.VideoNode, rep: Optional[int] = None,
 
     return flt
 
+
 def do_filter():
     """Vapoursynth filtering"""
     src = JPBD.src_cut
-    src += src[-1]
     src = depth(src, 32)
 
     h = 720
     w = get_w(h)
     b, c = vdf.get_bicubic_params('robidoux')
-    opstart, opend = 1296, 3692
-    edstart, edend = 31887, src.num_frames - 1
-    full_stuff = [(3713, 3844), (17713, 17866)]
+
 
 
 
@@ -126,9 +115,6 @@ def do_filter():
 
     descale = core.descale.Debicubic(luma, w, h, b, c)
     upscale = vdf.fsrcnnx_upscale(descale, None, descale.height*2, 'shaders/FSRCNNX_x2_56-16-4-1.glsl', core.resize.Point)
-    upscale_smooth = vdf.nnedi3_upscale(descale, pscrn=1)
-    upscale = vdf.fade_filter(upscale, upscale, upscale_smooth, 31516, 31539)
-    upscale = vdf.fade_filter(upscale, upscale_smooth, upscale, 31540, 31574)
 
     antialias = single_rate_antialiasing(upscale, 13, alpha=0.3, beta=0.45, gamma=320, mdis=18)
 
@@ -138,15 +124,10 @@ def do_filter():
     out = depth(merged, 16)
 
 
-    antialias = lvf.rfs(out, lvf.sraa(out, 1.65, 9, alpha=0.3, beta=0.45, gamma=240, nrad=3, mdis=25),
-                        [(opstart+840, opstart+881)])
-    out = antialias
-
 
     # Slight sharp though CAS
     sharp = hvf.LSFmod(out, strength=75, Smode=3, Lmode=1, edgemode=1, edgemaskHQ=True)
     out = sharp
-
 
 
     dering = gf.HQDeringmod(out, thr=16, darkthr=0.1)
@@ -160,19 +141,8 @@ def do_filter():
 
     preden = core.knlm.KNLMeansCL(out, d=0, a=3, h=0.6, device_type='GPU', channels='Y')
     deband_mask = lvf.denoise.detail_mask(preden, brz_a=2000, brz_b=800, rad=4)
-
     deband = dbs.f3kpf(out, 17, 42, 42)
-    deband_b = placebo.deband(out, 22, 6, 2)
-    deband = lvf.rfs(deband, deband_b, [(opstart+1515, opstart+1603)])
-
-    deband_c = placebo.deband(out, 17, 6, 3)
-    deband = lvf.rfs(deband, deband_c, [(4490, 4684), (5091, 5170), (5441, 5536), (5703, 5802)])
-
-    deband_d = dbs.f3kpf(out, 16, 64, 64)
-    deband = lvf.rfs(deband, deband_d, [(13788, 13871)])
-
     deband = core.std.MaskedMerge(deband, out, deband_mask)
-
     out = deband
 
 
@@ -180,26 +150,6 @@ def do_filter():
     grain = core.grain.Add(out, 0.2, constant=True)
     grain = core.std.MaskedMerge(out, grain, adg_mask, 0)
     out = grain
-
-
-
-    rescale_mask = vdf.drm(luma, b=b, c=c, sw=4, sh=4)
-    ref, rescale_mask, src, src_ncop, src_nced = [depth(x, 16) for x in [denoise, rescale_mask, src,
-                                                                         JPBD_NCOP.src_cut, JPBD_NCED.src_cut]]
-
-    credit = lvf.rfs(out, core.std.MaskedMerge(out, ref, rescale_mask), full_stuff)
-    out = credit
-
-
-
-    src_c, src_ncop, src_nced = [c.knlm.KNLMeansCL(a=7, h=35, d=0, device_type='gpu') for c in [src, src_ncop, src_nced]]
-
-    opening_mask = vdf.dcm(out, src_c[opstart:opend+1], src_ncop[:opend-opstart+1], opstart, opend, 4, 4).std.Inflate()
-    ending_mask = vdf.dcm(out, src_c[edstart:edend+1], src_nced[:edend-edstart+1], edstart, edend, 4, 4).std.Inflate()
-    credit_mask = core.std.Expr([opening_mask, ending_mask], 'x y +')
-
-    credit = lvf.rfs(out, core.std.MaskedMerge(out, ref, credit_mask), [(opstart, opend), (edstart, edend)])
-    out = credit
 
 
     return depth(out, 10)
@@ -233,31 +183,39 @@ def do_encode(clip: vs.VideoNode)-> None:
                     print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
         process.communicate()
 
-    print('\n\n\nAudio extraction')
-    eac3to_args = ['eac3to', JPBD.src, '2:', JPBD.a_src, '-log=NUL']
-    subprocess.run(eac3to_args, text=True, check=True, encoding='utf-8')
+    if not os.path.exists(JPBD.a_src):
+        print('\n\n\nAudio extraction')
+        eac3to_args = ['eac3to', JPBD.src, '2:', JPBD.a_src, '-log=NUL']
+        subprocess.run(eac3to_args, text=True, check=True, encoding='utf-8')
 
-    print('\n\n\nAudio cutting')
-    eztrim(JPBD.src_clip, (JPBD.frame_start, JPBD.frame_end), JPBD.a_src, JPBD.a_src_cut.format(1))
 
-    print('\n\n\nAudio encoding')
-    qaac_args = ['qaac', JPBD.a_src_cut.format(1), '-V', '127', '--no-delay', '-o', JPBD.a_enc_cut.format(1)]
-    subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
+    if not os.path.exists(JPBD.a_src_cut.format(1)):
+        print('\n\n\nAudio cutting')
+        eztrim(JPBD.src_clip, (JPBD.frame_start, JPBD.frame_end), JPBD.a_src, JPBD.a_src_cut.format(1))
 
-    ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder', '-print_format', 'default=nokey=1:noprint_wrappers=1', JPBD.a_enc_cut.format(1)]
-    encoder_name = subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')
-    f = open("tags_aac.xml", 'w')
-    f.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
-                  '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
-                  '</Tag>', '</Tags>'])
-    f.close()
 
-    print('\nFinal muxing')
-    mkv_args = ['mkvmerge', '-o', JPBD.output_final,
-                '--track-name', '0:HEVC BDRip by Vardë@Kodoku-no-Kawarini', '--language', '0:jpn', JPBD.output,
-                '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', JPBD.a_enc_cut.format(1),
-                '--chapter-language', 'fra', '--chapters', JPBD.chapter]
-    subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
+    if not os.path.exists(JPBD.a_enc_cut.format(1)):
+        print('\n\n\nAudio encoding')
+        qaac_args = ['qaac', JPBD.a_src_cut.format(1), '-V', '127', '--no-delay', '-o', JPBD.a_enc_cut.format(1)]
+        subprocess.run(qaac_args, text=True, check=True, encoding='utf-8')
+
+
+    if not os.path.exists("tags_aac.xml"):
+        ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder', '-print_format', 'default=nokey=1:noprint_wrappers=1', JPBD.a_enc_cut.format(1)]
+        encoder_name = subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')
+        f = open("tags_aac.xml", 'w')
+        f.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
+                    '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
+                    '</Tag>', '</Tags>'])
+        f.close()
+
+    if not os.path.exists(JPBD.output_final):
+        print('\nFinal muxing')
+        mkv_args = ['mkvmerge', '-o', JPBD.output_final,
+                    '--timestamps', '0:symphogearg_01_timecode.txt',
+                    '--track-name', '0:HEVC BDRip by Vardë@Kodoku-no-Kawarini', '--language', '0:jpn', JPBD.output,
+                    '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', JPBD.a_enc_cut.format(1)]
+        subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
 
     # Clean up
     files = [JPBD.a_src, JPBD.a_src_cut.format(1),
@@ -265,6 +223,7 @@ def do_encode(clip: vs.VideoNode)-> None:
     for file in files:
         if os.path.exists(file):
             os.remove(file)
+
 
 
 if __name__ == '__main__':

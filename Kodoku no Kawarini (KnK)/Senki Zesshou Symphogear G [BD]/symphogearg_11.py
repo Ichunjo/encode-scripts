@@ -54,8 +54,24 @@ def infos_bd(path, frame_start, frame_end) -> InfosBD:
                    src_cut, a_src, a_src_cut, a_enc_cut,
                    name, output, chapter, output_final)
 
+# lsmas doesn't work with some frames of the ending
+def infos_bd_alt(path, frame_start, frame_end) -> InfosBD:
+    src = path + '.mkv'
+    src_clip = lvf.src(src)
+    vdf.set_ffms2_log_level('warning')
+    src_cut = src_clip[frame_start:frame_end]
+    a_src = path + '.wav'
+    a_src_cut = path + '_cut_track_{}.wav'
+    a_enc_cut = path + '_track_{}.m4a'
+    name = Path(sys.argv[0]).stem
+    output = name + '.265'
+    chapter = 'chapters/' + name + '.txt'
+    output_final = name + '.mkv'
+    return InfosBD(path, src, src_clip, frame_start, frame_end,
+                   src_cut, a_src, a_src_cut, a_enc_cut,
+                   name, output, chapter, output_final)
 
-JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131204] 戦姫絶唱シンフォギアG 3\KIXA_90352\BDMV\STREAM\00004', 0, -24)
+JPBD = infos_bd_alt(r'戦姫絶唱シンフォギアＧ\[BDMV][140305] 戦姫絶唱シンフォギアG 6\KIXA_90355\BDMV\STREAM\00003', 24, -24)
 JPBD_NCOP = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00006', 24, -24)
 JPBD_NCED = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00010', 24, -24)
 X265 = 'x265'
@@ -104,15 +120,14 @@ def single_rate_antialiasing(clip: vs.VideoNode, rep: Optional[int] = None,
 def do_filter():
     """Vapoursynth filtering"""
     src = JPBD.src_cut
-    src += src[-1]
     src = depth(src, 32)
 
     h = 720
     w = get_w(h)
     b, c = vdf.get_bicubic_params('robidoux')
-    opstart, opend = 1296, 3692
-    edstart, edend = 31887, src.num_frames - 1
-    full_stuff = [(3713, 3844), (17713, 17866)]
+    opstart, opend = 744, 3140
+    edstart, edend = 31889, src.num_frames - 1
+    full_stuff = [(3461, 3568), (16707, 16886)]
 
 
 
@@ -127,8 +142,7 @@ def do_filter():
     descale = core.descale.Debicubic(luma, w, h, b, c)
     upscale = vdf.fsrcnnx_upscale(descale, None, descale.height*2, 'shaders/FSRCNNX_x2_56-16-4-1.glsl', core.resize.Point)
     upscale_smooth = vdf.nnedi3_upscale(descale, pscrn=1)
-    upscale = vdf.fade_filter(upscale, upscale, upscale_smooth, 31516, 31539)
-    upscale = vdf.fade_filter(upscale, upscale_smooth, upscale, 31540, 31574)
+    upscale = lvf.rfs(upscale, upscale_smooth, [(5534, 5598)])
 
     antialias = single_rate_antialiasing(upscale, 13, alpha=0.3, beta=0.45, gamma=320, mdis=18)
 
@@ -165,11 +179,6 @@ def do_filter():
     deband_b = placebo.deband(out, 22, 6, 2)
     deband = lvf.rfs(deband, deband_b, [(opstart+1515, opstart+1603)])
 
-    deband_c = placebo.deband(out, 17, 6, 3)
-    deband = lvf.rfs(deband, deband_c, [(4490, 4684), (5091, 5170), (5441, 5536), (5703, 5802)])
-
-    deband_d = dbs.f3kpf(out, 16, 64, 64)
-    deband = lvf.rfs(deband, deband_d, [(13788, 13871)])
 
     deband = core.std.MaskedMerge(deband, out, deband_mask)
 
@@ -216,7 +225,7 @@ def do_encode(clip: vs.VideoNode)-> None:
             "--min-luma", str(16<<2), "--max-luma", str(235<<2),
             "--fps", f"{clip.fps_num}/{clip.fps_den}",
             "-o", JPBD.output, "-",
-            "--frame-threads", "16",
+            # "--frame-threads", "16",
             "--no-sao", "--fades",
             "--preset", "slower",
             "--crf", "15", "--qcomp", "0.70",
