@@ -8,6 +8,7 @@ from typing import NamedTuple
 from pathlib import Path
 
 import debandshit as dbs
+import vardefunc as vdf
 import havsfunc as hvf
 
 from vsutil import depth
@@ -32,24 +33,22 @@ class InfosBD(NamedTuple):
     output_final: str
 
 
-def infos_bd(path, frame_start, frame_end) -> InfosBD:
-    src = path + '.m2ts'
-    src_clip = lvf.src(path + '.m2ts')
-    src_cut = src_clip[frame_start:frame_end]
+def infos_bd(path, frame_start, frame_end)-> InfosBD:
+    src = path + '.mkv'
+    src_clip = lvf.src(src); vdf.set_ffms2_log_level('warning')
+    src_cut = src_clip[frame_start:frame_end] if (frame_start or frame_end) else src_clip
     a_src = path + '.wav'
     a_src_cut = path + '_cut_track_{}.wav'
     a_enc_cut = path + '_track_{}.m4a'
     name = Path(sys.argv[0]).stem
     output = name + '.265'
-    chapter = 'chapters/' + name + '.txt'
+    chapter = '_chapters/' + name + '.txt'
     output_final = name + '.mkv'
     return InfosBD(path, src, src_clip, frame_start, frame_end,
                    src_cut, a_src, a_src_cut, a_enc_cut,
                    name, output, chapter, output_final)
 
-JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][140108] 戦姫絶唱シンフォギアG 4\KIXA_90353\BDMV\STREAM\00162', 99, -99)
-X265 = 'x265'
-
+JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][140108] 戦姫絶唱シンフォギアG 4\KIXA_90353\BDMV\STREAM\00162', None, None)
 def do_filter():
     """Vapoursynth filtering"""
     src = JPBD.src_clip
@@ -77,12 +76,12 @@ def do_encode(clip: vs.VideoNode)-> None:
     print('\n\n\nVideo encoding')
     if not os.path.exists(JPBD.output):
         x265_args = [
-            X265, "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
+            "x265", "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
             "--colormatrix", "bt709", "--colorprim", "bt709", "--transfer", "bt709", "--range", "limited",
             "--min-luma", str(16<<2), "--max-luma", str(235<<2),
             "--fps", f"{clip.fps_num}/{clip.fps_den}",
             "-o", JPBD.output, "-",
-            "--frame-threads", "16",
+            "--frame-threads", "4",
             "--no-sao", "--fades",
             "--preset", "slower",
             "--crf", "15", "--qcomp", "0.70",
@@ -115,8 +114,8 @@ def do_encode(clip: vs.VideoNode)-> None:
         encoder_name = subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')
         f = open("tags_aac.xml", 'w')
         f.writelines(['<?xml version="1.0"?>', '<Tags>', '<Tag>', '<Targets>', '</Targets>',
-                    '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
-                    '</Tag>', '</Tags>'])
+                      '<Simple>', '<Name>ENCODER</Name>', f'<String>{encoder_name}</String>', '</Simple>',
+                      '</Tag>', '</Tags>'])
         f.close()
 
     if not os.path.exists(JPBD.output_final):

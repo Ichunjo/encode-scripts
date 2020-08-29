@@ -4,7 +4,8 @@ __author__ = 'Vardë'
 import os
 import sys
 import subprocess
-from typing import NamedTuple, Optional, Dict, Any
+from functools import partial
+from typing import NamedTuple
 from pathlib import Path
 from acsuite import eztrim
 
@@ -12,12 +13,12 @@ import debandshit as dbs
 import vardefunc as vdf
 import muvsfunc as muvf
 import havsfunc as hvf
-import mvsfunc as mvf
 import G41Fun as gf
 import placebo
 import xvs
 
-from vsutil import depth, get_y, get_w
+from _assets.symphofunc import hybrid_denoise, single_rate_antialiasing
+from vsutil import depth, get_y, get_w, insert_clip
 import lvsfunc as lvf
 import vapoursynth as vs
 
@@ -39,88 +40,101 @@ class InfosBD(NamedTuple):
     output_final: str
 
 
-def infos_bd(path, frame_start, frame_end) -> InfosBD:
+# The NCOP03 m2ts file is broken and only DGIndex can decode it properly
+def infos_bd(path, frame_start, frame_end)-> InfosBD:
     src = path + '.m2ts'
-    src_clip = lvf.src(path + '.m2ts')
-    src_cut = src_clip[frame_start:frame_end]
+    src_clip = lvf.src(path + '.dgi')
+    src_cut = src_clip[frame_start:frame_end] if (frame_start or frame_end) else src_clip
     a_src = path + '.wav'
     a_src_cut = path + '_cut_track_{}.wav'
     a_enc_cut = path + '_track_{}.m4a'
     name = Path(sys.argv[0]).stem
     output = name + '.265'
-    chapter = 'chapters/' + name + '.txt'
+    chapter = '_chapters/' + name + '.txt'
     output_final = name + '.mkv'
     return InfosBD(path, src, src_clip, frame_start, frame_end,
                    src_cut, a_src, a_src_cut, a_enc_cut,
                    name, output, chapter, output_final)
 
-JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00008', 24, -24)
-X265 = 'x265'
+def infos_bd_alt(path, frame_start, frame_end)-> InfosBD:
+    src = path + '.mkv'
+    src_clip = lvf.src(src); vdf.set_ffms2_log_level('warning')
+    src_cut = src_clip[frame_start:frame_end] if (frame_start or frame_end) else src_clip
+    return InfosBD(path, src, src_clip, frame_start, frame_end,
+                   src_cut, None, None, None,
+                   None, None, None, None)
+
+JPBD = infos_bd(r'_assets\00008', 24, -24)
+JPBD_11 = infos_bd_alt(r'戦姫絶唱シンフォギアＧ\[BDMV][140305] 戦姫絶唱シンフォギアG 6\KIXA_90355\BDMV\STREAM\00003', 24, -24)
+
+
+
+
+def _zoom_prog(n: int, clip: vs.VideoNode)-> vs.VideoNode:
+    step_x = round(86 / clip.num_frames)
+    step_y = round(46 / clip.num_frames)
+
+    while step_x % 2:
+        step_x += 1
+    while step_y % 2:
+        step_y += 1
+
+    crop = core.std.Crop(clip, step_x * n, step_x * n, step_y * n, step_y * n)
+    return vdf.nnedi3_upscale(crop, correct_shift=False) \
+        .resize.Spline36(clip.width, clip.height, src_left=.5, src_top=.5)
+
+
 
 def do_filter():
     """Vapoursynth filtering"""
+    src = JPBD.src_cut
+    ep11 = JPBD_11.src_cut
+
+
+
     opstart = 0
+    opstart_ep11, opend_ep11 = 744, 3140
     h = 720
     w = get_w(h)
-    # getnative script returns 0.2 0.5 as best combo but it introduces too much halos.
-    # I think it's plain mitchell but robidoux is good too and very slightly sharp.
     b, c = vdf.get_bicubic_params('robidoux')
 
-    def hybrid_denoise(clip: vs.VideoNode, knlm_h: float = 0.5, sigma: float = 2,
-                       knlm_args: Optional[Dict[str, Any]] = None, bm3d_args: Optional[Dict[str, Any]] = None)-> vs.VideoNode:
-        knargs = dict(a=2, d=3, device_type='gpu', device_id=0, channels='UV')
-        if knlm_args is not None:
-            knargs.update(knlm_args)
-
-        b3args = dict(radius1=1, profile1='fast')
-        if bm3d_args is not None:
-            b3args.update(bm3d_args)
-
-        luma = get_y(clip)
-        luma = mvf.BM3D(luma, sigma, **b3args)
-        chroma = core.knlm.KNLMeansCL(clip, h=knlm_h, **knargs)
-
-        return vdf.merge_chroma(luma, chroma)
-
-    def single_rate_antialiasing(clip: vs.VideoNode, rep: Optional[int] = None, **eedi3_args: Any)-> vs.VideoNode:
-        nnargs: Dict[str, Any] = dict(nsize=0, nns=3, qual=1)
-        eeargs: Dict[str, Any] = dict(alpha=0.2, beta=0.6, gamma=40, nrad=2, mdis=20)
-        eeargs.update(eedi3_args)
-
-        aa = core.std.Transpose(clip)
-        aa = core.eedi3m.EEDI3(aa, 0, False, sclip=core.nnedi3cl.NNEDI3CL(aa, 0, False, False, **nnargs), **eeargs)
-        aa = core.std.Transpose(aa)
-        aa = core.eedi3m.EEDI3(aa, 0, False, sclip=core.nnedi3cl.NNEDI3CL(aa, 0, False, False, **nnargs), **eeargs)
-
-        if rep:
-            aa = core.rgsf.Repair(aa, clip, rep)
-        
-        return aa
 
 
-    src = JPBD.src_cut
-    src = depth(src, 32)
+    # Fix compositing error in the OP
+    ncop, op_11 = src, ep11[opstart_ep11:opend_ep11+1]
+    fix = lvf.rfs(ncop, op_11, [(0, 79), (1035, 1037)])
+    src = depth(fix, 32)
 
-    denoise = hybrid_denoise(src, 0.5, 2)
-    out = denoise
+
+    def denoise_and_rescale(clip):
+        denoise = hybrid_denoise(clip, 0.5, 2)
+        out = denoise
 
 
 
+        luma = get_y(out)
+        line_mask = vdf.edge_detect(luma, 'FDOG', 0.05, (1, 1))
 
 
-    luma = get_y(out)
-    line_mask = vdf.edge_detect(luma, 'FDOG', 0.05, (1, 1))
+        descale = core.descale.Debicubic(luma, w, h, b, c)
+        upscale = vdf.fsrcnnx_upscale(descale, None, descale.height*2, '_shaders/FSRCNNX_x2_56-16-4-1.glsl', core.resize.Point)
+
+        antialias = single_rate_antialiasing(upscale, 13, alpha=0.3, beta=0.45, gamma=320, mdis=18)
+        scaled = muvf.SSIM_downsample(antialias, src.width, src.height, kernel='Bicubic')
+
+        rescale = core.std.MaskedMerge(luma, scaled, line_mask)
+        merged = vdf.merge_chroma(rescale, out)
+        return depth(merged, 16)
 
 
-    descale = core.descale.Debicubic(luma, w, h, b, c)
-    upscale = vdf.fsrcnnx_upscale(descale, None, descale.height*2, 'shaders/FSRCNNX_x2_56-16-4-1.glsl', core.resize.Point)
 
-    antialias = single_rate_antialiasing(upscale, 13, alpha=0.3, beta=0.45, gamma=320, mdis=18)
-    scaled = muvf.SSIM_downsample(antialias, src.width, src.height, kernel='Bicubic')
+    out = denoise_and_rescale(src)
+    to_zoom = denoise_and_rescale(depth(JPBD_11.src_cut[8590:8605], 32))
 
-    rescale = core.std.MaskedMerge(luma, scaled, line_mask)
-    merged = vdf.merge_chroma(rescale, out)
-    out = depth(merged, 16)
+
+    zoom = core.std.FrameEval(to_zoom, partial(_zoom_prog, clip=to_zoom))
+    out = insert_clip(out, zoom, 1685)
+
 
 
 
@@ -171,12 +185,12 @@ def do_encode(clip: vs.VideoNode)-> None:
     print('\n\n\nVideo encoding')
     if not os.path.exists(JPBD.output):
         x265_args = [
-            X265, "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
+            "x265", "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
             "--colormatrix", "bt709", "--colorprim", "bt709", "--transfer", "bt709", "--range", "limited",
             "--min-luma", str(16<<2), "--max-luma", str(235<<2),
             "--fps", f"{clip.fps_num}/{clip.fps_den}",
             "-o", JPBD.output, "-",
-            "--frame-threads", "16",
+            "--frame-threads", "4",
             "--no-sao", "--fades",
             "--preset", "slower",
             "--crf", "15", "--qcomp", "0.70",

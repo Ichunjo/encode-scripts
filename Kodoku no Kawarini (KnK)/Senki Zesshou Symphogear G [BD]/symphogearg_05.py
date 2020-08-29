@@ -5,7 +5,7 @@ import os
 import sys
 import subprocess
 from functools import partial
-from typing import NamedTuple, Optional, Dict, Any
+from typing import NamedTuple
 from pathlib import Path
 from acsuite import eztrim
 
@@ -13,12 +13,12 @@ import debandshit as dbs
 import vardefunc as vdf
 import muvsfunc as muvf
 import havsfunc as hvf
-import mvsfunc as mvf
 import G41Fun as gf
 import placebo
 import xvs
 
-from vsutil import depth, get_y, get_w, iterate, insert_clip
+from _assets.symphofunc import hybrid_denoise, single_rate_antialiasing
+from vsutil import depth, get_y, get_w, insert_clip
 import lvsfunc as lvf
 import vapoursynth as vs
 
@@ -40,16 +40,16 @@ class InfosBD(NamedTuple):
     output_final: str
 
 
-def infos_bd(path, frame_start, frame_end) -> InfosBD:
-    src = path + '.m2ts'
-    src_clip = lvf.src(path + '.m2ts')
-    src_cut = src_clip[frame_start:frame_end]
+def infos_bd(path, frame_start, frame_end)-> InfosBD:
+    src = path + '.mkv'
+    src_clip = lvf.src(src); vdf.set_ffms2_log_level('warning')
+    src_cut = src_clip[frame_start:frame_end] if (frame_start or frame_end) else src_clip
     a_src = path + '.wav'
     a_src_cut = path + '_cut_track_{}.wav'
     a_enc_cut = path + '_track_{}.m4a'
     name = Path(sys.argv[0]).stem
     output = name + '.265'
-    chapter = 'chapters/' + name + '.txt'
+    chapter = '_chapters/' + name + '.txt'
     output_final = name + '.mkv'
     return InfosBD(path, src, src_clip, frame_start, frame_end,
                    src_cut, a_src, a_src_cut, a_enc_cut,
@@ -57,76 +57,48 @@ def infos_bd(path, frame_start, frame_end) -> InfosBD:
 
 
 JPBD = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131204] 戦姫絶唱シンフォギアG 3\KIXA_90352\BDMV\STREAM\00003', 24, -24)
-HENSHIN = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][140108] 戦姫絶唱シンフォギアG 4\KIXA_90353\BDMV\STREAM\00005', 0, -24)
-JPBD_NCOP = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00006', 24, -24)
+TRANSFOS = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][140108] 戦姫絶唱シンフォギアG 4\KIXA_90353\BDMV\STREAM\00005', 0, -24)
+JPBD_NCOP = infos_bd(r'_assets\symphogearg_ncop02_raw_lossless', None, None)
 JPBD_NCED = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][131106] 戦姫絶唱シンフォギアG 2\KIXA_90350\BDMV\STREAM\00010', 24, -24)
-X265 = 'x265'
+JPBD_10 = infos_bd(r'戦姫絶唱シンフォギアＧ\[BDMV][140205] 戦姫絶唱シンフォギアG 5\KIXA_90354\BDMV\STREAM\00004', 0, -24)
 
-
-def hybrid_denoise(clip: vs.VideoNode, knlm_h: float = 0.5, sigma: float = 2,
-                   knlm_args: Optional[Dict[str, Any]] = None,
-                   bm3d_args: Optional[Dict[str, Any]] = None)-> vs.VideoNode:
-    knargs = dict(a=2, d=3, device_type='gpu', device_id=0, channels='UV')
-    if knlm_args is not None:
-        knargs.update(knlm_args)
-
-    b3args = dict(radius1=1, profile1='fast')
-    if bm3d_args is not None:
-        b3args.update(bm3d_args)
-
-    luma = get_y(clip)
-    luma = mvf.BM3D(luma, sigma, **b3args)
-    chroma = core.knlm.KNLMeansCL(clip, h=knlm_h, **knargs)
-
-    return vdf.merge_chroma(luma, chroma)
-
-def _rescale_mask(original: vs.VideoNode, upscaled: vs.VideoNode, thr: float)-> vs.VideoNode:
-    mask = core.std.Expr([original, upscaled], 'x y - abs').std.Binarize(thr)
-    mask = iterate(mask, core.std.Maximum, 3)
-    return iterate(mask, core.std.Inflate, 2)
-
-def single_rate_antialiasing(clip: vs.VideoNode, rep: Optional[int] = None,
-                             **eedi3_args: Any)-> vs.VideoNode:
-    nnargs: Dict[str, Any] = dict(nsize=0, nns=3, qual=1)
-    eeargs: Dict[str, Any] = dict(alpha=0.2, beta=0.6, gamma=40, nrad=2, mdis=20)
-    eeargs.update(eedi3_args)
-
-    eedi3_fun, nnedi3_fun = core.eedi3m.EEDI3, core.nnedi3cl.NNEDI3CL
-
-    flt = core.std.Transpose(clip)
-    flt = eedi3_fun(flt, 0, False, sclip=nnedi3_fun(flt, 0, False, False, **nnargs), **eeargs)
-    flt = core.std.Transpose(flt)
-    flt = eedi3_fun(flt, 0, False, sclip=nnedi3_fun(flt, 0, False, False, **nnargs), **eeargs)
-
-    if rep:
-        flt = core.rgsf.Repair(flt, clip, rep)
-
-    return flt
 
 # Progressive cropping
-def _prog_crop(n: int, clip: vs.VideoNode, dev: int)-> vs.VideoNode:
+def _prog_crop(n: int, clip: vs.VideoNode, dev: int) -> vs.VideoNode:
     step = round(-dev/clip.num_frames)
     return core.std.Crop(clip, clip.width/3 + dev + step*n, clip.width/3 - dev - step*n, 0, 0)
 
 def do_filter():
     """Vapoursynth filtering"""
     src = JPBD.src_cut
+    ep10 = JPBD_10.src_cut
 
-    # Fix black borders for henshins
+
+    h = 720
+    w = get_w(h)
+    b, c = vdf.get_bicubic_params('robidoux')
+    opstart, opend = 672, 3068
+    edstart, edend = 31888, src.num_frames - 1
+    opstart_ep10, opend_ep10 = 768, 3164
+    full_stuff = [(3853, 3984), (16130, 16279)]
+
+
+    # Fix borders of the henshin
     start, end = 26596, 27387
+    white_clip = core.std.BlankClip(src, color=[235, 128, 128])
 
     # Good length for the three henshins
-    hibiki = HENSHIN.src_cut[912:1716]
+    hibiki = TRANSFOS.src_cut[912:1716]
     hibiki = core.std.DeleteFrames(hibiki, [203, 204])
     hibiki = core.std.DeleteFrames(hibiki, range(316, 320))
     hibiki = core.std.DeleteFrames(hibiki, range(391, 394))
 
-    tsubasa = src.std.BlankClip(length=8, color=[235, 128, 128]) + HENSHIN.src_cut[2178:2738]
-    tsubasa = core.std.DuplicateFrames(tsubasa, range(10, 20))
+    tsubasa = TRANSFOS.src_cut[2178:2738]
+    tsubasa = core.std.DuplicateFrames(white_clip[:8] + tsubasa, range(10, 20))
     tsubasa = core.std.DuplicateFrames(tsubasa, range(196, 203))
-    tsubasa = core.std.DuplicateFrames(tsubasa, [443]*3)
+    tsubasa = core.std.DuplicateFrames(tsubasa, [443, 443, 443])
 
-    yukine = HENSHIN.src_cut[3240:3828]
+    yukine = TRANSFOS.src_cut[3240:3828]
 
 
     # The intro
@@ -158,14 +130,12 @@ def do_filter():
     src = insert_clip(src, new_tranfos[:end-start], start)
 
 
-    src = depth(src, 32)
 
-    h = 720
-    w = get_w(h)
-    b, c = vdf.get_bicubic_params('robidoux')
-    opstart, opend = 672, 3068
-    edstart, edend = 31888, src.num_frames - 1
-    full_stuff = [(3853, 3984), (16130, 16279)]
+    # Fix compositing error in the OP
+    op_src, op_10 = src[opstart:opend+1], ep10[opstart_ep10:opend_ep10+1]
+    fix = lvf.rfs(op_src, op_10, [(0, 79), (1035, 1037)])
+    fix_src = insert_clip(src, fix, opstart)
+    src = depth(fix_src, 32)
 
 
 
@@ -178,7 +148,7 @@ def do_filter():
 
 
     descale = core.descale.Debicubic(luma, w, h, b, c)
-    upscale = vdf.fsrcnnx_upscale(descale, descale.height*2, 'shaders/FSRCNNX_x2_56-16-4-1.glsl', core.resize.Point)
+    upscale = vdf.fsrcnnx_upscale(descale, None, descale.height*2, '_shaders/FSRCNNX_x2_56-16-4-1.glsl', core.resize.Point)
     upscale_smooth = vdf.nnedi3_upscale(descale, pscrn=1)
     upscale = vdf.fade_filter(upscale, upscale, upscale_smooth, 18018, 18068)
     upscale = lvf.rfs(upscale, upscale_smooth, [(18068, 18134)])
@@ -265,12 +235,12 @@ def do_encode(clip: vs.VideoNode)-> None:
     print('\n\n\nVideo encoding')
     if not os.path.exists(JPBD.output):
         x265_args = [
-            X265, "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
+            "x265", "--y4m", "--frames", f"{clip.num_frames}", "--sar", "1", "--output-depth", "10",
             "--colormatrix", "bt709", "--colorprim", "bt709", "--transfer", "bt709", "--range", "limited",
             "--min-luma", str(16<<2), "--max-luma", str(235<<2),
             "--fps", f"{clip.fps_num}/{clip.fps_den}",
             "-o", JPBD.output, "-",
-            "--frame-threads", "16",
+            "--frame-threads", "4",
             "--no-sao", "--fades",
             "--preset", "slower",
             "--crf", "15", "--qcomp", "0.70",
@@ -281,8 +251,13 @@ def do_encode(clip: vs.VideoNode)-> None:
             "--min-keyint", "23", "--keyint", "360",
             "--aq-mode", "3", "--aq-strength", "1.0"
             ]
-        print("Encoder command: ", " ".join(x265_args), "\n")
-        process = subprocess.Popen(x265_args, stdin=subprocess.PIPE)
+        ffv1_args = [
+            'ffmpeg', '-i', '-', '-vcodec', 'ffv1', '-coder', '1', '-context', '0',
+            '-g', '1', '-level', '3', '-threads', '8',
+            '-slices', '24', '-slicecrc', '1', JPBD.name + "_lossless.mkv"
+        ]
+        print("Encoder command: ", " ".join(ffv1_args), "\n")
+        process = subprocess.Popen(ffv1_args, stdin=subprocess.PIPE)
         clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue:
                     print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
         process.communicate()
