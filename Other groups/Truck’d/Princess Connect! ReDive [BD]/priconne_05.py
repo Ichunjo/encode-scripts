@@ -15,7 +15,6 @@ import debandshit as dbs
 import vardefunc as vdf
 import havsfunc as hvf
 import kagefunc as kgf
-import placebo
 
 from _assets.priconnefunc import line_darkening, stabilization
 from vsutil import depth, get_w, get_y
@@ -55,7 +54,9 @@ def infos_bd(path, frame_start, frame_end) -> InfosBD:
                    src_cut, a_src, a_src_cut, a_enc_cut,
                    name, output, chapter, output_final)
 
-JPBD = infos_bd(r'[BDMV][200807][CYGX-00001]Princess Connect! Re_Dive Vol.1\BD_VIDEO\BDMV\STREAM\00001', 0, -26)
+JPBD = infos_bd(r'[BDMV][200904][CYGX-00002][Princess Connect! Re_Dive Vol.2]\BD_VIDEO\BDMV\STREAM\00001', 0, -25)
+JPBD_NCOP = infos_bd(r'[BDMV][200807][CYGX-00001]Princess Connect! Re_Dive Vol.1\BD_VIDEO\BDMV\STREAM\00007', 0, -24)
+JPBD_NCED = infos_bd(r'[BDMV][200807][CYGX-00001]Princess Connect! Re_Dive Vol.1\BD_VIDEO\BDMV\STREAM\00008', 0, -24)
 
 
 def do_filter():
@@ -69,6 +70,9 @@ def do_filter():
     w = get_w(h)
     kernel = 'lanczos'
     taps = 5
+    opstart, opend = 1080, 3236
+    edstart, edend = 31769, 33926
+
 
 
     denoise = CoolDegrain(src, tr=1, thsad=24, blksize=8, overlap=4, plane=4)
@@ -94,17 +98,13 @@ def do_filter():
 
 
     antialias = lvf.sraa(out, 1.4, rep=7, downscaler=core.resize.Bicubic)
-    out = antialias
+    out = lvf.rfs(antialias, vdf.merge_chroma(upscale, denoise), [(edstart, edend)])
 
 
 
     deband_mask = lvf.denoise.detail_mask(out, brz_a=2000, brz_b=1000)
 
     deband = dbs.f3kpf(out, 17, 30, 30)
-    deband_b = placebo.deband(out, 24, 8, 5)
-    deband_c = dbs.f3kpf(out, 17, 54, 48)
-    deband = lvf.rfs(deband, deband_b, [(0, 105)])
-    deband = lvf.rfs(deband, deband_c, [(25188, 25220)])
 
     deband = core.std.MaskedMerge(deband, out, deband_mask)
     deband = core.neo_f3kdb.Deband(deband, preset='depth', grainy=24, grainc=18, keep_tv_range=True)
@@ -119,11 +119,20 @@ def do_filter():
 
 
 
-    credit_mask = vdf.drm(src, h, kernel, taps, mthr=40, sw=4, sh=4)
-    credit = lvf.rfs(out, core.std.MaskedMerge(out, src, credit_mask, 0),
-                     [(196, 2107), (11352, 11416), (30402, 30602),
-                      (31431, 33501), (33837, src.num_frames-1)])
-    credit = lvf.rfs(credit, src, [(3856, 3897)])
+    rescale_mask = vdf.drm(src, h, kernel, taps, mthr=40, sw=4, sh=4)
+    creditless_mask = core.std.Expr([
+        vdf.dcm(src, src[opstart:opend+1], JPBD_NCOP.src_cut[:opend-opstart+1],
+                opstart, opend, 2, 2).std.Deflate(),
+        vdf.dcm(src, src[edstart:edend+1], JPBD_NCED.src_cut[:edend-edstart+1],
+                edstart, edend, 2, 2).std.Deflate()], 'x y +')
+
+    credit = out
+    credit = lvf.rfs(credit, core.std.MaskedMerge(credit, src, rescale_mask, 0),
+                     [(opstart+425, opstart+698), (33973, src.num_frames-1),
+                     (11133, 11180), (20389, 20457), (20863, 20970), (21450, 21552), (21931, 22182), (22255, 22362)])
+    credit = lvf.rfs(credit, core.std.MaskedMerge(credit, src, creditless_mask, 0),
+                     [(opstart, opend), (edstart, edend)])
+    credit = lvf.rfs(credit, src, [(4241, 4288), (12344, 12415), (22489, 22548)])
     out = credit
 
 
@@ -141,7 +150,7 @@ def do_encode(clip: vs.VideoNode)-> None:
     x265_cmd += '--merange 48 --weightb' + ' '
     x265_cmd += '--no-strong-intra-smoothing' + ' '
     x265_cmd += '--psy-rd 2.0 --psy-rdoq 1.0 --no-open-gop --keyint 360 --min-keyint 12 --scenecut 45 --rc-lookahead 120 --bframes 16' + ' '
-    x265_cmd += '--crf 15 --aq-mode 3 --aq-strength 0.85 --qcomp 0.70 --zones 29,105,b=2' + ' '
+    x265_cmd += '--crf 15 --aq-mode 3 --aq-strength 0.85 --qcomp 0.70' + ' '
     x265_cmd += '--deblock=-1:-1 --no-sao --no-sao-non-deblock' + ' '
     x265_cmd += f'--sar 1 --range limited --colorprim 1 --transfer 1 --colormatrix 1 --min-luma {str(16<<2)} --max-luma {str(235<<2)}'# + ' '
 

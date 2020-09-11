@@ -3,6 +3,7 @@ __author__ = 'Vardë'
 
 import sys
 import os
+import shlex
 import subprocess
 from functools import partial
 from typing import NamedTuple
@@ -12,10 +13,10 @@ from acsuite import eztrim
 from cooldegrain import CoolDegrain
 import debandshit as dbs
 import vardefunc as vdf
-import muvsfunc as muvf
+import havsfunc as hvf
 import kagefunc as kgf
-import G41Fun as gf
 
+from _assets.priconnefunc import line_darkening, stabilization
 from vsutil import depth, get_w, get_y
 import lvsfunc as lvf
 import vapoursynth as vs
@@ -46,8 +47,8 @@ def infos_bd(path, frame_start, frame_end) -> InfosBD:
     a_src_cut = path + '_cut_track_{}.wav'
     a_enc_cut = path + '_track_{}.m4a'
     name = Path(sys.argv[0]).stem
-    output = name + '.264'
-    chapter = 'chapters/' + name + '.txt'
+    output = name + '.265'
+    chapter = '_assets/chapters/' + name + '.txt'
     output_final = name + '.mkv'
     return InfosBD(path, src, src_clip, frame_start, frame_end,
                    src_cut, a_src, a_src_cut, a_enc_cut,
@@ -82,24 +83,23 @@ def do_filter():
     luma = get_y(out)
 
     descale = kgf.get_descale_filter(kernel, taps=taps)(depth(luma, 32), w, h)
-    upscale = vdf.fsrcnnx_upscale(depth(descale, 16), src.width, src.height, 'Shaders/FSRCNNX_x2_56-16-4-1.glsl',
+    upscale = vdf.fsrcnnx_upscale(depth(descale, 16), src.width, src.height, '_assets/shaders/FSRCNNX_x2_56-16-4-1.glsl',
                                   partial(core.resize.Bicubic, filter_param_a=0, filter_param_b=0))
-    merge = vdf.merge_chroma(upscale, out)
-    out = merge
+    out = upscale
 
 
 
-    unwarp = muvf.SharpAAMcmod(out, dark=0.4, thin=-2.5, sharp=20, stabilize=True)
-    unwarp = lvf.rfs(unwarp, out, [(25575, 25689)])
-    out = unwarp
+    unwarp = line_darkening(out, 0.275).warp.AWarpSharp2(depth=-2.5)
+    sharp = hvf.LSFmod(unwarp, strength=90, Smode=3, Lmode=1, edgemode=1, edgemaskHQ=True)
 
-    dehalo = gf.MaskedDHA(out, rx=1.75, ry=1.75, darkstr=0.05, brightstr=0.95, maskpull=60, maskpush=160)
-    out = dehalo
+    stabilize = stabilization(out, sharp, 2, 1, 8, 16)
+    out = vdf.merge_chroma(stabilize, denoise)
+    out = lvf.rfs(out, vdf.merge_chroma(upscale, denoise), [(25575, 25689)])
 
 
 
     antialias = lvf.sraa(out, 1.4, rep=7, downscaler=core.resize.Bicubic)
-    out = antialias
+    out = lvf.rfs(antialias, vdf.merge_chroma(upscale, denoise), [(edstart, edend)])
 
 
     deband_mask = lvf.denoise.detail_mask(out, brz_a=2000, brz_b=1000)
@@ -138,16 +138,26 @@ def do_filter():
     return depth(out, 10)
 
 
-X264_ARGS = dict(
-    threads=18, ref=16, trellis=2, bframes=16, b_adapt=2,
-    direct='auto', deblock='-1:-1', me='tesa', subme=10, psy_rd='1.0:0.00', merange=32,
-    keyint=240, min_keyint=23, rc_lookahead=72, crf=14, qcomp=0.7, aq_mode=3, aq_strength=0.85
-)
-
 def do_encode(clip: vs.VideoNode)-> None:
     """Compression with x26X"""
     print('\n\n\nVideo encoding')
-    vdf.encode(clip, 'x264', JPBD.output, **X264_ARGS)
+    x265_cmd = f'x265 -o {JPBD.output} - --y4m' + ' '
+    x265_cmd += f'--csv {JPBD.name}_log_x265.csv --csv-log-level 2' + ' '
+    x265_cmd += '--frame-threads 8 --pmode --pme --preset slower' + ' '
+    x265_cmd += f'--frames {clip.num_frames} --fps 24000/1001 --output-depth 10' + ' '
+    x265_cmd += '--rd 3 --no-rect --no-amp --rskip 1 --tu-intra-depth 2 --tu-inter-depth 2 --tskip' + ' '
+    x265_cmd += '--merange 48 --weightb' + ' '
+    x265_cmd += '--no-strong-intra-smoothing' + ' '
+    x265_cmd += '--psy-rd 2.0 --psy-rdoq 1.0 --no-open-gop --keyint 360 --min-keyint 12 --scenecut 45 --rc-lookahead 120 --bframes 16' + ' '
+    x265_cmd += '--crf 15 --aq-mode 3 --aq-strength 0.85 --qcomp 0.70' + ' '
+    x265_cmd += '--deblock=-1:-1 --no-sao --no-sao-non-deblock' + ' '
+    x265_cmd += f'--sar 1 --range limited --colorprim 1 --transfer 1 --colormatrix 1 --min-luma {str(16<<2)} --max-luma {str(235<<2)}'# + ' '
+
+    print("Encoder command: ", " ".join(shlex.split(x265_cmd)), "\n")
+    process = subprocess.Popen(shlex.split(x265_cmd), stdin=subprocess.PIPE)
+    clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue:
+                print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
+    process.communicate()
 
     print('\n\n\nAudio extraction')
     eac3to_args = ['eac3to', JPBD.src, '2:', JPBD.a_src, '-log=NUL']
@@ -170,7 +180,7 @@ def do_encode(clip: vs.VideoNode)-> None:
 
     print('\nFinal muxing')
     mkv_args = ['mkvmerge', '-o', JPBD.output_final,
-                '--track-name', '0:AVC BDRip by Vardë@Raws-Maji', '--language', '0:jpn', JPBD.output,
+                '--track-name', '0:HEVC BDRip by Vardë@Raws-Maji', '--language', '0:jpn', JPBD.output,
                 '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', JPBD.a_enc_cut.format(1),
                 '--chapter-language', 'jpn', '--chapters', JPBD.chapter]
     subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
@@ -185,4 +195,3 @@ def do_encode(clip: vs.VideoNode)-> None:
 if __name__ == '__main__':
     FILTERED = do_filter()
     do_encode(FILTERED)
-
