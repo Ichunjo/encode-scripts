@@ -58,7 +58,6 @@ def do_filter():
     """Vapoursynth filtering"""
     src = JPBD.src_cut
     src = depth(src, 16)
-    # out = src + src[-1]*2
     out = src
 
     denoise = mvf.BM3D(out, [2.5, 1.5], radius1=1)
@@ -90,8 +89,6 @@ def do_filter():
 
     deband_mask = lvf.denoise.detail_mask(out, brz_a=2250, brz_b=1500).std.Median()
     deband = dbs.f3kpf(out, 17, 36, 36)
-    # deband_b = dbs.f3kpf(out, 17, 56, 48)
-    # deband = lvf.rfs(deband, deband_b, [(23708, 24371)])
     deband = core.std.MaskedMerge(deband, out, deband_mask)
     out = deband
 
@@ -158,12 +155,3 @@ if __name__ == '__main__':
     FILTERED = do_filter()
     do_encode(FILTERED)
 
-
-# JPBD.src_cut.set_output(0)
-# FILTERED = do_filter()
-# FILTERED.set_output(1)
-
-# FILTERED[0].set_output(1)
-# FILTERED[1].set_output(2)
-# FILTERED[2].set_output(3)
-# FILTERED[3].set_output(4)

@@ -46,7 +46,6 @@ def infos_bd(path, frame_start, frame_end) -> InfosBD:
                    src_cut, a_src, a_src_cut, a_enc_cut,
                    name, output, chapter, output_final)
 
-# JPBD = infos_bd(r'[昨日之歌][Yesterday o Utatte][イエスタデイをうたって][BDMV][1080P][DISC×3 Fin][Rev]\SING_YESTERDAY_FOR_ME_DISC3\BDMV\STREAM\00005', 24, -24)
 JPBD = infos_bd(sys.argv[1], 24, -24)
 
 
@@ -107,13 +106,3 @@ def do_encode(clip: vs.VideoNode)-> None:
 if __name__ == '__main__':
     FILTERED = do_filter()
     do_encode(FILTERED)
-
-
-JPBD.src_cut.set_output(0)
-# FILTERED = do_filter()
-# FILTERED.set_output(1)
-
-# FILTERED[0].set_output(1)
-# FILTERED[1].set_output(2)
-# FILTERED[2].set_output(3)
-# FILTERED[3].set_output(4)

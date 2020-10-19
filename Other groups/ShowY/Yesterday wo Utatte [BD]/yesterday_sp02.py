@@ -40,14 +40,11 @@ class InfosBD(NamedTuple):
 def infos_bd(path, frame_start, frame_end) -> InfosBD:
     src = path + '.m2ts'
     src_clip = core.lsmas.LWLibavSource(src, prefer_hw=0, ff_loglevel=3)
-    # src_clip = lvf.src(path + '.dgi')
     src_cut = src_clip[frame_start:frame_end]
     a_src = path + '.wav'
     a_src_cut = path + '_cut_track_{}.wav'
     a_enc_cut = path + '_track_{}.m4a'
-    # a_enc_cut = path + '_track_{}.opus'
     name = Path(sys.argv[0]).stem
-    # output = name + '.265'
     output = name + '.264'
     chapter = 'chapters/' + name + '.txt'
     output_final = name + '.mkv'
@@ -166,12 +163,3 @@ def do_encode(clip: vs.VideoNode)-> None:
 if __name__ == '__main__':
     FILTERED = do_filter()
     do_encode(FILTERED)
-
-JPBD.src_cut.set_output(0)
-FILTERED = do_filter()
-FILTERED.set_output(1)
-
-# FILTERED[0].set_output(1)
-# FILTERED[1].set_output(2)
-# FILTERED[2].set_output(3)
-# FILTERED[3].set_output(4)
