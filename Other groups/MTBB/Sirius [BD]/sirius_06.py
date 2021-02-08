@@ -218,8 +218,7 @@ def do_filter():
 
     merged_a = join([downscale, u_r, v_r])
     merged_b = vdf.merge_chroma(downscale, denoise)
-    merged = lvf.rfs(merged_a, merged_b, shabc_zone +
-                     [(00, 11),])
+    merged = lvf.rfs(merged_a, merged_b, shabc_zone)
     out = depth(merged, 16)
 
 
