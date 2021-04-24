@@ -73,12 +73,12 @@ def do_filter():
 
 
     detail_mask = lvf.mask.detail_mask(out, brz_a=2250, brz_b=1200)
-    pref = out.std.Convolution([1, 2, 1, 2, 4, 2, 1, 2, 1]).std.Convolution([1]*9)
+    pref = out.std.Convolution([1, 2, 1, 2, 4, 2, 1, 2, 1]).std.Convolution([1] * 9)
     deband1 = vdf.dumb3kdb(pref, 17, 45, grain=16, seed=333)
     deband2 = vdf.dumb3kdb(pref, 15, 49, grain=16, sample_mode=4, use_neo=True, blur_first=False, seed=333)
     deband3 = vdf.dumb3kdb(pref, 20, 65, grain=16)
 
-    th_lo, th_hi = 20<<8, 26<<8
+    th_lo, th_hi = 20 << 8, 26 << 8
     strength = '{1} x - {1} {0} - /'.format(th_lo, th_hi)
     deband = core.std.Expr(
         [pref, deband1, deband2],
@@ -102,11 +102,11 @@ def do_filter():
     credit = lvf.rfs(credit, core.std.MaskedMerge(credit, ref, rescale_mask),
                      [(129, 1640), (1925, 2173), (2546, 2652), (2901, 3068),
                       (3194, 3307), (31325, 33541)])
-    credit = lvf.rfs(credit, ref, [(33542, src.num_frames-1)])
+    credit = lvf.rfs(credit, ref, [(33542, src.num_frames - 1)])
     out = credit
 
-    
-    return depth(out, 10).std.Limiter(16<<2, [235<<2, 240<<2], [0, 1, 2])
+
+    return depth(out, 10).std.Limiter(16 << 2, [235 << 2, 240 << 2], [0, 1, 2])
 
 
 
@@ -125,7 +125,7 @@ def do_encode(clip):
         x265_cmd += '--psy-rd 1.85 --psy-rdoq 1.5 --no-open-gop --keyint 240 --min-keyint 23 --scenecut 40 --rc-lookahead 48 --bframes 16' + ' '
         x265_cmd += '--crf 16 --aq-mode 3 --aq-strength 0.85 --cbqpoffs -2 --crqpoffs -2 --qcomp 0.70' + ' '
         x265_cmd += '--deblock=1:-1 --no-sao --no-sao-non-deblock' + ' '
-        x265_cmd += f'--sar 1 --range limited --colorprim 1 --transfer 1 --colormatrix 1 --min-luma {str(16<<(bits - 8))} --max-luma {str(235<<(bits - 8))}'# + ' '
+        x265_cmd += f'--sar 1 --range limited --colorprim 1 --transfer 1 --colormatrix 1 --min-luma {str(16<<(bits - 8))} --max-luma {str(235<<(bits - 8))}'
 
         print("Encoder command: ", " ".join(shlex.split(x265_cmd)), "\n")
         process = subprocess.Popen(shlex.split(x265_cmd), stdin=subprocess.PIPE)
