@@ -166,7 +166,7 @@ def do_filter():
 
 
 
-    detail_light_mask = lvf.denoise.detail_mask(out, brz_a=2500, brz_b=1200)
+    detail_light_mask = detail_mask_func(out, brz_a=2500, brz_b=1200)
 
     deband = dumb3kdb(out, 17, 36)
     deband_b = dbs.f3kbilateral(out, 20, 120, 120)

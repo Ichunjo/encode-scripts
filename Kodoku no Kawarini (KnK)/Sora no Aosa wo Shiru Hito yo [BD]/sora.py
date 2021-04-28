@@ -95,7 +95,7 @@ def do_filter():
     antialias_merged = vdf.merge_chroma(antialias, denoise)
 
 
-    deband_mask_a = lvf.denoise.detail_mask(antialias_merged, brz_a=3000, brz_b=1200)
+    deband_mask_a = detail_mask_func(antialias_merged, brz_a=3000, brz_b=1200)
     deband_mask_b = kgf.retinex_edgemask(antialias_merged)
     deband_mask = core.std.Expr([deband_mask_a, deband_mask_b], 'x y +')
     deband = dbs.f3kpf(antialias_merged, 18, 30, 30)

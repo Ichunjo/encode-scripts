@@ -192,7 +192,7 @@ def do_filter():
 
     # Deband with prefilter
     y = get_y(out)
-    detail_light_mask = lvf.denoise.detail_mask(y, brz_a=2500, brz_b=1200)
+    detail_light_mask = detail_mask_func(y, brz_a=2500, brz_b=1200)
 
 
     pf = iterate(out, core.std.Maximum, 2).std.Convolution([10] * 9, planes=0)

@@ -110,7 +110,7 @@ def do_filter():
 
 
     predenoise = mClean(antialias, thSAD=200, chroma=False)
-    detail_mask = lvf.denoise.detail_mask(predenoise, rad=2, radc=2, brz_a=3250, brz_b=1250)
+    detail_mask = detail_mask_func(predenoise, rad=2, radc=2, brz_a=3250, brz_b=1250)
     ret_mask = kgf.retinex_edgemask(predenoise).std.Binarize(9250).std.Median().std.Inflate()
     line_mask = core.std.Expr([detail_mask, ret_mask], 'x y max')
 

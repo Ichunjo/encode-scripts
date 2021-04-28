@@ -68,7 +68,7 @@ def do_filter():
     descale = depth(core.descale.Debicubic(depth(luma, 32), w, h, b, c), 16)
     rescale = _rescale(descale, 0.55, lambda c: core.resize.Bicubic(c, src.width, src.height, filter_param_a=0, filter_param_b=0))
 
-    line_mask = lvf.denoise.detail_mask(rescale, brz_a=7000, brz_b=2000)
+    line_mask = detail_mask_func(rescale, brz_a=7000, brz_b=2000)
     rescale = core.std.MaskedMerge(luma, rescale, line_mask)
 
 
@@ -80,7 +80,7 @@ def do_filter():
     merged = vdf.merge_chroma(credit, denoise)
 
 
-    deband_mask = lvf.denoise.detail_mask(merged, brz_a=3000, brz_b=1500)
+    deband_mask = detail_mask_func(merged, brz_a=3000, brz_b=1500)
     deband = dbs.f3kpf(merged, 17, 36, 36)
     deband = core.std.MaskedMerge(deband, merged, deband_mask)
     grain = core.neo_f3kdb.Deband(deband, preset='depth', grainy=32, output_depth=10,

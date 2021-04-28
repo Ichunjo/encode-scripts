@@ -61,7 +61,7 @@ def do_filter() -> vs.VideoNode:
 
 
     preden = core.dfttest.DFTTest(out, sbsize=16, sosize=12, tbsize=1)
-    detail_mask = lvf.mask.detail_mask(preden, brz_a=2500, brz_b=1500)
+    detail_mask = detail_mask_func(preden, brz_a=2500, brz_b=1500)
 
     deband = vdf.dumb3kdb(preden, 16, threshold=[17, 17], grain=[24, 0])
     deband = core.std.MergeDiff(deband, out.std.MakeDiff(preden))

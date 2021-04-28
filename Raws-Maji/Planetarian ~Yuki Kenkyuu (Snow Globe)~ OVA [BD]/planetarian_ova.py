@@ -157,7 +157,7 @@ def do_filter():
 
 
     y = get_y(out)
-    detail_light_mask = lvf.denoise.detail_mask(y.std.Median(), brz_a=2500, brz_b=1200)
+    detail_light_mask = detail_mask_func(y.std.Median(), brz_a=2500, brz_b=1200)
 
 
     pf = out.std.Convolution([1] * 9).std.Merge(out, 0.45)

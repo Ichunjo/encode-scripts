@@ -86,7 +86,7 @@ def do_filter():
 
     preden = CoolDegrain(denoise, tr=2, thsad=60, blksize=8, overlap=4, plane=4)
     diff = core.std.MakeDiff(denoise, preden)
-    deband_mask = lvf.denoise.detail_mask(preden, brz_a=3000, brz_b=1500)
+    deband_mask = detail_mask_func(preden, brz_a=3000, brz_b=1500)
 
     deband_a = dbs.f3kpf(preden, 17, 42, 42)
     deband_b = core.placebo.Deband(preden, radius=17, threshold=6, iterations=1, grain=0, planes=1|2|4)

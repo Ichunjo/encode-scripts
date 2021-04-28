@@ -125,7 +125,7 @@ def do_filter():
 
 
     preden = core.knlm.KNLMeansCL(out, d=0, a=3, h=0.6, device_type='GPU', channels='Y')
-    deband_mask = lvf.denoise.detail_mask(preden, brz_a=2000, brz_b=800, rad=4)
+    deband_mask = detail_mask_func(preden, brz_a=2000, brz_b=800, rad=4)
     deband = dbs.f3kpf(out, 17, 42, 42)
     deband = core.std.MaskedMerge(deband, out, deband_mask)
     deband_b = rkt.rekt_fast(deband, lambda x: core.neo_f3kdb.Deband(x, 8, 96, 96, 96, sample_mode=1, keep_tv_range=True), 1112, 264, 184, 0)

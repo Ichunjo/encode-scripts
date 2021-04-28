@@ -188,7 +188,7 @@ def do_filter():
     chroma_mask = core.std.Expr(chroma_masks, 'x y + z + a + b +').std.Maximum()
     chroma_mask = core.std.Merge(chroma_mask, chroma_mask.std.Minimum()).std.BoxBlur(0, 1, 1, 1, 1)
 
-    detail_mask = lvf.denoise.detail_mask(planes[0].std.BoxBlur(0, 1, 1, 1, 1), brz_a=3300, brz_b=2000)
+    detail_mask = detail_mask_func(planes[0].std.BoxBlur(0, 1, 1, 1, 1), brz_a=3300, brz_b=2000)
 
 
     # Debanding stages

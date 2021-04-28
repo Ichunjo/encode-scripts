@@ -163,7 +163,7 @@ def do_filter():
 
 
 
-    deband_mask = lvf.denoise.detail_mask(credit, brz_a=3000, brz_b=1500)
+    deband_mask = detail_mask_func(credit, brz_a=3000, brz_b=1500)
     deband_a = dbs.f3kpf(credit, 18, 36, 36)
     deband = core.std.MaskedMerge(deband_a, credit, deband_mask)
     deband = lvf.rfs(deband, credit, [(29640, 30011)])

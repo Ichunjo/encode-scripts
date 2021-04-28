@@ -61,7 +61,7 @@ full = vrf.join([cred, u, v])
 out = fvf.Depth(full, 16)
 
 
-line_m = lvf.denoise.detail_mask(out.std.Median(), brz_a=1850, brz_b=875)
+line_m = detail_mask_func(out.std.Median(), brz_a=1850, brz_b=875)
 db = core.neo_f3kdb.Deband(out, 15, 36, 36, 36, 24, 0, sample_mode=4, dynamic_grain=True)
 db = core.std.MaskedMerge(db, out, line_m)
 

@@ -158,7 +158,7 @@ def do_filter():
 
 
 
-    deband_mask = lvf.denoise.detail_mask(antialias_merged, brz_a=3000, brz_b=1500)
+    deband_mask = detail_mask_func(antialias_merged, brz_a=3000, brz_b=1500)
     dark_mask = core.std.Expr([deband_mask, _ret_mask(antialias_merged, 12500)], 'x y +')
     deband_a = dbs.f3kpf(antialias_merged, 18, 36, 36)
     deband_b = dbs.f3kpf(antialias_merged, 18, 42, 42)

@@ -69,7 +69,7 @@ def do_filter():
 
 
 
-    deband_mask = lvf.denoise.detail_mask(out.std.Median(), brz_a=3000, brz_b=1500)
+    deband_mask = detail_mask_func(out.std.Median(), brz_a=3000, brz_b=1500)
     deband = dbs.f3kpf(out, 20, 24, 30)
     deband = core.std.MaskedMerge(deband, out, deband_mask)
     out = deband

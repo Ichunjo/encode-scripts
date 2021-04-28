@@ -54,7 +54,7 @@ rescaled = fvf.Depth(vrf.join(planes), 16)
 
 dering = hvf.EdgeCleaner(rescaled, 5, rmode=1, smode=1, hot=True)
 
-db_m = lvf.denoise.detail_mask(dering, brz_a=2500, brz_b=1000)
+db_m = detail_mask_func(dering, brz_a=2500, brz_b=1000)
 db = core.neo_f3kdb.Deband(dering, 17, 36, 36, 36, 24, 0, sample_mode=4, keep_tv_range=True)
 db = core.std.MaskedMerge(db, dering, db_m)
 

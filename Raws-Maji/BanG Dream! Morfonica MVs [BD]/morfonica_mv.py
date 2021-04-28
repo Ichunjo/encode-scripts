@@ -66,7 +66,7 @@ def do_filter():
     merged = depth(merged, 16)
 
 
-    deband_mask = lvf.denoise.detail_mask(merged, brz_a=2500, brz_b=1000)
+    deband_mask = detail_mask_func(merged, brz_a=2500, brz_b=1000)
 
     deband_a = dbs.f3kpf(merged, 17, 48, 48)
     deband_b = core.placebo.Deband(merged, radius=19, threshold=5, iterations=1, grain=2, planes=1|2|4)

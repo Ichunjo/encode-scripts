@@ -54,7 +54,7 @@ def do_filter():
     out = cwarp
 
 
-    detail_mask = lvf.mask.detail_mask(out, brz_a=2250, brz_b=1200)
+    detail_mask = detail_mask_func(out, brz_a=2250, brz_b=1200)
     deband = vdf.dumb3kdb(out, 16, threshold=33, grain=(24, 0))
     deband = core.std.MaskedMerge(deband, out, detail_mask)
     out = deband

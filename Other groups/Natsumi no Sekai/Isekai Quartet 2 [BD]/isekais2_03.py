@@ -88,7 +88,7 @@ def do_filter():
 
 
 
-    deband_mask = lvf.denoise.detail_mask(out, brz_a=2250, brz_b=1600).std.Median()
+    deband_mask = detail_mask_func(out, brz_a=2250, brz_b=1600).std.Median()
     deband = dbs.f3kbilateral(out, 17, 48, 48)
     deband_a = dbs.f3kbilateral(out, 22, 96, 96)
     deband = lvf.rfs(deband, deband_a, [(edstart, edend)])

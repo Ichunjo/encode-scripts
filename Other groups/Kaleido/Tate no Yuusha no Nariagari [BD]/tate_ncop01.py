@@ -140,7 +140,7 @@ def do_filter():
 
 
 
-    deband_mask = lvf.denoise.detail_mask(antialias_merged, brz_a=3000, brz_b=1500)
+    deband_mask = detail_mask_func(antialias_merged, brz_a=3000, brz_b=1500)
     deband_a = dbs.f3kpf(antialias_merged, 18, 36, 36)
     deband_b = dbs.f3kpf(antialias_merged, 18, 42, 42)
     deband_c = placebo.Deband(antialias_merged, radius=16, threshold=4, iterations=1, grain=0)

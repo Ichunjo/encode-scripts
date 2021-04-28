@@ -86,7 +86,7 @@ def do_filter():
 
     preden = core.knlm.KNLMeansCL(aa, a=2, h=2, d=0, device_type='gpu', channels='Y')
     diff = core.std.MakeDiff(aa, preden, 0)
-    db_m = lvf.denoise.detail_mask(aa.std.Median(), brz_a=3000, brz_b=1500)
+    db_m = detail_mask_func(aa.std.Median(), brz_a=3000, brz_b=1500)
 
     db_a = dbs.f3kpf(aa, 17)
     db_b = core.placebo.Deband(preden, radius=17, threshold=5.5, iterations=1, grain=4, planes=1|2|4)

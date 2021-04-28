@@ -69,7 +69,7 @@ def do_filter():
     out = dering
 
 
-    detail_mask = lvf.mask.detail_mask(out, brz_a=2250, brz_b=1000)
+    detail_mask = detail_mask_func(out, brz_a=2250, brz_b=1000)
     deband = vdf.dumb3kdb(out, 15, threshold=17, grain=(24, 0))
     deband = core.std.MaskedMerge(deband, out, detail_mask)
     out = deband

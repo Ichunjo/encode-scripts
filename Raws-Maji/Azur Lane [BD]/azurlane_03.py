@@ -84,7 +84,7 @@ def do_filter():
 
 
 
-    db_m = lvf.denoise.detail_mask(aa.std.Median(), brz_a=3000, brz_b=1500)
+    db_m = detail_mask_func(aa.std.Median(), brz_a=3000, brz_b=1500)
 
     db = dbs.f3kpf(aa, 17)
     db = core.std.MaskedMerge(db, aa, db_m)
