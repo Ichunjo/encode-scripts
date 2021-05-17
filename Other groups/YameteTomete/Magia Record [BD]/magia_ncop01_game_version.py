@@ -86,7 +86,7 @@ def do_filter():
 
 
 
-    detail_mask = detail_mask_func(out, brz_a=2300, brz_b=1000)
+    detail_mask = lvf.denoise.detail_mask(out, brz_a=2300, brz_b=1000)
     deband = placebo.deband(out, 17, 4.25, grain=6)
     deband_a = placebo.deband(out, 17, 8, 2, grain=6)
     deband_b = placebo.deband(out, 17, 6, grain=6)

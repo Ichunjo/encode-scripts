@@ -48,7 +48,7 @@ def do_filter():
 
 
     preden = core.knlm.KNLMeansCL(antialias, a=2, h=1.5, d=0, device_type='gpu', channels='Y')
-    deband_mask = detail_mask_func(preden, brz_a=2500, brz_b=1000)
+    deband_mask = lvf.denoise.detail_mask(preden, brz_a=2500, brz_b=1000)
     deband = dbs.f3kpf(preden, 17, 36, 36)
     diff = core.std.MakeDiff(antialias, preden)
     deband = core.std.MergeDiff(deband, diff)

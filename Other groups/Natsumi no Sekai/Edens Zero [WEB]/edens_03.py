@@ -62,7 +62,7 @@ def do_filter():
     out = merge
 
 
-    detail_mask = detail_mask_func(out, brz_a=2250, brz_b=1200)
+    detail_mask = lvf.mask.detail_mask(out, brz_a=2250, brz_b=1200)
     pref = out.std.Convolution([1, 2, 1, 2, 4, 2, 1, 2, 1]).std.Convolution([1] * 9)
     deband1 = vdf.dumb3kdb(pref, 17, 45, grain=16, seed=333)
     deband2 = vdf.dumb3kdb(pref, 15, 49, grain=16, sample_mode=4, use_neo=True, blur_first=False, seed=333)

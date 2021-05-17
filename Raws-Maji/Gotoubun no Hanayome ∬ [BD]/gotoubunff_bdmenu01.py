@@ -130,7 +130,7 @@ def do_filter():
     out = edgeclean
 
 
-    detail_light_mask = detail_mask_func(out, brz_a=2500, brz_b=1200)
+    detail_light_mask = lvf.denoise.detail_mask(out, brz_a=2500, brz_b=1200)
 
     deband = dumb3kdb(out, 17, 36)
     deband = core.std.MaskedMerge(deband, out, detail_light_mask)

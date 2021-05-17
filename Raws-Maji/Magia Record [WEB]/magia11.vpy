@@ -112,7 +112,7 @@ db = core.std.MaskedMerge(db_a, db_b, adapt_m)
 
 mask_LightArrows = core.std.Expr([
     vrdf.get_y(lvf.src('mask for light.png', aa)),
-    detail_mask_func(den_a, brz_a=2000, brz_b=1500)],
+    lvf.denoise.detail_mask(den_a, brz_a=2000, brz_b=1500)],
     'x y max')
 db_LightArrows = core.placebo.Deband(aa, radius=12, threshold=6, iterations=1, grain=0, planes=1)
 db_LightArrows = core.grain.Add(db_LightArrows, 0.25, constant=True)

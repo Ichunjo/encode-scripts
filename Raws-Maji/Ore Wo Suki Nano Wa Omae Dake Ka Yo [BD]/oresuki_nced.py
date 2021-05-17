@@ -104,7 +104,7 @@ def do_filter():
     out = sharp
 
 
-    deband_mask = detail_mask_func(out, brz_a=2000, brz_b=1000)
+    deband_mask = lvf.denoise.detail_mask(out, brz_a=2000, brz_b=1000)
     deband = dbs.f3kpf(out, 17, 30, 30)
     deband = core.std.MaskedMerge(deband, out, deband_mask)
     out = deband

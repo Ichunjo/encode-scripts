@@ -178,7 +178,7 @@ def do_filter():
                          [(mask.start_frame, mask.end_frame)])
 
 
-    deband_mask = detail_mask_func(credit, brz_a=3000, brz_b=1500)
+    deband_mask = lvf.denoise.detail_mask(credit, brz_a=3000, brz_b=1500)
     deband_a = dbs.f3kpf(credit, 18, 36, 36)
     deband_b = dbs.f3kpf(credit, 18, 42, 42)
     deband_c = placebo.Deband(credit, radius=16, threshold=4, iterations=1, grain=0)

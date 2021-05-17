@@ -147,7 +147,7 @@ def do_filter():
 
 
     preden = core.knlm.KNLMeansCL(out, d=0, a=3, h=0.6, device_type='GPU', channels='Y')
-    deband_mask = detail_mask_func(preden, brz_a=2000, brz_b=800, rad=4)
+    deband_mask = lvf.denoise.detail_mask(preden, brz_a=2000, brz_b=800, rad=4)
     deband = dbs.f3kpf(out, 17, 42, 42)
     deband_b = placebo.deband(out, 24, 6.5, 3)
     deband = lvf.rfs(deband, deband_b, [(opstart, opstart+105), (opstart+657, opstart+693)])

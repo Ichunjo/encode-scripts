@@ -125,7 +125,7 @@ def sraa_eedi3(clip: vs.VideoNode, rep: Optional[int] = None, **eedi3_args: Any)
 
 def detail_dark_mask_func(clip: vs.VideoNode, brz_a: int, brz_b: int)-> vs.VideoNode:
     ret = core.retinex.MSRCP(clip, sigma=[100, 250, 800], upper_thr=0.005)
-    return detail_mask_func(ret, brz_a=brz_a, brz_b=brz_b)
+    return lvf.denoise.detail_mask(ret, brz_a=brz_a, brz_b=brz_b)
 
 def dumb3kdbv2(clip, radius=16, strength=41):
     div = (strength - 1) % 16
@@ -155,7 +155,7 @@ def do_filter():
 
 
     detail_dark_mask = detail_dark_mask_func(get_y(out), brz_a=8000, brz_b=6000)
-    detail_light_mask = detail_mask_func(out, brz_a=2500, brz_b=1200)
+    detail_light_mask = lvf.denoise.detail_mask(out, brz_a=2500, brz_b=1200)
     detail_mask = core.std.Expr([detail_dark_mask, detail_light_mask], 'x y +').std.Median()
     detail_mask_grow = iterate(detail_mask, core.std.Maximum, 2)
     detail_mask_grow = iterate(detail_mask_grow, core.std.Inflate, 2).std.Convolution([*[1]*9])

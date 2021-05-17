@@ -31,7 +31,7 @@ desc_y = fvf.DebicubicM(vrf.get_y(den), vrf.get_w(844), 844, b=1/3, c=1/3)
 scaled_y = nnedi3_rpow2(desc_y).resize.Spline36(1920, 1080)
 merged = core.std.ShufflePlanes([scaled_y, den], [0, 1, 2], vs.YUV)
 
-db_m = detail_mask_func(merged, brz_a=3000, brz_b=1500)
+db_m = lvf.denoise.detail_mask(merged, brz_a=3000, brz_b=1500)
 db_a = core.placebo.Deband(merged, radius=16, threshold=4.5, iterations=1, grain=0, planes=1|2|4)
 db_b = core.placebo.Deband(merged, radius=17, threshold=7.5, iterations=1, grain=0, planes=1|2|4)
 db_c = core.placebo.Deband(merged, radius=20, threshold=7, iterations=2, grain=0, planes=1|2|4)
