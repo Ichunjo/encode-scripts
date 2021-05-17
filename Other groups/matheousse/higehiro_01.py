@@ -1,48 +1,50 @@
 """HigeHiro script"""
 __author__ = 'Vardë'
 
-import os
-import shlex
-import subprocess
-from typing import Dict, Any, Optional, List, Tuple
 
-import vardefunc as vdf
-import havsfunc as hvf
-import lvsfunc as lvf
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union, cast
+
 import G41Fun as gf
+import havsfunc as hvf
 import kagefunc as kgf
-
-import init_source
-
+import lvsfunc as lvf
+import vardefunc as vdf
+from vardautomation import (BasicTool, FileInfo, PresetAAC, PresetWEB,
+                            X265Encoder)
+from vardefunc.mask import Scharr
 from vsutil import depth, get_y
-import vapoursynth as vs
 
+import vapoursynth as vs
 core = vs.core
 
 
 NUM = __file__[-5:-3]
 
-WEB_CRU = init_source.Infos()
-WEB_CRU.set_infos(f'{NUM}/Higehiro E{NUM} [1080p][AAC][JapDub][GerEngSub][Web-DL].mkv', None, None, preset='web/aac')
+WEB_CRU = FileInfo(f'{NUM}/[FeelsBadSubs] Hige wo Soru. Soshite Joshikousei wo Hirou. - {NUM} [1080p].mkv',
+                   None, None, preset=[PresetWEB, PresetAAC])
+WEB_AOD = FileInfo(f'{NUM}/Higehiro E{NUM} [1080p+][AAC][JapDub][GerSub][Web-DL].mkv',
+                   None, None, preset=[PresetWEB, PresetAAC])
 
-WEB_AOD = init_source.Infos()
-WEB_AOD.set_infos(f'{NUM}/Higehiro E{NUM} [1080p+][AAC][JapDub][GerSub][Web-DL].mkv', None, None, preset='web/aac')
-
-SUB = f'{NUM}/[FeelsBadSubs] Hige wo Soru. Soshite Joshikousei wo Hirou. - {NUM} [1080p]_Track04.ass'
-
+SUB = f'{NUM}/[FeelsBadSubs] Hige wo Soru. Soshite Joshikousei wo Hirou. - {NUM} [1080p].ass'
 
 
 
-class Credit:
-    def __init__(self, range_frames: List[Tuple], mask: vs.VideoNode) -> None:
-        self.range_frames = range_frames
-        self.mask = mask
+
+class Credit(NamedTuple):  # noqa: PLC0115
+    range_frames: List[Tuple[int, int]]
+    mask: vs.VideoNode
 
 
-def do_filter():
+class ScharrG41(Scharr):  # noqa: PLC0115
+    def _get_divisors(self) -> List[float]:
+        return [3, 3]
+
+
+def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
     """Vapoursynth filtering"""
-    src_cru = WEB_CRU.src_cut
-    src_aod = WEB_AOD.src_cut
+    src_cru = WEB_CRU.clip_cut
+    src_aod = WEB_AOD.clip_cut
 
     _, masksub = core.sub.TextFile(src_aod, SUB, fontdir='fonts', blend=False)
     masksub = core.std.Binarize(masksub, 1)
@@ -54,12 +56,11 @@ def do_filter():
     out = dehardsub
 
 
+    lineart = ScharrG41().get_mask(get_y(out), 4000, multi=1.2).rgvs.RemoveGrain(3).std.Maximum().std.Minimum()
 
-    lineart = gf.EdgeDetect(out, 'scharr').std.Maximum().std.Minimum()
-    lineart = core.std.Expr(lineart, 'x 4000 < 0 x ? 1.2 *').rgvs.RemoveGrain(3)
 
     luma = get_y(out)
-    ssing = vdf.fsrcnnx_upscale(
+    ssing = vdf.scale.fsrcnnx_upscale(
         luma, height=1620, shader_file='shaders/FSRCNNX_x2_16-0-4-1.glsl',
         downscaler=lambda c, w, h: core.resize.Bicubic(c, w, h, filter_param_a=-0.5, filter_param_b=0.25),
         profile='fast',
@@ -67,7 +68,7 @@ def do_filter():
     sraing = sraa_eedi3(ssing, 13, gamma=100, nrad=2, mdis=15)
     down = core.resize.Bicubic(sraing, out.width, out.height, filter_param_a=-0.5, filter_param_b=0.25)
     masked = core.std.MaskedMerge(luma, down, lineart)
-    merged = vdf.merge_chroma(masked, out)
+    merged = vdf.misc.merge_chroma(masked, out)
     out = merged
 
 
@@ -75,14 +76,16 @@ def do_filter():
     out = contra
 
 
-    dehalo = gf.MaskedDHA(out, rx=1.4, ry=1.4, darkstr=0, brightstr=0.8)
-    out = dehalo
-
 
 
     # I gave up on this
     ending = lvf.rfs(out, dehardsub, [(31782, out.num_frames - 1)])
     out = ending
+
+
+
+    dehalo = gf.MaskedDHA(out, rx=1.4, ry=1.4, darkstr=0, brightstr=0.8)
+    out = dehalo
 
 
 
@@ -94,9 +97,8 @@ def do_filter():
 
 
 
-
     ref = src_cru
-    rsc_m = vdf.diff_rescale_mask(ref, 837, mthr=40)
+    rsc_m = vdf.mask.diff_rescale_mask(ref, 837, thr=80)
     rsc_m = depth(rsc_m, 16)
 
     ref = dehardsub
@@ -104,23 +106,23 @@ def do_filter():
 
     # Beginning credits
     creds = [
-        Credit([(0, 117)], vdf.region_mask(rsc_m[94], 700, 600, 300, 300)),
+        Credit([(0, 117)], vdf.mask.region_mask(rsc_m[94], 700, 600, 300, 300)),
         Credit([(125, 233)], core.std.Expr(
-            [vdf.region_mask(rsc_m, 100, 1300, 120, 600),
-             vdf.region_mask(rsc_m, 100, 1700, 80, 600)], 'x y max')[137]),
-        Credit([(288, 399)], vdf.region_mask(rsc_m[303], 0, 1200, 0, 500)),
-        Credit([(288, 399)], vdf.region_mask(rsc_m[303], 0, 1200, 0, 500)),
-        Credit([(526, 631)], vdf.region_mask(rsc_m[543], 1200, 0, 0, 500)),
-        Credit([(644, 749)], vdf.region_mask(rsc_m[672], 0, 1000, 0, 0)),
-        Credit([(758, 851)], vdf.region_mask(rsc_m[771], 1300, 0, 0, 400)),
-        Credit([(859, 966)], vdf.region_mask(rsc_m[935], 1325, 0, 0, 0)),
-        Credit([(996, 1083)], vdf.region_mask(rsc_m[1007], 1325, 0, 0, 0)),
-        Credit([(1091, 1198)], vdf.region_mask(rsc_m[1117], 1325, 0, 0, 0)),
-        Credit([(1216, 1315)], vdf.region_mask(rsc_m[1253], 800, 800, 400, 400)),
+            [vdf.mask.region_mask(rsc_m, 100, 1300, 120, 600),
+             vdf.mask.region_mask(rsc_m, 100, 1700, 80, 600)], 'x y max')[137]),
+        Credit([(288, 399)], vdf.mask.region_mask(rsc_m[303], 0, 1200, 0, 500)),
+        Credit([(288, 399)], vdf.mask.region_mask(rsc_m[303], 0, 1200, 0, 500)),
+        Credit([(526, 631)], vdf.mask.region_mask(rsc_m[543], 1200, 0, 0, 500)),
+        Credit([(644, 749)], vdf.mask.region_mask(rsc_m[672], 0, 1000, 0, 0)),
+        Credit([(758, 851)], vdf.mask.region_mask(rsc_m[771], 1300, 0, 0, 400)),
+        Credit([(859, 966)], vdf.mask.region_mask(rsc_m[935], 1325, 0, 0, 0)),
+        Credit([(996, 1083)], vdf.mask.region_mask(rsc_m[1007], 1325, 0, 0, 0)),
+        Credit([(1091, 1198)], vdf.mask.region_mask(rsc_m[1117], 1325, 0, 0, 0)),
+        Credit([(1216, 1315)], vdf.mask.region_mask(rsc_m[1253], 800, 800, 400, 400)),
         Credit([(1333, 1439)], core.std.Expr(
-            [vdf.region_mask(rsc_m, 1265, 0, 850, 0),
-             vdf.region_mask(rsc_m, 1400, 0, 800, 0),
-             vdf.region_mask(rsc_m, 1000, 0, 950, 0)], 'x y max z max')[1365]),
+            [vdf.mask.region_mask(rsc_m, 1265, 0, 850, 0),
+             vdf.mask.region_mask(rsc_m, 1400, 0, 800, 0),
+             vdf.mask.region_mask(rsc_m, 1000, 0, 950, 0)], 'x y max z max')[1365]),
     ]
     for cred in creds:
         credit = lvf.rfs(credit, core.std.MaskedMerge(out, ref, cred.mask), cred.range_frames)
@@ -128,13 +130,17 @@ def do_filter():
 
     # Ep Title
     creds = [
-        Credit([1653, 1772], vdf.region_mask(rsc_m[1705], 100, 600, 40, 940)),
+        Credit([(1653, 1772)], vdf.mask.region_mask(rsc_m[1705], 100, 600, 40, 940)),
     ]
     for cred in creds:
         credit = lvf.rfs(credit, core.std.MaskedMerge(out, ref, cred.mask), cred.range_frames)
 
     out = credit
 
+
+
+    # return dehardsub, rsc_m
+    # return dehardsub, masksub
 
 
     return depth(out, 10).std.Limiter(16 << 2, [235 << 2, 240 << 2], [0, 1, 2])
@@ -144,7 +150,7 @@ def do_filter():
 def _dbgra(clip: vs.VideoNode) -> vs.VideoNode:
     clip = depth(clip, 16)
     clip = hvf.SMDegrain(clip, tr=1, thSAD=200)
-    clip = vdf.dumb3kdb(clip, threshold=45)
+    clip = vdf.deband.dumb3kdb(clip, threshold=45)
     clip = core.std.Expr(clip, ['x 64 -', 'x 32 +', 'x 32 +'])
     clip = kgf.adaptive_grain(clip, 0.4)
     return clip
@@ -179,48 +185,38 @@ def sraa_eedi3(clip: vs.VideoNode, rep: Optional[int] = None, **eedi3_args: Any)
 
 
 
-def do_encode(clip):
-    """Compression with x26X"""
-    if not os.path.isfile(WEB_AOD.output):
-        print('\n\n\nVideo encoding')
-        bits = clip.format.bits_per_sample
-        x265_cmd = f'x265 -o {WEB_AOD.output} - --y4m' + ' '
-        x265_cmd += f'--csv {WEB_AOD.name}_log_x265.csv --csv-log-level 2' + ' '
-        x265_cmd += '--preset slower' + ' '
-        x265_cmd += f'--frames {clip.num_frames} --fps {clip.fps_num}/{clip.fps_den} --output-depth {bits}' + ' '
-        x265_cmd += '--rd 3 --no-rect --no-amp --rskip 1 --tu-intra-depth 2 --tu-inter-depth 2 --tskip' + ' '
-        x265_cmd += '--merange 48 --weightb' + ' '
-        x265_cmd += '--no-strong-intra-smoothing' + ' '
-        x265_cmd += '--psy-rd 1.85 --psy-rdoq 2 --no-open-gop --keyint 240 --min-keyint 23 --scenecut 40 --rc-lookahead 48 --bframes 16' + ' '
-        x265_cmd += '--crf 16 --aq-mode 3 --aq-strength 0.85 --cbqpoffs -2 --crqpoffs -2 --qcomp 0.70' + ' '
-        x265_cmd += '--deblock=1:-1 --no-sao --no-sao-non-deblock' + ' '
-        x265_cmd += f'--sar 1 --range limited --colorprim 1 --transfer 1 --colormatrix 1 --min-luma {str(16<<(bits - 8))} --max-luma {str(235<<(bits - 8))}'
+def do_wizardry() -> None:
+    """It's magic"""
 
-        print("Encoder command: ", " ".join(shlex.split(x265_cmd)), "\n")
-        process = subprocess.Popen(shlex.split(x265_cmd), stdin=subprocess.PIPE)
-        clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue:
-                    print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
-        process.communicate()
+    filtered = filtering()
+    if isinstance(filtered, vs.VideoNode):
+        filtered = cast(vs.VideoNode, filtered)
+    else:
+        raise ValueError
 
-    print('\n\n\nAudio extraction')
-    mkv_args = ['mkvextract', WEB_AOD.src, 'tracks', f'1:{WEB_AOD.a_src}']
-    subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
+    if not Path(WEB_AOD.name_clip_output).exists():
+        X265Encoder('x265', Path('settings/x265_settings'), filtered, WEB_AOD,
+                    progress_update=lambda v, e:
+                        print(f"\rVapourSynth: {v}/{e} ~ {100 * v // e}% || Encoder: ", end=""))
 
-    print('\nFinal muxing')
-    mkv_args = ['mkvmerge', '-o', WEB_AOD.output_final,
-                '--track-name', '0:HEVC WEBRip by Vardë@Raws-Maji', '--language', '0:jpn', WEB_AOD.output,
-                '--track-name', '0:AAC 2.0', '--language', '0:jpn', WEB_AOD.a_src]
-    subprocess.run(mkv_args, text=True, check=True, encoding='utf-8')
+
+    if not Path(WEB_AOD.a_src.format(1)).exists():
+        BasicTool('mkvextract', [WEB_AOD.src, 'tracks', f'1:{WEB_AOD.a_src.format(1)}'])
+
+
+    assert WEB_AOD.a_src is not None
+    BasicTool('mkvmerge', ['-o', WEB_AOD.name_file_final,
+                           '--track-name', '0:HEVC WEBRip by Vardë@Raws-Maji', '--language', '0:jpn', WEB_AOD.name_clip_output,
+                           '--track-name', '0:AAC 2.0', '--language', '0:jpn', WEB_AOD.a_src.format(1)])
 
 
 if __name__ == '__main__':
-    FILTERED = do_filter()
-    do_encode(FILTERED)
+    do_wizardry()
 else:
-    WEB_CRU.src_cut.set_output(0)
-    WEB_AOD.src_cut.set_output(1)
+    WEB_CRU.clip_cut.set_output(0)
+    WEB_AOD.clip_cut.set_output(1)
 
-    FILTERED = do_filter()
+    FILTERED = filtering()
     # FILTERED.set_output(2)
     FILTERED[0].set_output(2)
     FILTERED[1].set_output(3)

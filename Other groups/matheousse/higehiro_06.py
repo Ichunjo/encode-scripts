@@ -41,7 +41,6 @@ class ScharrG41(Scharr):  # noqa: PLC0115
         return [3, 3]
 
 
-
 def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
     """Vapoursynth filtering"""
     src_cru = WEB_CRU.clip_cut
@@ -78,8 +77,9 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
 
     # I gave up on this
-    ending = lvf.rfs(out, dehardsub, [(1368, 3524), (31072, out.num_frames - 1)])
+    ending = lvf.rfs(out, dehardsub, [(984, 3140), (31094, out.num_frames - 1)])
     out = ending
+
 
 
 
@@ -106,7 +106,7 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
     # Ep Title
     creds = [
-        Credit([(3691, 3810)], vdf.mask.region_mask(rsc_m[3696], 1450, 0, 800, 0)),
+        Credit([(3188, 3291)], vdf.mask.region_mask(rsc_m[3273], 0, 1200, 0, 600)),
     ]
     for cred in creds:
         credit = lvf.rfs(credit, core.std.MaskedMerge(out, ref, cred.mask), cred.range_frames)
@@ -115,7 +115,7 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
 
 
-    # return dehardsub, vdf.mask.region_mask(rsc_m, 1450, 0, 800, 0)
+    # return dehardsub, vdf.mask.region_mask(rsc_m, 0, 1200, 0, 600)
     # return dehardsub, out
 
 

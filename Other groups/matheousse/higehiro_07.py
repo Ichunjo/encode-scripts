@@ -78,7 +78,7 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
 
     # I gave up on this
-    ending = lvf.rfs(out, dehardsub, [(1368, 3524), (31072, out.num_frames - 1)])
+    ending = lvf.rfs(out, dehardsub, [(1344, 3500), (31649, out.num_frames - 1)])
     out = ending
 
 
@@ -96,6 +96,8 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
 
 
+
+
     ref = src_cru
     rsc_m = vdf.mask.diff_rescale_mask(ref, 837, thr=80)
     rsc_m = depth(rsc_m, 16)
@@ -106,7 +108,7 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
     # Ep Title
     creds = [
-        Credit([(3691, 3810)], vdf.mask.region_mask(rsc_m[3696], 1450, 0, 800, 0)),
+        Credit([(3703, 3822)], vdf.mask.region_mask(rsc_m[3798], 1300, 0, 930, 0)),
     ]
     for cred in creds:
         credit = lvf.rfs(credit, core.std.MaskedMerge(out, ref, cred.mask), cred.range_frames)
@@ -115,7 +117,8 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
 
 
-    # return dehardsub, vdf.mask.region_mask(rsc_m, 1450, 0, 800, 0)
+    # return dehardsub, vdf.mask.region_mask(rsc_m, 1300, 0, 930, 0)
+    # return dehardsub, rsc_m
     # return dehardsub, out
 
 
@@ -130,7 +133,6 @@ def _dbgra(clip: vs.VideoNode) -> vs.VideoNode:
     clip = core.std.Expr(clip, ['x 64 -', 'x 32 +', 'x 32 +'])
     clip = kgf.adaptive_grain(clip, 0.4)
     return clip
-
 
 
 def sraa_eedi3(clip: vs.VideoNode, rep: Optional[int] = None, **eedi3_args: Any) -> vs.VideoNode:
@@ -158,7 +160,6 @@ def sraa_eedi3(clip: vs.VideoNode, rep: Optional[int] = None, **eedi3_args: Any)
         flt = core.rgvs.Repair(flt, clip, rep)
 
     return flt
-
 
 
 def do_wizardry() -> None:

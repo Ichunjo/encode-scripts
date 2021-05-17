@@ -30,7 +30,6 @@ SUB = f'{NUM}/[FeelsBadSubs] Hige wo Soru. Soshite Joshikousei wo Hirou. - {NUM}
 
 
 
-
 class Credit(NamedTuple):  # noqa: PLC0115
     range_frames: List[Tuple[int, int]]
     mask: vs.VideoNode
@@ -39,7 +38,6 @@ class Credit(NamedTuple):  # noqa: PLC0115
 class ScharrG41(Scharr):  # noqa: PLC0115
     def _get_divisors(self) -> List[float]:
         return [3, 3]
-
 
 
 def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
@@ -78,7 +76,7 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
 
     # I gave up on this
-    ending = lvf.rfs(out, dehardsub, [(1368, 3524), (31072, out.num_frames - 1)])
+    ending = lvf.rfs(out, dehardsub, [(1248, 3404), (31648, out.num_frames - 1)])
     out = ending
 
 
@@ -106,7 +104,7 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
     # Ep Title
     creds = [
-        Credit([(3691, 3810)], vdf.mask.region_mask(rsc_m[3696], 1450, 0, 800, 0)),
+        Credit([(3571, 3690)], vdf.mask.region_mask(rsc_m[3696], 1450, 0, 840, 0)),
     ]
     for cred in creds:
         credit = lvf.rfs(credit, core.std.MaskedMerge(out, ref, cred.mask), cred.range_frames)
@@ -115,7 +113,7 @@ def filtering() -> Union[vs.VideoNode, Tuple[vs.VideoNode, vs.VideoNode]]:
 
 
 
-    # return dehardsub, vdf.mask.region_mask(rsc_m, 1450, 0, 800, 0)
+    # return dehardsub, vdf.mask.region_mask(rsc_m, 1450, 0, 840, 0)
     # return dehardsub, out
 
 
