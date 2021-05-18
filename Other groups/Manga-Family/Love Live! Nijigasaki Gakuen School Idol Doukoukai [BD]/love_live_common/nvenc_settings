@@ -1,0 +1,1 @@
+-i - --y4m --lossless -c hevc --output-depth 10 -o {clip_output_lossless:s}

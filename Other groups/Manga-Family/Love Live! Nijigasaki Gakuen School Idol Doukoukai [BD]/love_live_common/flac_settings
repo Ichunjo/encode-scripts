@@ -1,0 +1,3 @@
+-i {a_src_cut:s}
+-compression_level 12 -lpc_type cholesky -lpc_passes 3 -exact_rice_parameters 1
+{a_enc_cut:s}
