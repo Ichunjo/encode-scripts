@@ -17,9 +17,8 @@ import vapoursynth as vs
 core = vs.core
 
 
-
 NUM = __file__[-5:-3]
-WEB = FileInfo(f'{NUM}/Yuuki Yuuna wa Yuusha de Aru Churutto! - {NUM} (Amazon Rental VBR 1080p).mkv', 24, -23,
+WEB = FileInfo(f'{NUM}/Yuuki Yuuna wa Yuusha de Aru Churutto! - {NUM} (Amazon Prime VBR 1080p).mkv', 24, -24,
                preset=[PresetWEB, PresetEAC3])
 
 

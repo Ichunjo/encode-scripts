@@ -17,9 +17,8 @@ import vapoursynth as vs
 core = vs.core
 
 
-
 NUM = __file__[-5:-3]
-WEB = FileInfo(f'{NUM}/Yuuki Yuuna wa Yuusha de Aru Churutto! - {NUM} (Amazon Rental VBR 1080p).mkv', 24, -23,
+WEB = FileInfo(f'{NUM}/Yuuki Yuuna wa Yuusha de Aru Churutto! - {NUM} (Amazon Prime VBR 1080p).mkv', 24, -22,
                preset=[PresetWEB, PresetEAC3])
 
 
@@ -54,6 +53,8 @@ class Filtering():  # noqa
 
         detail_mask = lvf.mask.detail_mask(out, brz_a=2250, brz_b=1200)
         deband = vdf.deband.dumb3kdb(out, 16, threshold=33, grain=[24, 0])
+        deband_a = vdf.deband.dumb3kdb(out, 20, threshold=89, grain=[24, 0])
+        deband = lvf.rfs(deband, deband_a, [(1970, out.num_frames - 1)])
         deband = core.std.MaskedMerge(deband, out, detail_mask)
         out = deband
 
