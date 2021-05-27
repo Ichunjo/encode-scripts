@@ -21,7 +21,7 @@ core = vs.core
 
 
 class Tool(ABC):
-    """Abstract Encoder interface"""
+    """Abstract tooling interface"""
     def __init__(self, binary: str, settings: Union[Path, List[str]]) -> None:
         self.binary = binary
         self.settings = settings
