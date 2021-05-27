@@ -198,6 +198,20 @@ class BasicTool(Tool):
         subprocess.run(self.params, check=True, text=True, encoding='utf-8')
 
 
+class AudioEncoder(BasicTool):  # noqa
+    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+                 file: Optional[FileInfo], *, track: Optional[int]) -> None:
+        super().__init__(binary, settings, file=file)
+        self.track = track
+
+    def set_variable(self) -> Dict[str, Any]:
+        if self.track:
+            dico = dict(a_src_cut=self.file.a_src_cut.format(self.track),
+                        a_enc_cut=self.file.a_enc_cut.format(self.track))
+        else:
+            dico = dict(a_src_cut=self.file.a_src_cut,
+                        a_enc_cut=self.file.a_enc_cut)
+        return dico
 
 
 class VideoEncoder(Tool):
