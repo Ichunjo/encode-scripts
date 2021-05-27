@@ -1,16 +1,14 @@
 """Automation module"""
-from __future__ import annotations
-
+import argparse
 import os
 import re
 import subprocess
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import (Any, BinaryIO, Callable, Dict, List, Optional,
-                    Tuple, Union, cast)
+from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Tuple,
+                    Union, cast)
 
-import colorama
 import vapoursynth as vs
 
 from .clip_settings import ClipSettings
