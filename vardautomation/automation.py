@@ -100,6 +100,21 @@ class AudioEncoder(BasicTool):  # noqa
         return dico
 
 
+class AudioCutter():
+    """Audio cutter using eztrim"""
+    def __init__(self, file: Optional[FileInfo], /, *, track: int) -> None:
+        self.file = file
+        self.track = track
+        super().__init__()
+
+    def run(self) -> None:  # noqa
+        assert self.file
+        assert self.file.a_src
+        assert self.file.a_src_cut
+        eztrim(self.file.clip, (self.file.frame_start, self.file.frame_end),
+               self.file.a_src.format(self.track), self.file.a_src_cut.format(self.track))
+
+
 class VideoEncoder(Tool):
     """VideoEncoder interface"""
     def __init__(self, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
