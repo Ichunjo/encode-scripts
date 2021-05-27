@@ -134,23 +134,23 @@ class FileInfo():  # noqa: PLR0902
 
 class Tool(ABC):
     """Abstract Encoder interface"""
-    def __init__(self: Tool, binary: str, settings: Union[Path, List[str]]) -> None:
+    def __init__(self, binary: str, settings: Union[Path, List[str]]) -> None:
         self.binary = binary
         self.settings = settings
         self.params: List[str] = []
         super().__init__()
 
     @abstractmethod
-    def run(self: Tool) -> None:
+    def run(self) -> None:
         """Tooling chain"""
         pass  # noqa: PLC0103, PLW0107
 
     @abstractmethod
-    def set_variable(self: Tool) -> Dict[str, Any]:
+    def set_variable(self) -> Dict[str, Any]:
         """Set variables in the settings"""
         pass  # noqa: PLC0103, PLW0107
 
-    def _get_settings(self: Tool) -> None:
+    def _get_settings(self) -> None:
         if isinstance(self.settings, Path):
             with open(self.settings, 'r') as sttgs:
                 self.params = re.split(r'[\n\s]\s*', sttgs.read())
@@ -167,7 +167,7 @@ class Tool(ABC):
 
 class BasicTool(Tool):
     """BasicTool interface"""
-    def __init__(self: BasicTool, binary: str, settings: Union[Path, List[str]], /, file: Optional[FileInfo] = None) -> None:
+    def __init__(self, binary: str, settings: Union[Path, List[str]], /, file: Optional[FileInfo] = None) -> None:
         """Helper allowing the use of CLI programs for basic tasks like video or audio track extraction.
 
         Args:
@@ -184,14 +184,14 @@ class BasicTool(Tool):
         super().__init__(binary, settings)
         self.run()
 
-    def run(self: BasicTool) -> None:
+    def run(self) -> None:
         self._get_settings()
         self._do_tooling()
 
-    def set_variable(self: BasicTool) -> Dict[str, Any]:
+    def set_variable(self) -> Dict[str, Any]:
         return {}
 
-    def _do_tooling(self: BasicTool) -> None:
+    def _do_tooling(self) -> None:
         print(Colors.INFO)
         print(f'{self.binary} command:', ' '.join(self.params))
         print(f'{Colors.RESET}\n')
@@ -202,7 +202,7 @@ class BasicTool(Tool):
 
 class VideoEncoder(Tool):
     """VideoEncoder interface"""
-    def __init__(self: VideoEncoder, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
+    def __init__(self, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
                  file: FileInfo, /, progress_update: Optional[Callable[[int, int], None]] = None) -> None:
         """Helper intended to facilitate video encoding
 
@@ -227,19 +227,17 @@ class VideoEncoder(Tool):
         super().__init__(binary, settings)
         self.run()
 
-    def run(self: VideoEncoder) -> None:
+    def run(self) -> None:
         self._get_settings()
         self._do_encode()
 
-    def set_variable(self: VideoEncoder) -> Dict[str, Any]:
+    def set_variable(self) -> Dict[str, Any]:
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name)
 
-    def _do_encode(self: VideoEncoder) -> None:
+    def _do_encode(self) -> None:
         print(Colors.INFO)
         print('VideoEncoder command:', " ".join(self.params))
         print(f'{Colors.RESET}\n')
-        process = subprocess.Popen(self.params, stdin=subprocess.PIPE)
-        process.stdin = cast(BinaryIO, process.stdin)
 
         self.clip.output(process.stdin, y4m=True, progress_update=self.progress_update)
         process.communicate()
@@ -247,11 +245,11 @@ class VideoEncoder(Tool):
 
 class X265Encoder(VideoEncoder):
     """Video encoder using x265 in HEVC"""
-    def __init__(self: X265Encoder, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
+    def __init__(self, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
                  file: FileInfo, /, progress_update: Optional[Callable[[int, int], None]]) -> None:
         super().__init__(binary, settings, clip, file, progress_update=progress_update)
 
-    def set_variable(self: X265Encoder) -> Dict[str, Any]:
+    def set_variable(self) -> Dict[str, Any]:
         min_luma, max_luma = ClipSettings.get_color_range(self.params, self.clip, self.bits)
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
@@ -261,15 +259,15 @@ class X265Encoder(VideoEncoder):
 
 class X264Encoder(VideoEncoder):
     """Video encoder using x264 in AVC"""
-    def __init__(self: X264Encoder, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
+    def __init__(self, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
                  file: FileInfo, /, progress_update: Optional[Callable[[int, int], None]]) -> None:
         super().__init__(binary, settings, clip, file, progress_update=progress_update)
 
-    def run(self: X264Encoder) -> None:
+    def run(self) -> None:
         self._get_settings()
         self._do_encode()
 
-    def set_variable(self: X264Encoder) -> Dict[str, Any]:
+    def set_variable(self) -> Dict[str, Any]:
         csp = ClipSettings.get_csp(self.clip)
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
