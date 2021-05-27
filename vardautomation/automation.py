@@ -117,13 +117,18 @@ class AudioCutter():
 
 class VideoEncoder(Tool):
     """VideoEncoder interface"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
-                 file: FileInfo, /, progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+    file: FileInfo
+    clip: vs.VideoNode
+    bits: int
+
+    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
         """Helper intended to facilitate video encoding
 
         Args:
             binary (str):
                 Path to your binary file.
+
             settings (Union[Path, List[str]]):
                 Path to your settings file or list of string containing your settings.
 
@@ -135,11 +140,15 @@ class VideoEncoder(Tool):
                 of the form func(current_frame, total_frames) to progress_update.
                 Defaults to None.
         """
-        self.file = file
         self.progress_update = progress_update
-        self.clip = clip
-        self.bits = self.clip.format.bits_per_sample
         super().__init__(binary, settings)
+
+    def run_enc(self, clip: vs.VideoNode, file: FileInfo) -> None:
+        """Run encoding"""
+        self.file = file
+        self.clip = clip
+        assert self.clip.format
+        self.bits = self.clip.format.bits_per_sample
         self.run()
 
     def run(self) -> None:
@@ -160,12 +169,13 @@ class VideoEncoder(Tool):
 
 class X265Encoder(VideoEncoder):
     """Video encoder using x265 in HEVC"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
-                 file: FileInfo, /, progress_update: Optional[Callable[[int, int], None]]) -> None:
-        super().__init__(binary, settings, clip, file, progress_update=progress_update)
+    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+        super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
-        min_luma, max_luma = ClipSettings.get_color_range(self.params, self.clip, self.bits)
+        assert self.clip
+        min_luma, max_luma = Properties.get_color_range(self.params, self.clip, self.bits)
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
                     bits=self.bits,
@@ -174,28 +184,22 @@ class X265Encoder(VideoEncoder):
 
 class X264Encoder(VideoEncoder):
     """Video encoder using x264 in AVC"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]], clip: vs.VideoNode,
-                 file: FileInfo, /, progress_update: Optional[Callable[[int, int], None]]) -> None:
-        super().__init__(binary, settings, clip, file, progress_update=progress_update)
-
-    def run(self) -> None:
-        self._get_settings()
-        self._do_encode()
+    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+        super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
-        csp = ClipSettings.get_csp(self.clip)
+        assert self.clip
+        csp = Properties.get_csp(self.clip)
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
-                    bits=self.bits,
-                    csp=csp)
+                    bits=self.bits, csp=csp)
 
 
 class LosslessEncoder(VideoEncoder):  # noqa
-    def __init__(self, binary: str, settings: Union[Path, List[str]],
-                 clip: vs.VideoNode, file: FileInfo, /,
-                 progress_update: Optional[Callable[[int, int], None]]) -> None:
-        super().__init__(binary, settings, clip, file, progress_update=progress_update)
-        self.file: FileInfo
+    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+        super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
         return dict(clip_output_lossless=self.file.name_clip_output_lossless)
