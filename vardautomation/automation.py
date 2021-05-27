@@ -289,21 +289,16 @@ class X264Encoder(VideoEncoder):
                     csp=csp)
 
 
-class ClipSettings():
-    """Collection of static methods to get some settings from the parameters and/or the clip"""
-    @staticmethod
-    def get_color_range(params: List[str], clip: vs.VideoNode, bits: int) -> Tuple[int, int]:
-        """[summary]
+class LosslessEncoder(VideoEncoder):  # noqa
+    def __init__(self, binary: str, settings: Union[Path, List[str]],
+                 clip: vs.VideoNode, file: FileInfo, /,
+                 progress_update: Optional[Callable[[int, int], None]]) -> None:
+        super().__init__(binary, settings, clip, file, progress_update=progress_update)
+        self.file: FileInfo
 
-        Args:
-            params (List[str]): [description]
-            clip (vs.VideoNode): [description]
-            bits (int): [description]
+    def set_variable(self) -> Dict[str, Any]:
+        return dict(clip_output_lossless=self.file.name_clip_output_lossless)
 
-        Raises:
-            ValueError: [description]
-            vs.Error: [description]
-            ValueError: [description]
 
         Returns:
             Tuple[int, int]: [description]
