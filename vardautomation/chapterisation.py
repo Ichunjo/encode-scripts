@@ -1,11 +1,10 @@
 # noqa
-from typing import List
+import os
+from typing import Any, List
 
 import vapoursynth as vs
 
 from .colors import Colors
-
-core = vs.core
 
 
 class Chapter():
