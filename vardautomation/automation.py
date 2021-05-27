@@ -214,7 +214,7 @@ class Parser():  # noqa
         parser.add_argument("-S", '--start', nargs='?', type=int, help='Start encode at frame START.')
         parser.add_argument("-E", '--end', nargs='?', type=int, help='Stop encode at frame END (inclusive).')
         self.args = parser.parse_args()
-
+        super().__init__()
 
     def parsing(self, file: FileInfo, clip: vs.VideoNode) -> Tuple[FileInfo, vs.VideoNode]:  # noqa
         # Lossless check
