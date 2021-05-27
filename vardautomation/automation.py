@@ -300,56 +300,56 @@ class LosslessEncoder(VideoEncoder):  # noqa
         return dict(clip_output_lossless=self.file.name_clip_output_lossless)
 
 
-        Returns:
-            Tuple[int, int]: [description]
-        """
-        if '--range' in params:
-            rng_param = params[params.index('--range') + 1]
-            if rng_param == 'limited':
-                min_luma = 16 << (bits - 8)
-                max_luma = 235 << (bits - 8)
-            elif rng_param == 'full':
-                min_luma = 0
-                max_luma = (1 << bits) - 1
+
+class Parser():  # noqa
+    def __init__(self, file: FileInfo) -> None:
+        parser = argparse.ArgumentParser(description=f'Encode {file.name}')
+        parser.add_argument('-L', '--lossless', action='store_true', default=False,
+                            help='Write a lossless file instead of piping the pre-processing.')
+        parser.add_argument("-S", '--start', nargs='?', type=int, help='Start encode at frame START.')
+        parser.add_argument("-E", '--end', nargs='?', type=int, help='Stop encode at frame END (inclusive).')
+        self.args = parser.parse_args()
+
+
+    def parsing(self, file: FileInfo, clip: vs.VideoNode) -> Tuple[FileInfo, vs.VideoNode]:  # noqa
+        # Lossless check
+        if self.args.lossless:
+            file.do_lossless = True
+
+        file_frame_start: Optional[int] = None
+        file_frame_end: Optional[int] = None
+
+        frame_start: Optional[int] = None
+        frame_end: Optional[int] = None
+
+        # start frame check
+        if self.args.start is not None:
+            if self.args.start >= 0:
+                frame_start = self.args.start
+                if file.frame_start is None:
+                    file.frame_start = 0
+                file_frame_start = file.frame_start + self.args.start
             else:
-                print(Colors.INFO)
-                raise ValueError('Wrong range in parameters!')
-        elif '_ColorRange' in clip.get_frame(0).props:
-            color_rng = clip.get_frame(0).props['_ColorRange']
-            if color_rng == 1:
-                min_luma = 16 << (bits - 8)
-                max_luma = 235 << (bits - 8)
-            elif color_rng == 0:
-                min_luma = 0
-                max_luma = (1 << bits) - 1
-            else:
-                print(Colors.INFO)
-                raise vs.Error('Wrong "_ColorRange" prop in the clip!')
+                print(Colors.FAIL)
+                raise ValueError('--start START must be a positive value!')
         else:
-            print(Colors.INFO)
-            raise ValueError('Cannot guess the color range!')
-        return min_luma, max_luma
+            file_frame_start = file.frame_start
 
-    @staticmethod
-    def get_csp(clip: vs.VideoNode) -> str:
-        """[summary]
+        # end frame check
+        if self.args.end is not None:
+            if self.args.end >= 0:
+                frame_end = self.args.end + 1
+                if file.frame_end is None:
+                    file.frame_end = file.clip.num_frames
+                file_frame_end = min(file.frame_start + self.args.end + 1,
+                                     file.frame_end)
+            else:
+                print(Colors.FAIL)
+                raise ValueError('--end END must be a positive value!')
+        else:
+            file_frame_end = file.frame_end
 
-        Args:
-            clip (vs.VideoNode): [description]
+        file.frame_start = file_frame_start
+        file.frame_end = file_frame_end
 
-        Returns:
-            str: [description]
-        """
-        def _get_csp_subsampled(format_clip: vs.Format) -> str:
-            sub_w, sub_h = format_clip.subsampling_w, format_clip.subsampling_h
-            csp_yuv_subs: Dict[Tuple[int, int], str] = {(0, 0): 'i444', (1, 0): 'i422', (1, 1): 'i420'}
-            return csp_yuv_subs[(sub_w, sub_h)]
-
-        assert clip.format is not None
-
-        csp_avc = {
-            vs.GRAY: 'i400',
-            vs.YUV: _get_csp_subsampled(clip.format),
-            vs.RGB: 'rgb'
-        }
-        return csp_avc[clip.format.color_family]
+        return file, clip[frame_start:frame_end]
