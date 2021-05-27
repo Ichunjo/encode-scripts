@@ -70,7 +70,6 @@ class BasicTool(Tool):
         """
         self.file = file
         super().__init__(binary, settings)
-        self.run()
 
     def run(self) -> None:
         self._get_settings()
