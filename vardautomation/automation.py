@@ -100,14 +100,14 @@ class FileInfo():  # noqa: PLR0902
 
         super().__init__()
 
-    def __str__(self: FileInfo) -> str:
+    def __str__(self) -> str:
         txt = 'File infos:\n'
         txt += f'Full path: {self.src}\n'
         txt += f'Clip format: \n{self.clip_cut.format}\n'
         txt += f'Name: {self.name}\n'
         return txt
 
-    def _params_fill_preset(self: FileInfo) -> None:
+    def _params_fill_preset(self) -> None:
         for pre in self.preset:
             for d1, d2 in zip(self.__dict__.items(), pre.__dict__.items()):  # noqa: PLC0103
                 _, v = d1  # noqa: PLC0103
@@ -116,7 +116,7 @@ class FileInfo():  # noqa: PLR0902
                     vp = vp.format(path=self.path, name=self.name, num='{}')  # noqa: PLC0103
                 setattr(self, kp, vp if not v else v)
 
-    def cleanup(self: FileInfo, *,  # noqa
+    def cleanup(self, *,  # noqa
                 a_src: bool = True, a_src_cut: bool = True, a_enc_cut: bool = True,
                 chapter: bool = False, name_clip_output: bool = False) -> None:
         files = (self.a_src, self.a_src_cut, self.a_enc_cut, self.chapter, self.name_clip_output)
@@ -125,6 +125,10 @@ class FileInfo():  # noqa: PLR0902
         for file, boolean in zip(files, booleans):
             if boolean and file:
                 os.remove(file)
+
+    def set_audio_track_to_1(self) -> None:  # noqa
+        self.a_src, self.a_src_cut, self.a_enc_cut = [
+            s.format(1) for s in [self.a_src, self.a_src_cut, self.a_enc_cut]]
 
 
 
