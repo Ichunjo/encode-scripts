@@ -239,8 +239,8 @@ class VideoEncoder(Tool):
         print('VideoEncoder command:', " ".join(self.params))
         print(f'{Colors.RESET}\n')
 
-        self.clip.output(process.stdin, y4m=True, progress_update=self.progress_update)
-        process.communicate()
+        with subprocess.Popen(self.params, stdin=subprocess.PIPE) as process:
+            self.clip.output(cast(BinaryIO, process.stdin), y4m=True, progress_update=self.progress_update)
 
 
 class X265Encoder(VideoEncoder):
