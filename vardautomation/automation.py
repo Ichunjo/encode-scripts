@@ -87,17 +87,16 @@ class BasicTool(Tool):
 
 class AudioEncoder(BasicTool):  # noqa
     def __init__(self, binary: str, settings: Union[Path, List[str]], /,
-                 file: Optional[FileInfo], *, track: Optional[int]) -> None:
+                 file: Optional[FileInfo], *, track: int) -> None:
         super().__init__(binary, settings, file=file)
         self.track = track
 
     def set_variable(self) -> Dict[str, Any]:
-        if self.track:
-            dico = dict(a_src_cut=self.file.a_src_cut.format(self.track),
-                        a_enc_cut=self.file.a_enc_cut.format(self.track))
-        else:
-            dico = dict(a_src_cut=self.file.a_src_cut,
-                        a_enc_cut=self.file.a_enc_cut)
+        assert self.file
+        assert self.file.a_src_cut
+        assert self.file.a_enc_cut
+        dico = dict(a_src_cut=self.file.a_src_cut.format(self.track),
+                    a_enc_cut=self.file.a_enc_cut.format(self.track))
         return dico
 
 
