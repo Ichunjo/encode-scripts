@@ -33,7 +33,8 @@ class Chapter():
             src_clip (vs.VideoNode):
                 Source clip.
         """
-        if all(len(lst) != num_entries for lst in [names, frames]):
+        datas: List[Any] = [names, frames]
+        if all(len(lst) != num_entries for lst in datas):
             raise ValueError('create: "names" and "frames" must have the same length as the given "num_entries"')
 
         with open(self.chapter_file, 'w') as file:
