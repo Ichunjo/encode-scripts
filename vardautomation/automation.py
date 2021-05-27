@@ -13,6 +13,7 @@ from typing import (Any, BinaryIO, Callable, Dict, List, Optional,
 import colorama
 import vapoursynth as vs
 
+from .colors import Colors
 from .presets import NoPreset, Preset
 
 core = vs.core
@@ -20,16 +21,7 @@ core = vs.core
 # TODO: Better english because I’m fucking bad
 
 
-colorama.init()
-
-
-class Colors():  # noqa
-    FAIL: str = f'{colorama.Back.RED}{colorama.Fore.BLACK}'
-    INFO: str = f'{colorama.Back.BLUE}{colorama.Fore.WHITE}{colorama.Style.BRIGHT}'
-    RESET: str = colorama.Style.RESET_ALL
-
-
-class FileInfo:  # noqa: PLR0902
+class FileInfo():  # noqa: PLR0902
     """File info object"""
     path: str
     src: str
