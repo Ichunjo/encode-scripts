@@ -1,9 +1,9 @@
 # noqa
+import os
 from typing import Callable, Optional
+
 import lvsfunc
-
 import vapoursynth as vs
-
 
 core = vs.core
 
@@ -23,7 +23,7 @@ class Preset():  # noqa
         super().__init__()
 
 
-PresetBD = Preset(core.lsmas.LWLibavSource, '{path:s}_track_{num:s}.wav', '{path:s}_cut_track_{num:s}.wav', None, 'chapters/{name:s}.txt')
+PresetBD = Preset(core.lsmas.LWLibavSource, '{path:s}_track_{num:s}.wav', '{path:s}_cut_track_{num:s}.wav', None, os.path.abspath('chapters/{name:s}.txt'))
 PresetWEB = Preset(core.ffms2.Source, None, None, '', '')
 PresetAAC = Preset(None, '{path:s}_track_{num:s}.aac', '{path:s}_cut_track_{num:s}.aac', '{path:s}_cut_enc_track_{num:s}.m4a', None)
 PresetOpus = Preset(None, '{path:s}_track_{num:s}.opus', '{path:s}_cut_track_{num:s}.opus', '{path:s}_cut_enc_track_{num:s}.opus', None)
