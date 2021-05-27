@@ -1,5 +1,7 @@
 """Automation module"""
+import subprocess
 from typing import Dict, List, Tuple
+
 import vapoursynth as vs
 
 from .colors import Colors
@@ -7,8 +9,8 @@ from .colors import Colors
 core = vs.core
 
 
-class ClipSettings():
-    """Collection of static methods to get some settings from the parameters and/or the clip"""
+class Properties():
+    """Collection of static methods to get some properties from the parameters and/or the clip"""
     @staticmethod
     def get_color_range(params: List[str], clip: vs.VideoNode, bits: int) -> Tuple[int, int]:
         """[summary]
@@ -76,3 +78,9 @@ class ClipSettings():
             vs.RGB: 'rgb'
         }
         return csp_avc[clip.format.color_family]
+
+    @staticmethod
+    def get_encoder_name(path: str) -> str:
+        ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder',
+                        '-print_format', 'default=nokey=1:noprint_wrappers=1', path]
+        return subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')
