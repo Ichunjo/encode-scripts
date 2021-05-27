@@ -61,8 +61,14 @@ class Chapter():
         """
         data = self._get_data()
 
-        chapnames = [f'CHAPTER{i+1:02.0f}NAME={names[i]}\n' for i in range(len(data[1::2]))]
-        data = [val for tup in zip(data[::2], chapnames) for val in tup]
+        newchapnames: List[str] = []
+        for i, chapname in enumerate(data[1::2]):
+            if names[i] != '':
+                newchapnames += [f'CHAPTER{i+1:02.0f}NAME={names[i]}\n']
+            else:
+                newchapnames += chapname
+
+        data = [val for tup in zip(data[::2], newchapnames) for val in tup]
 
         with open(self.chapter_file, 'w') as file:
             file.writelines(data)
