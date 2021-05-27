@@ -13,6 +13,7 @@ from typing import (Any, BinaryIO, Callable, Dict, List, Optional,
 import colorama
 import vapoursynth as vs
 
+from .clip_settings import ClipSettings
 from .colors import Colors
 from .presets import NoPreset, Preset
 
