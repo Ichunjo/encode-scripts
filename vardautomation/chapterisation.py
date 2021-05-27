@@ -38,7 +38,7 @@ class Chapter():
 
         with open(self.chapter_file, 'w') as file:
             for i, name, frame in zip(range(1, num_entries + 1), names, frames):
-                file.writelines([f'CHAPTER{i:02.0f}={self.f2ts(frame, src_clip)}\n',
+                file.writelines([f'CHAPTER{i:02.0f}={self._f2ts(frame, src_clip)}\n',
                                  f'CHAPTER{i:02.0f}NAME={name}\n'])
             print(Colors.INFO)
             print(f'Chapter file sucessfuly created at: {self.chapter_file}')
@@ -71,15 +71,15 @@ class Chapter():
         """
         data = self._get_data()
 
-        shifttime = self.f2seconds(frames, src_clip)
+        shifttime = self._f2seconds(frames, src_clip)
 
         chaptimes = data[::2]
         newchaptimes: List[str] = []
         for chaptime in chaptimes:
             chap, time = chaptime.split('=')
             time = time[:-1]
-            seconds = max(0, self.ts2seconds(time) + shifttime)
-            time = self.seconds2ts(seconds)
+            seconds = max(0, self._ts2seconds(time) + shifttime)
+            time = self._seconds2ts(seconds)
             newchaptimes += [f'{chap}={time}\n']
 
         data = [val for tup in zip(newchaptimes, data[1::2]) for val in tup]
@@ -91,7 +91,7 @@ class Chapter():
         print(f'Chapter names sucessfuly shifted at: {self.chapter_file}')
         print(f'{Colors.RESET}\n')
 
-    def f2seconds(self, f: int, src_clip: vs.VideoNode, /) -> float:  # noqa
+    def _f2seconds(self, f: int, src_clip: vs.VideoNode, /) -> float:  # noqa
         if f == 0:
             s = 0.0  # noqa
 
@@ -99,16 +99,16 @@ class Chapter():
         s = t / 10 ** 9  # noqa
         return s
 
-    def f2ts(self, f: int, src_clip: vs.VideoNode, /, *, precision: int = 3) -> str:  # noqa
-        s = self.f2seconds(f, src_clip)  # noqa
-        ts = self.seconds2ts(s, precision=precision)  # noqa
+    def _f2ts(self, f: int, src_clip: vs.VideoNode, /, *, precision: int = 3) -> str:  # noqa
+        s = self._f2seconds(f, src_clip)  # noqa
+        ts = self._seconds2ts(s, precision=precision)  # noqa
         return ts
 
-    def ts2seconds(self, ts: str, /) -> float:  # noqa
+    def _ts2seconds(self, ts: str, /) -> float:  # noqa
         h, m, s = map(float, ts.split(':'))  # noqa
         return h * 3600 + m * 60 + s
 
-    def seconds2ts(self, s: float, /, *, precision: int = 3) -> str:  # noqa
+    def _seconds2ts(self, s: float, /, *, precision: int = 3) -> str:  # noqa
         m = s // 60  # noqa
         s %= 60  # noqa
         h = m // 60  # noqa
