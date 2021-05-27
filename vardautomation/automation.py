@@ -44,8 +44,11 @@ class FileInfo():  # noqa: PLR0902
     name_clip_output: str
     name_file_final: str
 
+    name_clip_output_lossless: str
+    do_lossless: bool
 
-    def __init__(self: FileInfo, src: str, /,
+
+    def __init__(self, src: str, /,
                  frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
                  idx: Optional[Callable[[str], vs.VideoNode]] = None, preset: Union[List[Preset], Preset] = NoPreset) -> None:
         """Helper which allows to store the data related to your file to be encoded
@@ -91,6 +94,9 @@ class FileInfo():  # noqa: PLR0902
 
         self.name_clip_output = self.name + '.265'
         self.name_file_final = self.name + '.mkv'
+
+        self.name_clip_output_lossless = self.name + '_lossless.mkv'
+        self.do_lossless = False
 
         super().__init__()
 
