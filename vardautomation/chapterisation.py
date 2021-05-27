@@ -44,6 +44,14 @@ class Chapter():
             print(f'Chapter file sucessfuly created at: {self.chapter_file}')
             print(f'{Colors.RESET}\n')
 
+    def copy(self, destination: str) -> None:
+        """Copy source chapter to destination.
+
+        Args:
+            destination (str): Destination path.
+        """
+        os.system(f'copy "{self.chapter_file}" "{destination}"')
+
     def set_names(self, names: List[str]) -> None:
         """Change chapter names.
 
