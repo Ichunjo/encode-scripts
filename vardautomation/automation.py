@@ -1,19 +1,18 @@
 """Automation module"""
 import argparse
-import os
 import re
 import subprocess
-import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Tuple,
-                    Union, cast)
+from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Sequence,
+                    Tuple, Union, cast)
 
 import vapoursynth as vs
+from acsuite import eztrim
 
-from .clip_settings import ClipSettings
 from .colors import Colors
-from .presets import NoPreset, Preset
+from .config import FileInfo
+from .properties import Properties
 
 core = vs.core
 
