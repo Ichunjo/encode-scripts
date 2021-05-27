@@ -258,3 +258,108 @@ class Parser():  # noqa
         file.frame_end = file_frame_end
 
         return file, clip[frame_start:frame_end]
+
+
+class EncodeGoBrr(ABC):
+    """Self runner interface"""
+    clip: vs.VideoNode
+    file: FileInfo
+    v_encoder: VideoEncoder
+    v_lossless_encoder: Optional[LosslessEncoder]
+    a_extracters: List[BasicTool]
+    a_cutters: List[AudioCutter]
+    a_encoders: List[AudioEncoder]
+
+    def __init__(self,
+                 clip: vs.VideoNode, file: FileInfo, /,
+                 v_encoder: VideoEncoder, v_lossless_encoder: Optional[LosslessEncoder],
+                 a_extracters: Optional[Union[BasicTool, Sequence[BasicTool]]] = None,
+                 a_cutters: Optional[Union[AudioCutter, Sequence[AudioCutter]]] = None,
+                 a_encoders: Optional[Union[AudioEncoder, Sequence[AudioEncoder]]] = None) -> None:
+        """
+        Args:
+            clip (vs.VideoNode):
+                (Filtered) clip.
+            file (FileInfo):
+                FileInfo object.
+
+            v_encoder (VideoEncoder):
+                Video encoder(s) used.
+
+            v_lossless_encoder (Optional[LosslessEncoder]):
+                Lossless encoder used if necessary.
+
+            a_extracters (Union[BasicTool, Sequence[BasicTool]]):
+                Audio extracter(s) used.
+
+            a_cutters (Optional[Union[AudioCutter, Sequence[AudioCutter]]]):
+                Audio cutter(s) used.
+
+            a_encoders (Optional[Union[AudioEncoder, Sequence[AudioEncoder]]]):
+                Audio encoder(s) used.
+        """
+        self.clip = clip
+        self.file = file
+        self.v_lossless_encoder = v_lossless_encoder
+        self.v_encoder = v_encoder
+
+
+        if a_extracters:
+            self.a_extracters = list(a_extracters) if isinstance(a_extracters, Sequence) else [a_extracters]
+
+        if a_cutters:
+            self.a_cutters = list(a_cutters) if isinstance(a_cutters, Sequence) else [a_cutters]
+
+        if a_encoders:
+            self.a_encoders = list(a_encoders) if isinstance(a_encoders, Sequence) else [a_encoders]
+
+
+        super().__init__()
+
+
+    @abstractmethod
+    def run(self) -> None:
+        """Tool chain"""
+        self._parsing()
+        self._encode()
+        self._audio_getter()
+        self.merge()
+
+    @abstractmethod
+    def chapter(self) -> None:
+        """Chapterisation"""
+        pass  # noqa
+
+    @abstractmethod
+    def merge(self) -> None:
+        """Merge function"""
+        pass  # noqa
+
+    def _parsing(self) -> None:
+        parser = Parser(self.file)
+        self.file, self.clip = parser.parsing(self.file, self.clip)
+
+    def _encode(self) -> None:
+        if self.file.do_lossless and self.v_lossless_encoder:
+            self.v_lossless_encoder.run_enc(self.clip, self.file)
+            self.clip = core.lsmas.LWLibavSource(self.file.name_clip_output_lossless)
+
+        if not Path(self.file.name_clip_output).exists():
+            self.v_encoder.run_enc(self.clip, self.file)
+
+    def _audio_getter(self) -> None:
+        for i, a_extracter in enumerate(self.a_extracters, start=1):
+            assert self.file.a_src
+            if not Path(self.file.a_src.format(i)).exists():
+                a_extracter.run()
+        for i, a_cutter in enumerate(self.a_cutters, start=1):
+            assert self.file.a_src_cut
+            if not Path(self.file.a_src_cut.format(i)).exists():
+                a_cutter.run()
+        for i, a_encoder in enumerate(self.a_encoders, start=1):
+            assert self.file.a_enc_cut
+            if not Path(self.file.a_enc_cut.format(i)).exists():
+                a_encoder.run()
+
+    def cleanup(self, **kwargs: Any) -> None:  # noqa
+        self.file.cleanup(**kwargs)
