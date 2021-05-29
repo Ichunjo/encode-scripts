@@ -116,5 +116,8 @@ class FileInfo():  # noqa: PLR0902
         booleans = (a_src, a_src_cut, a_enc_cut, chapter, name_clip_output)
 
         for file, boolean in zip(files, booleans):
-            if boolean and file:
+            if boolean and file and Path(file).exists():
                 os.remove(file)
+            for i in range(10):
+                if boolean and file.format(i) and Path(file.format(i)).exists():
+                    os.remove(file.format(i))
