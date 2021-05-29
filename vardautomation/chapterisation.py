@@ -1,6 +1,6 @@
 # noqa
 import os
-from typing import Any, List
+from typing import Any, List, Sequence
 
 import vapoursynth as vs
 
@@ -52,7 +52,7 @@ class Chapter():
         """
         os.system(f'copy "{self.chapter_file}" "{destination}"')
 
-    def set_names(self, names: List[str]) -> None:
+    def set_names(self, names: Sequence[str]) -> None:
         """Change chapter names.
 
         Args:
