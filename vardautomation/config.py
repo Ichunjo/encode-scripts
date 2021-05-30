@@ -70,16 +70,15 @@ class FileInfo():  # noqa: PLR0902
 
         self.name = Path(sys.argv[0]).stem
 
-        self.a_src = None
-        self.a_src_cut = None
-        self.a_enc_cut = None
-        self.chapter = None
+        self.a_src, self.a_src_cut, self.a_enc_cut, self.chapter = (None, ) * 4
 
+        # TODO: Rewrite this logic
         self.preset = [preset] if isinstance(preset, Preset) else preset
         self._params_fill_preset()
 
         if self.idx:
             self.clip = self.idx(src)
+
         self.frame_start = frame_start
         self.frame_end = frame_end
         self.clip_cut = self.clip[self.frame_start:self.frame_end] if (self.frame_start or self.frame_end) else self.clip
