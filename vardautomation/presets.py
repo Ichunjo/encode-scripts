@@ -8,6 +8,7 @@ import vapoursynth as vs
 core = vs.core
 
 
+# TODO: Rewrite this logic
 class Preset():  # noqa
     def __init__(self, idx: Optional[Callable[[str], vs.VideoNode]],
                  a_src: Optional[str], a_src_cut: Optional[str],
