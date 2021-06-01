@@ -271,7 +271,7 @@ class EncodeGoBrr(ABC):
 
     def __init__(self,
                  clip: vs.VideoNode, file: FileInfo, /,
-                 v_encoder: VideoEncoder, v_lossless_encoder: Optional[LosslessEncoder],
+                 v_encoder: VideoEncoder, v_lossless_encoder: Optional[LosslessEncoder] = None,
                  a_extracters: Optional[Union[BasicTool, Sequence[BasicTool]]] = None,
                  a_cutters: Optional[Union[AudioCutter, Sequence[AudioCutter]]] = None,
                  a_encoders: Optional[Union[AudioEncoder, Sequence[AudioEncoder]]] = None) -> None:
@@ -305,12 +305,18 @@ class EncodeGoBrr(ABC):
 
         if a_extracters:
             self.a_extracters = list(a_extracters) if isinstance(a_extracters, Sequence) else [a_extracters]
+        else:
+            self.a_extracters = []
 
         if a_cutters:
             self.a_cutters = list(a_cutters) if isinstance(a_cutters, Sequence) else [a_cutters]
+        else:
+            self.a_cutters = []
 
         if a_encoders:
             self.a_encoders = list(a_encoders) if isinstance(a_encoders, Sequence) else [a_encoders]
+        else:
+            self.a_encoders = []
 
 
         super().__init__()
@@ -351,10 +357,12 @@ class EncodeGoBrr(ABC):
             assert self.file.a_src
             if not Path(self.file.a_src.format(i)).exists():
                 a_extracter.run()
+
         for i, a_cutter in enumerate(self.a_cutters, start=1):
             assert self.file.a_src_cut
             if not Path(self.file.a_src_cut.format(i)).exists():
                 a_cutter.run()
+
         for i, a_encoder in enumerate(self.a_encoders, start=1):
             assert self.file.a_enc_cut
             if not Path(self.file.a_enc_cut.format(i)).exists():
