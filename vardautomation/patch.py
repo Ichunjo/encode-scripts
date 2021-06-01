@@ -11,7 +11,7 @@ from .automation import BasicTool, VideoEncoder
 from .config import FileInfo
 
 
-class Patch():
+class Patch():  # noqa
     """Allow easy video patching"""
     ffmsindex: str = 'ffmsindex'
     mkvmerge: str = 'mkvmerge'
@@ -67,7 +67,7 @@ class Patch():
         idxing = BasicTool(self.ffmsindex, ['-k', '-f', f'{self.file_to_fix}', idx_file])
         idxing.run()
 
-        with open(kf_file, 'r', encoding='utf-8') as f:
+        with open(kf_file, 'r', encoding='utf-8') as f:  # noqa
             kfs = f.read().splitlines()
 
         kfs = list(map(int, kfs[2:]))
@@ -77,7 +77,7 @@ class Patch():
 
         fra_s, fra_e = None, None
 
-        for i, kf in enumerate(kfs):
+        for i, kf in enumerate(kfs):  # noqa
             if kf > self.frame_start:
                 fra_s = kfs[i-1]
                 break
@@ -85,7 +85,7 @@ class Patch():
                 fra_s = kf
                 break
 
-        for i, kf in enumerate(kfs):
+        for i, kf in enumerate(kfs):  # noqa
             if kf >= self.frame_end:
                 fra_e = kf
                 break
