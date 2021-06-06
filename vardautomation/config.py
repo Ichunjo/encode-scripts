@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Callable, List, Optional, Union
 
 import vapoursynth as vs
+from prettyprinter import pretty_call, pretty_repr, register_pretty
+from prettyprinter.doc import Doc
+from prettyprinter.prettyprinter import PrettyContext
 
 from .presets import NoPreset, Preset
 
@@ -91,13 +94,12 @@ class FileInfo():  # noqa: PLR0902
 
         super().__init__()
 
-    # TODO: Make a better __str__
-    def __str__(self) -> str:
-        txt = 'File infos:\n'
-        txt += f'Full path: {self.src}\n'
-        txt += f'Clip format: \n{self.clip_cut.format}\n'
-        txt += f'Name: {self.name}\n'
-        return txt
+    def __repr__(self) -> str:
+        @register_pretty(FileInfo)
+        def _repr(value: object, ctx: PrettyContext) -> Doc:
+            return pretty_call(ctx, FileInfo, vars(value))
+
+        return pretty_repr(self)
 
     def _params_fill_preset(self) -> None:
         for pre in self.preset:
