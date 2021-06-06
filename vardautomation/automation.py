@@ -30,12 +30,10 @@ class Tool(ABC):
     @abstractmethod
     def run(self) -> None:
         """Tooling chain"""
-        pass  # noqa: PLC0103, PLW0107
 
     @abstractmethod
     def set_variable(self) -> Dict[str, Any]:
         """Set variables in the settings"""
-        pass  # noqa: PLC0103, PLW0107
 
     def _get_settings(self) -> None:
         if isinstance(self.settings, Path):
@@ -333,12 +331,10 @@ class EncodeGoBrr(ABC):
     @abstractmethod
     def chapter(self) -> None:
         """Chapterisation"""
-        pass  # noqa
 
     @abstractmethod
     def merge(self) -> None:
         """Merge function"""
-        pass  # noqa
 
     def _parsing(self) -> None:
         parser = Parser(self.file)
