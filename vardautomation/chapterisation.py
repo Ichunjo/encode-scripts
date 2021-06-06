@@ -1,8 +1,7 @@
 # noqa
 import os
+from fractions import Fraction
 from typing import Any, List, Sequence
-
-import vapoursynth as vs
 
 from .colors import Colors
 
@@ -16,7 +15,7 @@ class Chapter():
         self.chapter_file = chapter_file
         super().__init__()
 
-    def create(self, num_entries: int, names: List[str], frames: List[int], src_clip: vs.VideoNode) -> None:
+    def create(self, num_entries: int, names: List[str], frames: List[int], fps: Fraction) -> None:
         """Create a txt chapter file with given parameters
 
         Args:
@@ -29,8 +28,8 @@ class Chapter():
             frames (List[int]):
                 Frames where chapters begin.
 
-            src_clip (vs.VideoNode):
-                Source clip.
+            fps (Fraction):
+                Framerate.
         """
         datas: List[Any] = [names, frames]
         if all(len(lst) != num_entries for lst in datas):
@@ -38,7 +37,7 @@ class Chapter():
 
         with open(self.chapter_file, 'w') as file:
             for i, name, frame in zip(range(1, num_entries + 1), names, frames):
-                file.writelines([f'CHAPTER{i:02.0f}={self._f2ts(frame, src_clip)}\n',
+                file.writelines([f'CHAPTER{i:02.0f}={self._f2ts(frame, fps)}\n',
                                  f'CHAPTER{i:02.0f}NAME={name}\n'])
             print(Colors.INFO)
             print(f'Chapter file sucessfuly created at: {self.chapter_file}')
@@ -76,16 +75,16 @@ class Chapter():
         print(f'Chapter names sucessfuly updated at: {self.chapter_file}')
         print(f'{Colors.RESET}\n')
 
-    def shift_times(self, frames: int, src_clip: vs.VideoNode) -> None:
+    def shift_times(self, frames: int, fps: Fraction) -> None:
         """Shift times by given number of frames.
 
         Args:
             frames (int): Number of frames to shift
-            src_clip (vs.VideoNode): Source clip.
+            fps (Fraction): Framerate.
         """
         data = self._get_data()
 
-        shifttime = self._f2seconds(frames, src_clip)
+        shifttime = self._f2seconds(frames, fps)
 
         chaptimes = data[::2]
         newchaptimes: List[str] = []
@@ -105,16 +104,16 @@ class Chapter():
         print(f'Chapter names sucessfuly shifted at: {self.chapter_file}')
         print(f'{Colors.RESET}\n')
 
-    def _f2seconds(self, f: int, src_clip: vs.VideoNode, /) -> float:  # noqa
+    def _f2seconds(self, f: int, fps: Fraction, /) -> float:  # noqa
         if f == 0:
             s = 0.0  # noqa
 
-        t = round(float(10 ** 9 * f * src_clip.fps ** -1))  # noqa
+        t = round(float(10 ** 9 * f * fps ** -1))  # noqa
         s = t / 10 ** 9  # noqa
         return s
 
-    def _f2ts(self, f: int, src_clip: vs.VideoNode, /, *, precision: int = 3) -> str:  # noqa
-        s = self._f2seconds(f, src_clip)  # noqa
+    def _f2ts(self, f: int, fps: Fraction, /, *, precision: int = 3) -> str:  # noqa
+        s = self._f2seconds(f, fps)  # noqa
         ts = self._seconds2ts(s, precision=precision)  # noqa
         return ts
 
