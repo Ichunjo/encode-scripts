@@ -52,15 +52,6 @@ class Chapters(ABC):
     def set_names(self, names: List[Optional[str]]) -> None:
         """Change chapter names."""
 
-    def create_qpfile(self, qpfile: str, chapters: List[Chapter]) -> None:
-        frames = set()
-
-        for chap in chapters:
-            frames.add(chap.start_frame)
-
-        with open(qpfile, "w", encoding='utf-8') as qp:
-            qp.writelines([f"{f} K\n" for f in sorted(frames)])
-
     def copy(self, destination: str) -> None:
         """Copy source chapter to destination."""
         os.system(f'copy "{self.chapter_file}" "{destination}"')
@@ -328,3 +319,18 @@ class MatroskaXMLChapters(Chapters):
 
     def _get_tree(self) -> etree._ElementTree:
         return etree.parse(self.chapter_file)
+
+
+def create_qpfile(qpfile: str,
+                  frames: Optional[Set[int]] = None, *,
+                  chapters: Optional[List[Chapter]] = None) -> None:
+    """Create a qp file from a list of Chapter"""
+    keyf: Set[int] = set()
+    if chapters:
+        for chap in chapters:
+            keyf.add(chap.start_frame)
+    elif frames:
+        keyf = frames
+
+    with open(qpfile, "w", encoding='utf-8') as qp:  # noqa: PLC0103
+        qp.writelines([f"{f} K\n" for f in sorted(keyf)])
