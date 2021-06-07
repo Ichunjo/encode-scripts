@@ -166,6 +166,19 @@ class OGMChapters(Chapters):
 
         self._logging('shifted')
 
+    def ogm_to_chapters(self, fps: Fraction, lang: Language = UNDEFINED) -> List[Chapter]:
+        """Convert OGM Chapters to a list of Chapter"""
+        data = self._get_data()
+
+        chaptimes = data[::2]
+        chapnames = data[1::2]
+
+        chapters = [
+            Chapter(chapname.split('=')[1], self._ts2f(chaptime.split('=')[1], fps), lang=lang)
+            for chaptime, chapname in zip(chaptimes, chapnames)
+        ]
+
+        return chapters
 
     def _get_data(self) -> List[str]:
         with open(self.chapter_file, 'r') as file:
