@@ -220,7 +220,7 @@ class MatroskaXMLChapters(Chapters):
         tree = self._get_tree()
 
         olds = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_name}')
-        olds = cast(List[etree._Element], olds)
+        olds = cast(List[etree._Element], olds)  # noqa: PLW0212
 
         if len(names) > len(olds):
             raise ValueError('set_names: too many names!')
@@ -243,10 +243,10 @@ class MatroskaXMLChapters(Chapters):
         tree = self._get_tree()
 
         timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
-        timestarts = cast(List[etree._Element], timestarts)
+        timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
 
         timeends = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_end}')
-        timeends = cast(List[etree._Element], timeends)
+        timeends = cast(List[etree._Element], timeends)  # noqa: PLW0212
 
         for t_s in timestarts:
             if isinstance(t_s.text, str):
@@ -267,19 +267,19 @@ class MatroskaXMLChapters(Chapters):
         tree = self._get_tree()
 
         timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
-        timestarts = cast(List[etree._Element], timestarts)
+        timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
 
         timeends = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_end}')
-        timeends = cast(List[etree._Element], timeends)
+        timeends = cast(List[etree._Element], timeends)  # noqa: PLW0212
 
         names = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_name}')
-        names = cast(List[etree._Element], names)
+        names = cast(List[etree._Element], names)  # noqa: PLW0212
 
         ietfs = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_ietf}')
-        ietfs = cast(List[etree._Element], ietfs)
+        ietfs = cast(List[etree._Element], ietfs)  # noqa: PLW0212
 
         iso639s = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_iso639}')
-        iso639s = cast(List[etree._Element], iso639s)
+        iso639s = cast(List[etree._Element], iso639s)  # noqa: PLW0212
 
         if all(len(lst) != len(timestarts) for lst in {timeends, ietfs, iso639s}):
             raise ValueError('I don’t know how to fix that lmao')
@@ -296,7 +296,7 @@ class MatroskaXMLChapters(Chapters):
         return chapters
 
 
-    def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:
+    def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:  # noqa: PLW0212
 
         atom = etree.Element(self.chap_atom)
 
@@ -317,7 +317,7 @@ class MatroskaXMLChapters(Chapters):
         return atom
 
 
-    def _get_tree(self) -> etree._ElementTree:
+    def _get_tree(self) -> etree._ElementTree:  # noqa: PLW0212
         return etree.parse(self.chapter_file)
 
 
