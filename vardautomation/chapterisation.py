@@ -199,9 +199,7 @@ class MatroskaXMLChapters(Chapters):
         print(f'{Colors.RESET}\n')
 
     def set_names(self, names: List[Optional[str]]) -> None:
-        """[summary]
-        """
-        tree = self._get_data()
+        tree = self._get_tree()
 
         olds = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_name}')
         olds = cast(List[etree._Element], olds)
@@ -243,5 +241,5 @@ class MatroskaXMLChapters(Chapters):
         return atom
 
 
-    def _get_data(self) -> etree._ElementTree:
+    def _get_tree(self) -> etree._ElementTree:
         return etree.parse(self.chapter_file)
