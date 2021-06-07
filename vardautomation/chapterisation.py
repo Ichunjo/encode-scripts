@@ -1,13 +1,14 @@
 """Chapterisation module"""
 
 __all__ = ['Language', 'Chapter', 'Chapters', 'OGMChapters', 'MatroskaXMLChapters',
+           'create_qpfile',
            'FRENCH', 'ENGLISH', 'JAPANESE', 'UNDEFINED']
 
 import os
 import random
 from abc import ABC, abstractmethod
 from fractions import Fraction
-from typing import List, NamedTuple, Optional, cast
+from typing import List, NamedTuple, Optional, Set, cast
 
 from lxml import etree
 
