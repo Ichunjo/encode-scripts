@@ -220,6 +220,37 @@ class MatroskaXMLChapters(Chapters):
         print(f'{Colors.RESET}\n')
 
 
+    def shift_times(self, frames: int, fps: Fraction) -> None:
+        """Shift times by given number of frames."""
+        shifttime = self._f2seconds(frames, fps)
+
+
+        tree = self._get_tree()
+
+        timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
+        timestarts = cast(List[etree._Element], timestarts)
+
+        timeends = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_end}')
+        timeends = cast(List[etree._Element], timeends)
+
+        for t_s in timestarts:
+            if isinstance(t_s.text, str):
+                t_s.text = self._seconds2ts(max(0, self._ts2seconds(t_s.text) + shifttime), precision=9)
+
+        for t_e in timeends:
+            if isinstance(t_e.text, str) and t_e.text != '':
+                t_e.text = self._seconds2ts(max(0, self._ts2seconds(t_e.text) + shifttime), precision=9)
+
+
+
+        with open(self.chapter_file, 'wb') as file:
+            tree.write(file, pretty_print=True, xml_declaration=True, with_comments=True)
+
+        print(Colors.INFO)
+        print(f'Chapter names sucessfuly shifted at: {self.chapter_file}')
+        print(f'{Colors.RESET}\n')
+
+
     def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:
 
         atom = etree.Element(self.chap_atom)
