@@ -258,7 +258,6 @@ class MatroskaXMLChapters(Chapters):
                 t_e.text = self._seconds2ts(max(0, self._ts2seconds(t_e.text) + shifttime), precision=9)
 
 
-
         with open(self.chapter_file, 'wb') as file:
             tree.write(file, pretty_print=True, xml_declaration=True, with_comments=True)
 
