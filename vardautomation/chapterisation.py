@@ -272,6 +272,37 @@ class MatroskaXMLChapters(Chapters):
 
         self._logging('shifted')
 
+    def xml_to_chapters(self, fps: Fraction, lang: Optional[Language] = None) -> List[Chapter]:
+        tree = self._get_tree()
+
+        timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
+        timestarts = cast(List[etree._Element], timestarts)
+
+        timeends = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_end}')
+        timeends = cast(List[etree._Element], timeends)
+
+        names = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_name}')
+        names = cast(List[etree._Element], names)
+
+        ietfs = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_ietf}')
+        ietfs = cast(List[etree._Element], ietfs)
+
+        iso639s = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_iso639}')
+        iso639s = cast(List[etree._Element], iso639s)
+
+        if all(len(lst) != len(timestarts) for lst in {timeends, ietfs, iso639s}):
+            raise ValueError('I don’t know how to fix that lmao')
+
+        chapters = [
+            Chapter(name=name.text if isinstance(name.text, str) else '',
+                    start_frame=self._ts2f(timestart.text if isinstance(timestart.text, str) else '', fps),
+                    end_frame=self._ts2f(timeend.text if isinstance(timeend.text, str) else '', fps),
+                    lang=lang if lang is not None else Language('', ietf.text if isinstance(ietf.text, str) else '',
+                                                                iso639.text if isinstance(iso639.text, str) else ''))
+            for name, timestart, timeend, ietf, iso639 in zip(names, timestarts, timeends, ietfs, iso639s)
+        ]
+
+        return chapters
 
 
     def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:
