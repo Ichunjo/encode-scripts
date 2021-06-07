@@ -27,7 +27,7 @@ JAPANESE = Language('Japanese', 'jp', 'jpn')
 UNDEFINED = Language('Undefined', 'und', 'und')
 
 
-class Chapter:
+class Chapter(NamedTuple):
     """Chapter object"""
     name: str
     start_frame: int
