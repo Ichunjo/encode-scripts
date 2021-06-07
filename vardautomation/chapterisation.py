@@ -52,6 +52,15 @@ class Chapters(ABC):
     def set_names(self, names: List[Optional[str]]) -> None:
         """Change chapter names."""
 
+    def create_qpfile(self, qpfile: str, chapters: List[Chapter]) -> None:
+        frames = set()
+
+        for chap in chapters:
+            frames.add(chap.start_frame)
+
+        with open(qpfile, "w", encoding='utf-8') as qp:
+            qp.writelines([f"{f} K\n" for f in sorted(frames)])
+
     def copy(self, destination: str) -> None:
         """Copy source chapter to destination."""
         os.system(f'copy "{self.chapter_file}" "{destination}"')
