@@ -93,6 +93,14 @@ class Chapters(ABC):
 
         return self._compose_ts(h, m, s, precision=precision)
 
+    def _seconds2f(self, s: float, fps: Fraction, /) -> int:  # noqa
+        return round(s * fps)
+
+    def _ts2f(self, ts: str, fps: Fraction, /) -> int:
+        s = self._ts2seconds(ts)  # noqa
+        f = self._seconds2f(s, fps)  # noqa
+        return f
+
     @staticmethod
     def _compose_ts(h: float, m: float, s: float, /, *, precision: int = 3) -> str:
         if precision == 0:  # noqa
