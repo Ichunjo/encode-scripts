@@ -264,6 +264,7 @@ class MatroskaXMLChapters(Chapters):
         self._logging('shifted')
 
     def xml_to_chapters(self, fps: Fraction, lang: Optional[Language] = None) -> List[Chapter]:
+        """Convert XML Chapters to a list of Chapter"""
         tree = self._get_tree()
 
         timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
