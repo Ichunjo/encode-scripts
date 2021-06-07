@@ -1,4 +1,9 @@
 """Automation module"""
+
+__all__ = ['Tool', 'BasicTool', 'AudioEncoder', 'AudioCutter',
+           'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
+           'Parser', 'EncodeGoBrr']
+
 import argparse
 import re
 import subprocess

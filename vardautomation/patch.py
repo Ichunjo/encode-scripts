@@ -1,3 +1,6 @@
+"""Path module"""
+
+__all__ = ['Patch']
 
 import platform
 import shutil

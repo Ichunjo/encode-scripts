@@ -1,4 +1,7 @@
-# noqa
+"""Presets"""
+
+__all__ = ['Preset', 'PresetBD', 'PresetWEB', 'PresetAAC', 'PresetOpus', 'PresetEAC3', 'PresetFLAC', 'NoPreset']
+
 import os
 from typing import Callable, Optional
 

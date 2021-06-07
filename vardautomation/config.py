@@ -1,4 +1,7 @@
 """Automation module"""
+
+__all__ = ['FileInfo']
+
 import os
 import sys
 from pathlib import Path
