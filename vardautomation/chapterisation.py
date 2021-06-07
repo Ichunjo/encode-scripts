@@ -56,6 +56,9 @@ class Chapters(ABC):
         """Copy source chapter to destination."""
         os.system(f'copy "{self.chapter_file}" "{destination}"')
 
+    def _logging(self, action: str) -> None:
+        print(f'{Colors.INFO}Chapter file sucessfuly {action} at: {self.chapter_file}{Colors.RESET}\n')
+
     def _f2seconds(self, f: int, fps: Fraction, /) -> float:  # noqa
         if f == 0:
             s = 0.0  # noqa
@@ -105,9 +108,8 @@ class OGMChapters(Chapters):
             for i, chapter in enumerate(chapters):
                 file.writelines([f'CHAPTER{i:02.0f}={self._f2ts(chapter.start_frame, fps)}\n',
                                  f'CHAPTER{i:02.0f}NAME={chapter.name}\n'])
-        print(Colors.INFO)
-        print(f'Chapter file sucessfuly created at: {self.chapter_file}')
-        print(f'{Colors.RESET}\n')
+
+        self._logging('created')
 
     def set_names(self, names: List[Optional[str]]) -> None:
         data = self._get_data()
@@ -126,9 +128,7 @@ class OGMChapters(Chapters):
         with open(self.chapter_file, 'w') as file:
             file.writelines([val for tup in zip(times, new) for val in tup])
 
-        print(Colors.INFO)
-        print(f'Chapter names sucessfuly updated at: {self.chapter_file}')
-        print(f'{Colors.RESET}\n')
+        self._logging('updated')
 
     def shift_times(self, frames: int, fps: Fraction) -> None:
         """Shift times by given number of frames."""
@@ -147,9 +147,8 @@ class OGMChapters(Chapters):
         with open(self.chapter_file, 'w') as file:
             file.writelines([val for tup in zip(newchaptimes, chapnames) for val in tup])
 
-        print(Colors.INFO)
-        print(f'Chapter names sucessfuly shifted at: {self.chapter_file}')
-        print(f'{Colors.RESET}\n')
+        self._logging('shifted')
+
 
     def _get_data(self) -> List[str]:
         with open(self.chapter_file, 'r') as file:
@@ -194,9 +193,7 @@ class MatroskaXMLChapters(Chapters):
                 root, 'utf-8', xml_declaration=True, pretty_print=True, doctype=self.doctype)
             )
 
-        print(Colors.INFO)
-        print(f'Chapter file sucessfuly created at: {self.chapter_file}')
-        print(f'{Colors.RESET}\n')
+        self._logging('created')
 
     def set_names(self, names: List[Optional[str]]) -> None:
         tree = self._get_tree()
@@ -215,10 +212,7 @@ class MatroskaXMLChapters(Chapters):
         with open(self.chapter_file, 'wb') as file:
             tree.write(file, pretty_print=True, xml_declaration=True, with_comments=True)
 
-        print(Colors.INFO)
-        print(f'Chapter names sucessfuly updated at: {self.chapter_file}')
-        print(f'{Colors.RESET}\n')
-
+        self._logging('updated')
 
     def shift_times(self, frames: int, fps: Fraction) -> None:
         """Shift times by given number of frames."""
@@ -246,9 +240,8 @@ class MatroskaXMLChapters(Chapters):
         with open(self.chapter_file, 'wb') as file:
             tree.write(file, pretty_print=True, xml_declaration=True, with_comments=True)
 
-        print(Colors.INFO)
-        print(f'Chapter names sucessfuly shifted at: {self.chapter_file}')
-        print(f'{Colors.RESET}\n')
+        self._logging('shifted')
+
 
 
     def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:
