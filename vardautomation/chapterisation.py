@@ -250,29 +250,47 @@ class MatroskaXMLChapters(Chapters):
         timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
         timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
 
+
         timeends = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_end}')
-        timeends = cast(List[etree._Element], timeends)  # noqa: PLW0212
+        timeends = cast(List[Optional[etree._Element]], timeends)  # noqa: PLW0212
+        if len(timeends) != len(timestarts):
+            timeends += [None] * (len(timestarts) - len(timeends))
+
 
         names = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_name}')
-        names = cast(List[etree._Element], names)  # noqa: PLW0212
+        names = cast(List[Optional[etree._Element]], names)  # noqa: PLW0212
+        if len(names) != len(timestarts):
+            names += [None] * (len(timestarts) - len(names))
+
 
         ietfs = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_ietf}')
-        ietfs = cast(List[etree._Element], ietfs)  # noqa: PLW0212
+        ietfs = cast(List[Optional[etree._Element]], ietfs)  # noqa: PLW0212
+        if len(ietfs) != len(timestarts):
+            ietfs += [None] * (len(timestarts) - len(ietfs))
 
-        iso639s = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_iso639}')
-        iso639s = cast(List[etree._Element], iso639s)  # noqa: PLW0212
 
-        if all(len(lst) != len(timestarts) for lst in {timeends, ietfs, iso639s}):
-            raise ValueError('I don’t know how to fix that lmao')
+        chapters: List[Chapter] = []
+        for name, timestart, timeend, ietf in zip(names, timestarts, timeends, ietfs):
 
-        chapters = [
-            Chapter(name=name.text if isinstance(name.text, str) else '',
-                    start_frame=self._ts2f(timestart.text if isinstance(timestart.text, str) else '', fps),
-                    end_frame=self._ts2f(timeend.text if isinstance(timeend.text, str) else '', fps),
-                    lang=lang if lang is not None else Language('', ietf.text if isinstance(ietf.text, str) else '',
-                                                                iso639.text if isinstance(iso639.text, str) else ''))
-            for name, timestart, timeend, ietf, iso639 in zip(names, timestarts, timeends, ietfs, iso639s)
-        ]
+            name = name.text if isinstance(name.text, str) else ''
+
+            if isinstance(timestart.text, str):
+                start_frame = Convert.ts2f(timestart.text, fps)
+            else:
+                raise ValueError()
+
+            try:
+                end_frame = Convert.ts2f(timeend.text, fps)  # type: ignore
+            except AttributeError:
+                end_frame = None
+
+            if not lang and isinstance(ietf.text, str):
+                lang = Language(L.make(ietf.text))
+            else:
+                assert lang
+
+            chapter = Chapter(name=name, start_frame=start_frame, end_frame=end_frame, lang=lang)
+            chapters.append(chapter)
 
         return chapters
 
