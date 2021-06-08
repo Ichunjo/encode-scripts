@@ -191,7 +191,8 @@ class MatroskaXMLChapters(Chapters):
 
         with open(self.chapter_file, 'wb') as file:
             file.write(etree.tostring(
-                root, 'utf-8', xml_declaration=True, pretty_print=True, doctype=self.doctype)
+                root, encoding='utf-8', xml_declaration=True,
+                pretty_print=True, doctype=self.doctype)
             )
 
         self._logging('created')
