@@ -8,7 +8,7 @@ import os
 import random
 from abc import ABC, abstractmethod
 from fractions import Fraction
-from typing import List, NamedTuple, Optional, Set, cast
+from typing import List, NamedTuple, NoReturn, Optional, Sequence, Set, cast
 
 from langcodes import Language as L
 from lxml import etree
@@ -321,15 +321,15 @@ class MatroskaXMLChapters(Chapters):
 
 
 def create_qpfile(qpfile: str,
-                  frames: Optional[Set[int]] = None, *,
+                  frames: Optional[Sequence[int]] = None, *,
                   chapters: Optional[List[Chapter]] = None) -> None:
-    """Create a qp file from a list of Chapter"""
+    """Create a qp file from a list of Chapter or frames"""
     keyf: Set[int] = set()
     if chapters:
         for chap in chapters:
             keyf.add(chap.start_frame)
     elif frames:
-        keyf = frames
+        keyf = set(frames)
 
     with open(qpfile, "w", encoding='utf-8') as qp:  # noqa: PLC0103
         qp.writelines([f"{f} K\n" for f in sorted(keyf)])
