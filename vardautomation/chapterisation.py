@@ -174,7 +174,7 @@ class MatroskaXMLChapters(Chapters):
     chap_ietf = 'ChapLanguageIETF'
     chap_iso639 = 'ChapterLanguage'
 
-    doctype = '<!DOCTYPE Tags SYSTEM "matroskatags.dtd">'
+    doctype = '<!-- <!DOCTYPE Tags SYSTEM "matroskatags.dtd"> -->'
 
     def create(self, chapters: List[Chapter], fps: Fraction) -> None:
         """Create a xml chapter file."""
