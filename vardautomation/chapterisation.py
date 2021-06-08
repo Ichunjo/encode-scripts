@@ -16,6 +16,7 @@ from prettyprinter import doc, pretty_call, pretty_repr, register_pretty
 from prettyprinter.prettyprinter import PrettyContext
 
 from .colors import Colors
+from .timeconv import Convert
 
 
 class Language:
@@ -83,53 +84,7 @@ class Chapters(ABC):
         os.system(f'copy "{self.chapter_file}" "{destination}"')
 
     def _logging(self, action: str) -> None:
-        print(f'{Colors.INFO}Chapter file sucessfuly {action} at: {self.chapter_file}{Colors.RESET}\n')
-
-    def _f2seconds(self, f: int, fps: Fraction, /) -> float:  # noqa
-        if f == 0:
-            s = 0.0  # noqa
-
-        t = round(float(10 ** 9 * f * fps ** -1))  # noqa
-        s = t / 10 ** 9  # noqa
-        return s
-
-    def _f2ts(self, f: int, fps: Fraction, /, *, precision: int = 3) -> str:  # noqa
-        s = self._f2seconds(f, fps)  # noqa
-        ts = self._seconds2ts(s, precision=precision)  # noqa
-        return ts
-
-    def _ts2seconds(self, ts: str, /) -> float:  # noqa
-        h, m, s = map(float, ts.split(':'))  # noqa
-        return h * 3600 + m * 60 + s
-
-    def _seconds2ts(self, s: float, /, *, precision: int = 3) -> str:  # noqa
-        m = s // 60  # noqa
-        s %= 60  # noqa
-        h = m // 60  # noqa
-        m %= 60  # noqa
-
-        return self._compose_ts(h, m, s, precision=precision)
-
-    def _seconds2f(self, s: float, fps: Fraction, /) -> int:  # noqa
-        return round(s * fps)
-
-    def _ts2f(self, ts: str, fps: Fraction, /) -> int:
-        s = self._ts2seconds(ts)  # noqa
-        f = self._seconds2f(s, fps)  # noqa
-        return f
-
-    @staticmethod
-    def _compose_ts(h: float, m: float, s: float, /, *, precision: int = 3) -> str:
-        if precision == 0:  # noqa
-            return f"{h:02.0f}:{m:02.0f}:{round(s):02}"
-        elif precision == 3:
-            return f"{h:02.0f}:{m:02.0f}:{s:06.3f}"
-        elif precision == 6:
-            return f"{h:02.0f}:{m:02.0f}:{s:09.6f}"
-        elif precision == 9:
-            return f"{h:02.0f}:{m:02.0f}:{s:012.9f}"
-        else:
-            raise ValueError('precision must be <= 9 and >= 0')
+        print(f'{Colors.INFO}Chapter file sucessfully {action} at: {self.chapter_file}{Colors.RESET}\n')
 
 
 class OGMChapters(Chapters):
@@ -140,9 +95,8 @@ class OGMChapters(Chapters):
 
         with open(self.chapter_file, 'w') as file:
             for i, chapter in enumerate(chapters):
-                file.writelines([f'CHAPTER{i:02.0f}={self._f2ts(chapter.start_frame, fps)}\n',
+                file.writelines([f'CHAPTER{i:02.0f}={Convert.f2ts(chapter.start_frame, fps)}\n',
                                  f'CHAPTER{i:02.0f}NAME={chapter.name}\n'])
-
         self._logging('created')
 
     def set_names(self, names: List[Optional[str]]) -> None:
@@ -168,13 +122,13 @@ class OGMChapters(Chapters):
         """Shift times by given number of frames."""
         data = self._get_data()
 
-        shifttime = self._f2seconds(frames, fps)
+        shifttime = Convert.f2seconds(frames, fps)
 
         chaptimes = data[::2]
         chapnames = data[1::2]
 
         newchaptimes = [
-            f'{chaptime.split("=")[0]}={self._seconds2ts(max(0, self._ts2seconds(chaptime.split("=")[1]) + shifttime))}\n'
+            f'{chaptime.split("=")[0]}={Convert.seconds2ts(max(0, Convert.ts2seconds(chaptime.split("=")[1]) + shifttime))}\n'
             for chaptime in chaptimes
         ]
 
@@ -191,7 +145,7 @@ class OGMChapters(Chapters):
         chapnames = data[1::2]
 
         chapters = [
-            Chapter(chapname.split('=')[1], self._ts2f(chaptime.split('=')[1], fps), lang=lang)
+            Chapter(chapname.split('=')[1], Convert.ts2f(chaptime.split('=')[1], fps), lang=lang)
             for chaptime, chapname in zip(chaptimes, chapnames)
         ]
 
@@ -263,10 +217,10 @@ class MatroskaXMLChapters(Chapters):
 
     def shift_times(self, frames: int, fps: Fraction) -> None:
         """Shift times by given number of frames."""
-        shifttime = self._f2seconds(frames, fps)
-
-
         tree = self._get_tree()
+
+        shifttime = Convert.f2seconds(frames, fps)
+
 
         timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
         timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
@@ -276,11 +230,11 @@ class MatroskaXMLChapters(Chapters):
 
         for t_s in timestarts:
             if isinstance(t_s.text, str):
-                t_s.text = self._seconds2ts(max(0, self._ts2seconds(t_s.text) + shifttime), precision=9)
+                t_s.text = Convert.seconds2ts(max(0, Convert.ts2seconds(t_s.text) + shifttime), precision=9)
 
         for t_e in timeends:
             if isinstance(t_e.text, str) and t_e.text != '':
-                t_e.text = self._seconds2ts(max(0, self._ts2seconds(t_e.text) + shifttime), precision=9)
+                t_e.text = Convert.seconds2ts(max(0, Convert.ts2seconds(t_e.text) + shifttime), precision=9)
 
 
         with open(self.chapter_file, 'wb') as file:
@@ -327,9 +281,9 @@ class MatroskaXMLChapters(Chapters):
         atom = etree.Element(self.chap_atom)
 
 
-        etree.SubElement(atom, self.chap_start).text = self._f2ts(chapter.start_frame, self.fps, precision=9)
+        etree.SubElement(atom, self.chap_start).text = Convert.f2ts(chapter.start_frame, self.fps, precision=9)
         if chapter.end_frame:
-            etree.SubElement(atom, self.chap_end).text = self._f2ts(chapter.end_frame, self.fps, precision=9)
+            etree.SubElement(atom, self.chap_end).text = Convert.f2ts(chapter.end_frame, self.fps, precision=9)
 
         etree.SubElement(atom, self.chap_uid).text = str(random.getrandbits(64))
 
