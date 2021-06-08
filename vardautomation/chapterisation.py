@@ -62,6 +62,14 @@ class Chapters(ABC):
         self.chapter_file = chapter_file
         super().__init__()
 
+    def __repr__(self) -> str:
+        @register_pretty(Chapters)
+        def _repr(value: object, ctx: PrettyContext) -> doc.Doc:
+            dic = vars(value)
+            return pretty_call(ctx, Chapters, dic)
+
+        return pretty_repr(self)
+
     @abstractmethod
     def create(self, chapters: List[Chapter], fps: Fraction) -> None:
         """Create a chapter"""
