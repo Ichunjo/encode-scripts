@@ -10,22 +10,39 @@ from abc import ABC, abstractmethod
 from fractions import Fraction
 from typing import List, NamedTuple, Optional, Set, cast
 
+from langcodes import Language as L
 from lxml import etree
+from prettyprinter import doc, pretty_call, pretty_repr, register_pretty
+from prettyprinter.prettyprinter import PrettyContext
 
 from .colors import Colors
 
 
-class Language(NamedTuple):
+class Language:
     """Language"""
     name: str
     ietf: str
     iso639: str
 
+    def __init__(self, lang: L) -> None:
+        self.name = lang.autonym()
+        self.ietf = str(lang)
+        self.iso639 = lang.to_alpha3(variant='B')
 
-FRENCH = Language('French', 'fr', 'fre')
-ENGLISH = Language('English', 'en', 'eng')
-JAPANESE = Language('Japanese', 'jp', 'jpn')
-UNDEFINED = Language('Undefined', 'und', 'und')
+    def __repr__(self) -> str:
+        @register_pretty(Language)
+        def _repr(value: object, ctx: PrettyContext) -> doc.Doc:
+            dic = vars(value)
+            return pretty_call(ctx, Language, dic)
+
+        return pretty_repr(self)
+
+
+FRENCH = Language(L.make('fr'))
+ENGLISH = Language(L.make('en'))
+JAPANESE = Language(L.make('ja'))
+UNDEFINED = Language(L.make())
+
 
 
 class Chapter(NamedTuple):
