@@ -8,12 +8,14 @@ import os
 import random
 from abc import ABC, abstractmethod
 from fractions import Fraction
+from pathlib import Path
 from typing import List, NamedTuple, NoReturn, Optional, Sequence, Set, cast
 
 from langcodes import Language as L
 from lxml import etree
 from prettyprinter import doc, pretty_call, pretty_repr, register_pretty
 from prettyprinter.prettyprinter import PrettyContext
+from pyparsebluray import mpls
 
 from .colors import Colors
 from .timeconv import Convert
@@ -333,3 +335,155 @@ def create_qpfile(qpfile: str,
 
     with open(qpfile, "w", encoding='utf-8') as qp:  # noqa: PLC0103
         qp.writelines([f"{f} K\n" for f in sorted(keyf)])
+
+
+
+class MplsChapters(Chapters):
+    """MplsChapters object"""
+    m2ts: Path
+    chapters: List[Chapter]
+    fps: Fraction
+
+    def create(self, chapters: List[Chapter], fps: Fraction) -> NoReturn:
+        raise NotImplementedError("Can't create a mpls file!")
+
+    def set_names(self, names: List[Optional[str]]) -> NoReturn:
+        raise NotImplementedError("Can't change name from a mpls file!")
+
+
+class MplsReader():
+    """Mpls reader"""
+    bd_folder: Path
+
+    mpls_folder: Path
+    m2ts_folder: Path
+
+    set_lang: Language
+    default_chap_name: str
+
+    class MplsFile(NamedTuple):  # noqa: PLC0115
+        mpls_file: Path
+        mpls_chapters: List[MplsChapters]
+
+    def __init__(self, bd_folder: Path = Path(), set_lang: Language = UNDEFINED, default_chap_name: str = 'Chapter') -> None:
+        """Initialise a MplsReader.
+           All parameters are optionnal if you just want to use the `parse_mpls` method.
+
+        Args:
+            bd_folder (Path, optional):
+                A valid bluray folder path should contain a BDMV and CERTIFICATE folders.
+                Defaults to pathlib.Path().
+
+            set_lang (Language, optional):
+                Language to be set. Defaults to UNDEFINED.
+
+            default_chap_name (str, optional):
+                Prefix used as default name for the generated chapters.
+                Defaults to 'Chapter'.
+        """
+        self.bd_folder = bd_folder
+
+        self.mpls_folder = self.bd_folder.joinpath('BDMV/PLAYLIST')
+        self.m2ts_folder = self.bd_folder.joinpath('BDMV/STREAM')
+
+        self.set_lang = set_lang
+        self.default_chap_name = default_chap_name
+
+    def get_playlist(self) -> List[MplsFile]:
+        """Returns a list of all the mpls files contained in the folder specified in the constructor."""
+        mpls_files = sorted(self.mpls_folder.glob('*.mpls'))
+
+        return [
+            self.MplsFile(mpls_file=mpls_file,
+                          mpls_chapters=self.parse_mpls(mpls_file))
+            for mpls_file in mpls_files
+        ]
+
+    def write_playlist(self, output_folder: Optional[Path] = None) -> None:
+        """Extract and write the playlist folder to XML chapters files.
+
+        Args:
+            output_folder (Optional[Path], optional):
+                Will write in the mpls folder if not specified.
+                Defaults to None.
+        """
+        playlist = self.get_playlist()
+
+        if not output_folder:
+            output_folder = self.mpls_folder
+
+        for mpls_file in playlist:
+            for mpls_chapters in mpls_file.mpls_chapters:
+                # Some mpls_chapters don't necessarily have attributes mpls_chapters.chapters
+                try:
+                    MatroskaXMLChapters(str(output_folder.joinpath(f'{mpls_file.mpls_file.stem}_{mpls_chapters.m2ts.stem}.xml'))) \
+                        .create(mpls_chapters.chapters, mpls_chapters.fps)
+                except AttributeError:
+                    pass
+
+
+    def parse_mpls(self, mpls_file: Path) -> List[MplsChapters]:
+        """Parse a mpls file and return a list of chapters that were in the mpls file."""
+        with open(mpls_file, 'rb') as file:
+            header = mpls.load_movie_playlist(file)
+
+            file.seek(header.playlist_start_address, os.SEEK_SET)
+            playlist = mpls.load_playlist(file)
+
+            if not playlist.play_items:
+                raise ValueError('There is no play items in this file!')
+
+            file.seek(header.playlist_mark_start_address, os.SEEK_SET)
+            playlist_mark = mpls.load_playlist_mark(file)
+            if (plsmarks := playlist_mark.playlist_marks) is not None:
+                marks = plsmarks
+            else:
+                raise ValueError('There is no playlist marks in this file!')
+
+
+            mpls_chaps: List[MplsChapters] = []
+
+            for i, playitem in enumerate(playlist.play_items):
+
+                # Create a MplsChapters and add its linked mpls
+                mpls_chap = MplsChapters(str(mpls_file))
+
+                # Add the m2ts name
+                if (name := playitem.clip_information_filename) and \
+                   (ext := playitem.clip_codec_identifier):
+                    mpls_chap.m2ts = self.m2ts_folder.joinpath(f'{name}.{ext}'.lower())
+
+                # Sort the chapters/marks linked to the current item
+                linked_marks = [mark for mark in marks if mark.ref_to_play_item_id == i]
+
+                # linked_marks could be empty
+                if linked_marks:
+                    # Extract the offset
+                    assert playitem.intime
+                    offset = min(playitem.intime, linked_marks[0].mark_timestamp)
+
+                    # Extract the fps and store it
+                    try:
+                        assert (fps_n := playitem.stn_table.prim_video_stream_entries[0][1].framerate)
+                        mpls_chap.fps = mpls.FRAMERATE[fps_n]
+                    except KeyError as kerr:
+                        raise ValueError('Framerate not found') from kerr
+
+                    # Finally extract the chapters
+                    mpls_chap.chapters = sorted(self._mplschapters_to_chapters(linked_marks, offset, mpls_chap.fps))
+
+                # And add to the list
+                mpls_chaps.append(mpls_chap)
+
+            return mpls_chaps
+
+
+    def _mplschapters_to_chapters(self, marks: List[mpls.playlist_mark.PlaylistMark], offset: int, fps: Fraction) -> Set[Chapter]:
+        chapters: Set[Chapter] = set()
+        for i, mark in enumerate(marks, start=1):
+            chapters.add(
+                Chapter(name=f'{self.default_chap_name} {i:02.0f}',
+                        start_frame=Convert.seconds2f((mark.mark_timestamp - offset) / 45000, fps),
+                        end_frame=None,
+                        lang=self.set_lang))
+        return chapters
