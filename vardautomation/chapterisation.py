@@ -187,7 +187,7 @@ class MatroskaXMLChapters(Chapters):
 
         # Append chapters
         for chap in [self._make_chapter_xml(c) for c in chapters]:
-            root.append(chap)
+            edit_entry.append(chap)
 
         with open(self.chapter_file, 'wb') as file:
             file.write(etree.tostring(
