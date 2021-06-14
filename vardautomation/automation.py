@@ -337,15 +337,44 @@ class EncodeGoBrr(ABC):
         self._parsing()
         self._encode()
         self._audio_getter()
+        # self.write_encoder_name_file()
+        # self.chapter()
         self.merge()
 
     @abstractmethod
     def chapter(self) -> None:
         """Chapterisation"""
+        # Examples
+        assert self.file.chapter
+        assert self.file.frame_start
+
+        # Variables
+        chap_names: List[Optional[str]] = []
+        chapters: List[Chapter] = []
+        fps: Fraction = self.clip.fps
+
+        # XML or OGM chapters
+        chap = MatroskaXMLChapters(self.file.chapter)
+        chap = OGMChapters(self.file.chapter)
+
+        # Method to be used
+        chap.create(chapters, fps)
+        chap.set_names(chap_names)
+        chap.shift_times(0 - self.file.frame_start, fps)
 
     @abstractmethod
     def merge(self) -> None:
         """Merge function"""
+        assert self.file.a_enc_cut
+        assert self.file.chapter
+        BasicTool('mkvmerge', [
+            '-o', self.file.name_file_final,
+            '--track-name', '0:HEVC BDRip by Vardë@Raws-Maji', '--language', '0:jpn', self.file.name_clip_output,
+            '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', self.file.a_enc_cut.format(1),
+            '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 5.1', '--language', '0:jpn', self.file.a_enc_cut.format(2),
+            '--chapter-language', 'jpn', '--chapters', self.file.chapter
+        ]).run()
+
 
     def write_encoder_name_file(self, tags_file_name: str, track: int) -> None:
         assert (a_enc_sut := self.file.a_enc_cut)
