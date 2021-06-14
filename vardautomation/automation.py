@@ -117,6 +117,12 @@ class AudioCutter():
                self.file.a_src.format(self.track), self.file.a_src_cut.format(self.track))
 
 
+
+def progress_update_func(value: int, endvalue: int) -> None:
+    """Callback function used in clip.output"""
+    return print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end="")
+
+
 class VideoEncoder(Tool):
     """VideoEncoder interface"""
     file: FileInfo
@@ -124,7 +130,7 @@ class VideoEncoder(Tool):
     bits: int
 
     def __init__(self, binary: str, settings: Union[Path, List[str]], /,
-                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+                 progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
         """Helper intended to facilitate video encoding
 
         Args:
@@ -172,7 +178,7 @@ class VideoEncoder(Tool):
 class X265Encoder(VideoEncoder):
     """Video encoder using x265 in HEVC"""
     def __init__(self, binary: str, settings: Union[Path, List[str]], /,
-                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+                 progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
@@ -187,7 +193,7 @@ class X265Encoder(VideoEncoder):
 class X264Encoder(VideoEncoder):
     """Video encoder using x264 in AVC"""
     def __init__(self, binary: str, settings: Union[Path, List[str]], /,
-                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+                 progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
