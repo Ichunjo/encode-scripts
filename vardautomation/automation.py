@@ -347,6 +347,22 @@ class EncodeGoBrr(ABC):
     def merge(self) -> None:
         """Merge function"""
 
+    def write_encoder_name_file(self, tags_file_name: str, track: int) -> None:
+        assert (a_enc_sut := self.file.a_enc_cut)
+        aac_encoder_name = Properties.get_encoder_name(a_enc_sut.format(track))
+
+        tags = etree.Element('Tags')
+        tag = etree.SubElement(tags, 'Tag')
+        _ = etree.SubElement(tag, 'Targets')
+        simple = etree.SubElement(tag, 'Simple')
+        etree.SubElement(simple, 'Name').text = 'ENCODER'
+        etree.SubElement(simple, 'String').text = aac_encoder_name
+
+        with open(tags_file_name, 'wb') as f:
+            f.write(etree.tostring(
+                tags, encoding='utf-8', xml_declaration=True, pretty_print=True)
+            )
+
     def _parsing(self) -> None:
         parser = Parser(self.file)
         self.file, self.clip = parser.parsing(self.file, self.clip)
