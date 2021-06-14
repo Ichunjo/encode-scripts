@@ -1,0 +1,7 @@
+acsuite_orangechannel==6.0.1
+prettyprinter==0.18.0
+VapourSynth==53
+langcodes==3.1.0
+lvsfunc==0.3.4
+lxml==4.6.3
+colorama==0.4.4
