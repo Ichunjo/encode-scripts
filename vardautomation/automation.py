@@ -2,19 +2,22 @@
 
 __all__ = ['Tool', 'BasicTool', 'AudioEncoder', 'AudioCutter',
            'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
-           'Parser', 'EncodeGoBrr']
+           'Parser', 'EncodeGoBrr', 'progress_update_func']
 
 import argparse
 import re
 import subprocess
 from abc import ABC, abstractmethod
+from fractions import Fraction
 from pathlib import Path
 from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Sequence,
                     Tuple, Union, cast)
 
 import vapoursynth as vs
 from acsuite import eztrim
+from lxml import etree
 
+from .chapterisation import Chapter, MatroskaXMLChapters, OGMChapters
 from .colors import Colors
 from .config import FileInfo
 from .properties import Properties
