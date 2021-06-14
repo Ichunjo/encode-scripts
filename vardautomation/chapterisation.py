@@ -2,7 +2,8 @@
 
 __all__ = ['Language', 'Chapter', 'Chapters', 'OGMChapters', 'MatroskaXMLChapters',
            'create_qpfile',
-           'FRENCH', 'ENGLISH', 'JAPANESE', 'UNDEFINED']
+           'FRENCH', 'ENGLISH', 'JAPANESE', 'UNDEFINED',
+           'MplsChapters', 'MplsReader']
 
 import os
 import random
