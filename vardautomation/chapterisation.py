@@ -164,19 +164,19 @@ class MatroskaXMLChapters(Chapters):
     fps: Fraction
     timecodes: List[float]
 
-    ed_entry = 'EditionEntry'
-    ed_uid = 'EditionUID'
+    __ed_entry = 'EditionEntry'
+    __ed_uid = 'EditionUID'
 
-    chap_atom = 'ChapterAtom'
-    chap_start = 'ChapterTimeStart'
-    chap_end = 'ChapterTimeEnd'
-    chap_uid = 'ChapterUID'
-    chap_disp = 'ChapterDisplay'
-    chap_name = 'ChapterString'
-    chap_ietf = 'ChapLanguageIETF'
-    chap_iso639 = 'ChapterLanguage'
+    __chap_atom = 'ChapterAtom'
+    __chap_start = 'ChapterTimeStart'
+    __chap_end = 'ChapterTimeEnd'
+    __chap_uid = 'ChapterUID'
+    __chap_disp = 'ChapterDisplay'
+    __chap_name = 'ChapterString'
+    __chap_ietf = 'ChapLanguageIETF'
+    __chap_iso639 = 'ChapterLanguage'
 
-    doctype = '<!-- <!DOCTYPE Tags SYSTEM "matroskatags.dtd"> -->'
+    __doctype = '<!-- <!DOCTYPE Tags SYSTEM "matroskatags.dtd"> -->'
 
     def create(self, chapters: List[Chapter], fps: Fraction) -> None:
         """Create a xml chapter file."""
@@ -184,8 +184,8 @@ class MatroskaXMLChapters(Chapters):
 
         root = etree.Element('Chapters')
 
-        edit_entry = etree.SubElement(root, self.ed_entry)
-        etree.SubElement(edit_entry, self.ed_uid).text = str(random.getrandbits(64))
+        edit_entry = etree.SubElement(root, self.__ed_entry)
+        etree.SubElement(edit_entry, self.__ed_uid).text = str(random.getrandbits(64))
 
         # Append chapters
         for chap in [self._make_chapter_xml(c) for c in chapters]:
@@ -194,7 +194,7 @@ class MatroskaXMLChapters(Chapters):
         with open(self.chapter_file, 'wb') as file:
             file.write(etree.tostring(
                 root, encoding='utf-8', xml_declaration=True,
-                pretty_print=True, doctype=self.doctype)
+                pretty_print=True, doctype=self.__doctype)
             )
 
         self._logging('created')
@@ -202,7 +202,7 @@ class MatroskaXMLChapters(Chapters):
     def set_names(self, names: List[Optional[str]]) -> None:
         tree = self._get_tree()
 
-        olds = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_name}')
+        olds = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
         olds = cast(List[etree._Element], olds)  # noqa: PLW0212
 
         if len(names) > len(olds):
@@ -225,10 +225,10 @@ class MatroskaXMLChapters(Chapters):
         shifttime = Convert.f2seconds(frames, fps)
 
 
-        timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
+        timestarts = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_start}')
         timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
 
-        timeends = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_end}')
+        timeends = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_end}')
         timeends = cast(List[etree._Element], timeends)  # noqa: PLW0212
 
         for t_s in timestarts:
@@ -249,23 +249,23 @@ class MatroskaXMLChapters(Chapters):
         """Convert XML Chapters to a list of Chapter"""
         tree = self._get_tree()
 
-        timestarts = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_start}')
+        timestarts = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_start}')
         timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
 
 
-        timeends = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_end}')
+        timeends = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_end}')
         timeends = cast(List[Optional[etree._Element]], timeends)  # noqa: PLW0212
         if len(timeends) != len(timestarts):
             timeends += [None] * (len(timestarts) - len(timeends))
 
 
-        names = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_name}')
+        names = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
         names = cast(List[Optional[etree._Element]], names)  # noqa: PLW0212
         if len(names) != len(timestarts):
             names += [None] * (len(timestarts) - len(names))
 
 
-        ietfs = tree.xpath(f'/Chapters/{self.ed_entry}/{self.chap_atom}/{self.chap_disp}/{self.chap_ietf}')
+        ietfs = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_ietf}')
         ietfs = cast(List[Optional[etree._Element]], ietfs)  # noqa: PLW0212
         if len(ietfs) != len(timestarts):
             ietfs += [None] * (len(timestarts) - len(ietfs))
@@ -299,20 +299,20 @@ class MatroskaXMLChapters(Chapters):
 
     def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:  # noqa: PLW0212
 
-        atom = etree.Element(self.chap_atom)
+        atom = etree.Element(self.__chap_atom)
 
 
-        etree.SubElement(atom, self.chap_start).text = Convert.f2ts(chapter.start_frame, self.fps, precision=9)
+        etree.SubElement(atom, self.__chap_start).text = Convert.f2ts(chapter.start_frame, self.fps, precision=9)
         if chapter.end_frame:
-            etree.SubElement(atom, self.chap_end).text = Convert.f2ts(chapter.end_frame, self.fps, precision=9)
+            etree.SubElement(atom, self.__chap_end).text = Convert.f2ts(chapter.end_frame, self.fps, precision=9)
 
-        etree.SubElement(atom, self.chap_uid).text = str(random.getrandbits(64))
+        etree.SubElement(atom, self.__chap_uid).text = str(random.getrandbits(64))
 
 
-        disp = etree.SubElement(atom, self.chap_disp)
-        etree.SubElement(disp, self.chap_name).text = chapter.name
-        etree.SubElement(disp, self.chap_ietf).text = chapter.lang.ietf
-        etree.SubElement(disp, self.chap_iso639).text = chapter.lang.iso639
+        disp = etree.SubElement(atom, self.__chap_disp)
+        etree.SubElement(disp, self.__chap_name).text = chapter.name
+        etree.SubElement(disp, self.__chap_ietf).text = chapter.lang.ietf
+        etree.SubElement(disp, self.__chap_iso639).text = chapter.lang.iso639
 
 
         return atom
