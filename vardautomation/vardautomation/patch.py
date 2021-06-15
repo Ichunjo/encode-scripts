@@ -67,28 +67,28 @@ class Patch():  # noqa
         idx_file = f'{self.workdir}/index.ffindex'
         kf_file = f'{idx_file}_track00.kf.txt'
 
-        idxing = BasicTool(self.ffmsindex, ['-k', '-f', f'{self.file_to_fix}', idx_file])
+        idxing = BasicTool(self.ffmsindex, ['-k', '-f', str(self.file_to_fix), idx_file])
         idxing.run()
 
-        with open(kf_file, 'r', encoding='utf-8') as f:  # noqa
-            kfs = f.read().splitlines()
+        with open(kf_file, 'r', encoding='utf-8') as f:
+            kfsstr = f.read().splitlines()
 
-        kfs = list(map(int, kfs[2:]))
+        kfsint = list(map(int, kfsstr[2:]))
         # Add the last frame
-        kfs.append(self.filtered_clip.num_frames)
+        kfsint.append(self.filtered_clip.num_frames)
 
 
         fra_s, fra_e = None, None
 
-        for i, kf in enumerate(kfs):  # noqa
+        for i, kf in enumerate(kfsint):
             if kf > self.frame_start:
-                fra_s = kfs[i-1]
+                fra_s = kfsint[i-1]
                 break
             if kf == self.frame_start:
                 fra_s = kf
                 break
 
-        for i, kf in enumerate(kfs):  # noqa
+        for i, kf in enumerate(kfsint):
             if kf >= self.frame_end:
                 fra_e = kf
                 break
@@ -103,7 +103,7 @@ class Patch():  # noqa
 
         self.encoder.run_enc(clip, self.file)
 
-        merge = BasicTool('mkvmerge', ['-o', f'{self.fix_mkv}', f'{self.fix_raw}'])
+        merge = BasicTool('mkvmerge', ['-o', str(self.fix_mkv), str(self.fix_raw)])
         merge.run()
 
     def _cut_and_merge(self, start: int, end: int) -> None:
@@ -117,7 +117,7 @@ class Patch():  # noqa
             split_args = ['--split', f'frames:{end}']
         else:
             split_args = ['--split', f'frames:{start},{end}']
-        merge = BasicTool(self.mkvmerge, ['-o', f'{tmp}', '--no-audio', '--no-track-tags', '--no-chapters', f'{self.file_to_fix}', *split_args])
+        merge = BasicTool(self.mkvmerge, ['-o', str(tmp), '--no-audio', '--no-track-tags', '--no-chapters', str(self.file_to_fix), *split_args])
         merge.run()
 
 
@@ -126,15 +126,15 @@ class Patch():  # noqa
         tmp003 = self.workdir / f'{tmp.stem}-003.mkv'
 
         if start == 0:
-            merge_args = [f'{self.fix_mkv}', '+', tmp002]
+            merge_args = [str(self.fix_mkv), '+', str(tmp002)]
         elif end == self.filtered_clip.num_frames:
-            merge_args = [tmp001, '+', f'{self.fix_mkv}']
+            merge_args = [str(tmp001), '+', str(self.fix_mkv)]
         else:
-            merge_args = [tmp001, '+', f'{self.fix_mkv}', '+', tmp003]
+            merge_args = [str(tmp001), '+', str(self.fix_mkv), '+', str(tmp003)]
 
-        merge = BasicTool(self.mkvmerge, ['-o', f'{tmpnoaudio}', '--no-audio', '--no-track-tags', '--no-chapters', *merge_args])
+        merge = BasicTool(self.mkvmerge, ['-o', str(tmpnoaudio), '--no-audio', '--no-track-tags', '--no-chapters', *merge_args])
         merge.run()
-        merge = BasicTool(self.mkvmerge, ['-o', f'{final}', f'{tmpnoaudio}', '--no-video', f'{self.file_to_fix}'])
+        merge = BasicTool(self.mkvmerge, ['-o', str(final), str(tmpnoaudio), '--no-video', str(self.file_to_fix)])
         merge.run()
 
     @staticmethod
