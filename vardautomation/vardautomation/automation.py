@@ -15,6 +15,7 @@ from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Sequence,
 
 import vapoursynth as vs
 from acsuite import eztrim
+from lvsfunc.render import SceneChangeMode, find_scene_changes
 from lxml import etree
 
 from .chapterisation import Chapter, MatroskaXMLChapters, OGMChapters
@@ -158,16 +159,29 @@ class VideoEncoder(Tool):
         """Run encoding"""
         self.file = file
         self.clip = clip
+
         assert self.clip.format
         self.bits = self.clip.format.bits_per_sample
-        self.run()
+
+        self._get_settings()
+
+        if self.file.do_qpfile:
+            self.create_qpfile()
+            self.params += ['--qpfile', self.file.qpfile]
+
+        self._do_encode()
 
     def run(self) -> None:
-        self._get_settings()
-        self._do_encode()
+        raise NameError('Use `run_enc` instead')
 
     def set_variable(self) -> Dict[str, Any]:
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name)
+
+    def create_qpfile(self) -> None:
+        scenes = find_scene_changes(self.clip, SceneChangeMode.WWXD_SCXVID_UNION)
+
+        with open(self.file.qpfile, 'w') as qpfile:
+            qpfile.writelines([f"{s} K" for s in scenes])
 
     def _do_encode(self) -> None:
         print(Colors.INFO)
@@ -222,6 +236,8 @@ class Parser():  # noqa
         parser = argparse.ArgumentParser(description=f'Encode {file.name}')
         parser.add_argument('-L', '--lossless', action='store_true', default=False,
                             help='Write a lossless file instead of piping the pre-processing.')
+        parser.add_argument('-Q', '--qpfile', action='store_true', default=False,
+                            help='Write a qpfile from scene changes before encoding')
         parser.add_argument("-S", '--start', nargs='?', type=int, help='Start encode at frame START.')
         parser.add_argument("-E", '--end', nargs='?', type=int, help='Stop encode at frame END (inclusive).')
         self.args = parser.parse_args()
@@ -231,6 +247,10 @@ class Parser():  # noqa
         # Lossless check
         if self.args.lossless:
             file.do_lossless = True
+
+        # Qpfile check
+        if self.args.qpfile:
+            file.do_qpfile = True
 
         file_frame_start: Optional[int] = None
         file_frame_end: Optional[int] = None

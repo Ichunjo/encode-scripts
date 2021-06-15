@@ -44,6 +44,9 @@ class FileInfo():  # noqa: PLR0902
     name_clip_output_lossless: str
     do_lossless: bool
 
+    qpfile: str
+    do_qpfile: bool
+
 
     def __init__(self, src: str, /,
                  frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
@@ -94,6 +97,9 @@ class FileInfo():  # noqa: PLR0902
 
         self.name_clip_output_lossless = self.name + '_lossless.mkv'
         self.do_lossless = False
+
+        self.qpfile = self.name + '_qpfile.log'
+        self.do_qpfile = False
 
         super().__init__()
 
