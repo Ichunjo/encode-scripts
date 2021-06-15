@@ -384,8 +384,8 @@ class MplsReader():
         """
         self.bd_folder = bd_folder
 
-        self.mpls_folder = self.bd_folder.joinpath('BDMV/PLAYLIST')
-        self.m2ts_folder = self.bd_folder.joinpath('BDMV/STREAM')
+        self.mpls_folder = self.bd_folder / 'BDMV/PLAYLIST'
+        self.m2ts_folder = self.bd_folder / 'BDMV/STREAM'
 
         self.set_lang = set_lang
         self.default_chap_name = default_chap_name
@@ -452,7 +452,7 @@ class MplsReader():
                 # Add the m2ts name
                 if (name := playitem.clip_information_filename) and \
                    (ext := playitem.clip_codec_identifier):
-                    mpls_chap.m2ts = self.m2ts_folder.joinpath(f'{name}.{ext}'.lower())
+                    mpls_chap.m2ts = self.m2ts_folder / f'{name}.{ext}'.lower()
 
                 # Sort the chapters/marks linked to the current item
                 linked_marks = [mark for mark in marks if mark.ref_to_play_item_id == i]

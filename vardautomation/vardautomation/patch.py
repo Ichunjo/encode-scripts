@@ -50,10 +50,10 @@ class Patch():  # noqa
     def run(self) -> None:
         """Launch patch"""
         # Local folder
-        self.workdir = self.file_to_fix.parent.joinpath(Path('_temp_workdir'))
+        self.workdir = self.file_to_fix.parent / '_temp_workdir'
         self.workdir.mkdir()
-        self.fix_raw = self.workdir.joinpath('fix')
-        self.fix_mkv = self.workdir.joinpath('fix.mkv')
+        self.fix_raw = self.workdir / 'fix'
+        self.fix_mkv = self.workdir / 'fix.mkv'
 
         start, end = self._generate_keyframes()
         self._encode(self.filtered_clip[start:end])
@@ -108,9 +108,9 @@ class Patch():  # noqa
 
     def _cut_and_merge(self, start: int, end: int) -> None:
         name = self.file_to_fix.stem
-        tmp = self.workdir.joinpath(f'{name}_tmp.mkv')
-        tmpnoaudio = self.workdir.joinpath(f'{name}_tmp_noaudio.mkv')
-        final = self.file_to_fix.parent.joinpath(f'{name}_new.mkv')
+        tmp = self.workdir / f'{name}_tmp.mkv'
+        tmpnoaudio = self.workdir / f'{name}_tmp_noaudio.mkv'
+        final = self.file_to_fix.parent / f'{name}_new.mkv'
 
 
         if start == 0:
@@ -121,9 +121,9 @@ class Patch():  # noqa
         merge.run()
 
 
-        tmp001 = str(self.workdir.joinpath(f'{tmp.stem}-001.mkv'))
-        tmp002 = str(self.workdir.joinpath(f'{tmp.stem}-002.mkv'))
-        tmp003 = str(self.workdir.joinpath(f'{tmp.stem}-003.mkv'))
+        tmp001 = self.workdir / f'{tmp.stem}-001.mkv'
+        tmp002 = self.workdir / f'{tmp.stem}-002.mkv'
+        tmp003 = self.workdir / f'{tmp.stem}-003.mkv'
 
         if start == 0:
             merge_args = [f'{self.fix_mkv}', '+', tmp002]
