@@ -236,7 +236,6 @@ class MatroskaXMLChapters(Chapters):
         tree = self._get_tree()
 
         olds = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
-        olds = cast(List[etree._Element], olds)  # noqa: PLW0212
 
         if len(names) > len(olds):
             raise ValueError('set_names: too many names!')
@@ -283,7 +282,6 @@ class MatroskaXMLChapters(Chapters):
         tree = self._get_tree()
 
         timestarts = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_start}')
-        timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
 
 
         timeends = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_end}')
