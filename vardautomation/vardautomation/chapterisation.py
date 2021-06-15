@@ -1,7 +1,6 @@
 """Chapterisation module"""
 
 __all__ = ['Language', 'Chapter', 'Chapters', 'OGMChapters', 'MatroskaXMLChapters',
-           'create_qpfile',
            'FRENCH', 'ENGLISH', 'JAPANESE', 'UNDEFINED',
            'MplsChapters', 'MplsReader']
 
@@ -96,6 +95,16 @@ class Chapters(ABC):
             f'{Colors.INFO}Chapter file sucessfully copied from: '
             + f'"{str(self.chapter_file.absolute())}" to "{str(destination.absolute())}" {Colors.RESET}\n'
         )
+
+    def create_qpfile(self, qpfile: Union[Path, str], fps: Fraction) -> None:
+        """Create a qp file from the current Chapters object"""
+        qpfile = Path(qpfile) if isinstance(qpfile, str) else qpfile
+
+        keyf = [chap.start_frame for chap in self.to_chapters(fps, None)]
+
+        qpfile.write_text('\n'.join([f"{f} K" for f in sorted(keyf)]), encoding='utf-8')
+
+        print(f'{Colors.INFO}Chapter file sucessfully copied at: "{str(qpfile.absolute())}"{Colors.RESET}\n')
 
     def _logging(self, action: str) -> None:
         print(f'{Colors.INFO}Chapter file sucessfully {action} at: {self.chapter_file}{Colors.RESET}\n')
