@@ -377,8 +377,8 @@ class EncodeGoBrr(ABC):
         fps: Fraction = self.clip.fps
 
         # XML or OGM chapters
-        chap = MatroskaXMLChapters(self.file.chapter)
-        chap = OGMChapters(self.file.chapter)
+        chap = MatroskaXMLChapters(self.file.chapter)  # type: ignore
+        chap = OGMChapters(self.file.chapter)  # type: ignore
 
         # Method to be used
         chap.create(chapters, fps)

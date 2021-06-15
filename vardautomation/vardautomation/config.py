@@ -129,5 +129,5 @@ class FileInfo():  # noqa: PLR0902
             if boolean and file and Path(file).exists():
                 os.remove(file)
             for i in range(10):
-                if boolean and file.format(i) and Path(file.format(i)).exists():
+                if boolean and file and file.format(i) and Path(file.format(i)).exists():
                     os.remove(file.format(i))

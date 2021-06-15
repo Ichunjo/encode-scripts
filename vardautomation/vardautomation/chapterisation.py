@@ -53,7 +53,7 @@ class Chapter(NamedTuple):
     """Chapter object"""
     name: str
     start_frame: int
-    end_frame: Optional[int] = None
+    end_frame: Optional[int]
     lang: Language = UNDEFINED
 
 
@@ -140,7 +140,7 @@ class OGMChapters(Chapters):
 
         self._logging('shifted')
 
-    def ogm_to_chapters(self, fps: Fraction, lang: Language = UNDEFINED) -> List[Chapter]:
+    def to_chapters(self, fps: Fraction, lang: Optional[Language]) -> List[Chapter]:
         """Convert OGM Chapters to a list of Chapter"""
         data = self._get_data()
 
@@ -148,7 +148,12 @@ class OGMChapters(Chapters):
         chapnames = data[1::2]
 
         chapters = [
-            Chapter(chapname.split('=')[1], Convert.ts2f(chaptime.split('=')[1], fps), lang=lang)
+            Chapter(
+                name=chapname.split('=')[1],
+                start_frame=Convert.ts2f(chaptime.split('=')[1], fps),
+                end_frame=None,
+                lang=lang if lang is not None else UNDEFINED
+            )
             for chaptime, chapname in zip(chaptimes, chapnames)
         ]
 
@@ -158,6 +163,17 @@ class OGMChapters(Chapters):
         with open(self.chapter_file, 'r') as file:
             data = file.readlines()
         return data
+
+
+class ElementTree(etree._ElementTree):  # type: ignore
+    def xpath(self, _path: etree._AnyStr, namespaces: Optional[etree._DictAnyStr] = None,  # type: ignore
+              extensions: etree.Any = None, smart_strings: bool = True,
+              **_variables: etree._XPathObject) -> List[etree._Element]:  # type: ignore
+        xpahobject = super().xpath(  # type: ignore
+            _path, namespaces=namespaces, extensions=extensions,
+            smart_strings=smart_strings, **_variables
+        )
+        return cast(List[etree._Element], xpahobject)  # type: ignore
 
 
 class MatroskaXMLChapters(Chapters):
@@ -255,19 +271,19 @@ class MatroskaXMLChapters(Chapters):
 
 
         timeends = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_end}')
-        timeends = cast(List[Optional[etree._Element]], timeends)  # noqa: PLW0212
+        timeends = cast(List[Optional[etree._Element]], timeends)  # type: ignore
         if len(timeends) != len(timestarts):
             timeends += [None] * (len(timestarts) - len(timeends))
 
 
         names = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
-        names = cast(List[Optional[etree._Element]], names)  # noqa: PLW0212
+        names = cast(List[Optional[etree._Element]], names)  # type: ignore
         if len(names) != len(timestarts):
             names += [None] * (len(timestarts) - len(names))
 
 
         ietfs = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_ietf}')
-        ietfs = cast(List[Optional[etree._Element]], ietfs)  # noqa: PLW0212
+        ietfs = cast(List[Optional[etree._Element]], ietfs)  # type: ignore
         if len(ietfs) != len(timestarts):
             ietfs += [None] * (len(timestarts) - len(ietfs))
 
@@ -275,24 +291,25 @@ class MatroskaXMLChapters(Chapters):
         chapters: List[Chapter] = []
         for name, timestart, timeend, ietf in zip(names, timestarts, timeends, ietfs):
 
-            name = name.text if isinstance(name.text, str) else ''
+            nametxt = name.text if isinstance(name.text, str) else ''
 
             if isinstance(timestart.text, str):
                 start_frame = Convert.ts2f(timestart.text, fps)
             else:
-                raise ValueError()
+                raise ValueError('xml_to_chapters: timestart.text is not a str, wtf are u doin')
 
+            end_frame: Optional[int] = None
             try:
                 end_frame = Convert.ts2f(timeend.text, fps)  # type: ignore
             except AttributeError:
-                end_frame = None
+                pass
 
             if not lang and isinstance(ietf.text, str):
                 lang = Language(L.make(ietf.text))
             else:
                 assert lang
 
-            chapter = Chapter(name=name, start_frame=start_frame, end_frame=end_frame, lang=lang)
+            chapter = Chapter(name=nametxt, start_frame=start_frame, end_frame=end_frame, lang=lang)
             chapters.append(chapter)
 
         return chapters
@@ -318,24 +335,12 @@ class MatroskaXMLChapters(Chapters):
 
         return atom
 
+    def _get_tree(self) -> ElementTree:  # noqa: PLW0212
+        try:
+            return cast(ElementTree, etree.parse(str(self.chapter_file)))
+        except OSError as oserr:
+            raise FileNotFoundError('_get_tree: xml file not found!') from oserr
 
-    def _get_tree(self) -> etree._ElementTree:  # noqa: PLW0212
-        return etree.parse(self.chapter_file)
-
-
-def create_qpfile(qpfile: str,
-                  frames: Optional[Sequence[int]] = None, *,
-                  chapters: Optional[List[Chapter]] = None) -> None:
-    """Create a qp file from a list of Chapter or frames"""
-    keyf: Set[int] = set()
-    if chapters:
-        for chap in chapters:
-            keyf.add(chap.start_frame)
-    elif frames:
-        keyf = set(frames)
-
-    with open(qpfile, "w", encoding='utf-8') as qp:  # noqa: PLC0103
-        qp.writelines([f"{f} K\n" for f in sorted(keyf)])
 
 
 
