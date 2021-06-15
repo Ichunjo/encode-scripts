@@ -197,7 +197,6 @@ class ElementTree(etree._ElementTree):  # type: ignore
 class MatroskaXMLChapters(Chapters):
     """MatroskaXMLChapters object """
     fps: Fraction
-    timecodes: List[float]
 
     __ed_entry = 'EditionEntry'
     __ed_uid = 'EditionUID'
