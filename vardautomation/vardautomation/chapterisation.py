@@ -107,7 +107,7 @@ class Chapters(ABC):
         print(f'{Colors.INFO}Chapter file sucessfully copied at: "{str(qpfile.absolute())}"{Colors.RESET}\n')
 
     def _logging(self, action: str) -> None:
-        print(f'{Colors.INFO}Chapter file sucessfully {action} at: {self.chapter_file}{Colors.RESET}\n')
+        print(f'{Colors.INFO}Chapter file sucessfully {action} at: "{str(self.chapter_file.absolute())}"{Colors.RESET}\n')
 
 
 class OGMChapters(Chapters):
