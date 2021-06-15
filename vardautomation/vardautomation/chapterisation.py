@@ -10,7 +10,8 @@ import random
 from abc import ABC, abstractmethod
 from fractions import Fraction
 from pathlib import Path
-from typing import List, NamedTuple, NoReturn, Optional, Sequence, Set, cast
+from shutil import copyfile
+from typing import List, NamedTuple, NoReturn, Optional, Set, Union, cast
 
 from langcodes import Language as L
 from lxml import etree
@@ -59,11 +60,11 @@ class Chapter(NamedTuple):
 
 class Chapters(ABC):
     """Abtract chapters interface"""
-    chapter_file: str
+    chapter_file: Path
 
-    def __init__(self, chapter_file: str) -> None:
+    def __init__(self, chapter_file: Union[Path, str]) -> None:
         """Chapter file path as parameter"""
-        self.chapter_file = chapter_file
+        self.chapter_file = Path(chapter_file) if isinstance(chapter_file, str) else chapter_file
         super().__init__()
 
     def __repr__(self) -> str:
@@ -82,9 +83,19 @@ class Chapters(ABC):
     def set_names(self, names: List[Optional[str]]) -> None:
         """Change chapter names."""
 
-    def copy(self, destination: str) -> None:
+    @abstractmethod
+    def to_chapters(self, fps: Fraction, lang: Optional[Language]) -> List[Chapter]:
+        """Convert the Chapters object to a list of chapter"""
+
+    def copy(self, destination: Union[Path, str]) -> None:
         """Copy source chapter to destination."""
-        os.system(f'copy "{self.chapter_file}" "{destination}"')
+        if isinstance(destination, str):
+            destination = Path(destination)
+        copyfile(self.chapter_file.absolute(), destination.absolute())
+        print(
+            f'{Colors.INFO}Chapter file sucessfully copied from: '
+            + f'"{str(self.chapter_file.absolute())}" to "{str(destination.absolute())}" {Colors.RESET}\n'
+        )
 
     def _logging(self, action: str) -> None:
         print(f'{Colors.INFO}Chapter file sucessfully {action} at: {self.chapter_file}{Colors.RESET}\n')
@@ -96,8 +107,8 @@ class OGMChapters(Chapters):
     def create(self, chapters: List[Chapter], fps: Fraction) -> None:
         """Create a txt chapter file."""
 
-        with open(self.chapter_file, 'w') as file:
-            for i, chapter in enumerate(chapters):
+        with self.chapter_file.open('w') as file:
+            for i, chapter in enumerate(chapters, start=1):
                 file.writelines([f'CHAPTER{i:02.0f}={Convert.f2ts(chapter.start_frame, fps)}\n',
                                  f'CHAPTER{i:02.0f}NAME={chapter.name}\n'])
         self._logging('created')
@@ -116,8 +127,7 @@ class OGMChapters(Chapters):
         new = [f'CHAPTER{i+1:02.0f}NAME={names[i]}\n' if names[i] is not None else chapname
                for i, chapname in enumerate(old)]
 
-        with open(self.chapter_file, 'w') as file:
-            file.writelines([val for tup in zip(times, new) for val in tup])
+        self.chapter_file.write_text('\n'.join([val for tup in zip(times, new) for val in tup]))
 
         self._logging('updated')
 
@@ -135,8 +145,7 @@ class OGMChapters(Chapters):
             for chaptime in chaptimes
         ]
 
-        with open(self.chapter_file, 'w') as file:
-            file.writelines([val for tup in zip(newchaptimes, chapnames) for val in tup])
+        self.chapter_file.write_text('\n'.join([val for tup in zip(newchaptimes, chapnames) for val in tup]))
 
         self._logging('shifted')
 
@@ -160,7 +169,7 @@ class OGMChapters(Chapters):
         return chapters
 
     def _get_data(self) -> List[str]:
-        with open(self.chapter_file, 'r') as file:
+        with self.chapter_file.open('r') as file:
             data = file.readlines()
         return data
 
@@ -208,11 +217,10 @@ class MatroskaXMLChapters(Chapters):
         for chap in [self._make_chapter_xml(c) for c in chapters]:
             edit_entry.append(chap)
 
-        with open(self.chapter_file, 'wb') as file:
-            file.write(etree.tostring(
-                root, encoding='utf-8', xml_declaration=True,
-                pretty_print=True, doctype=self.__doctype)
-            )
+        self.chapter_file.write_bytes(
+            etree.tostring(root, encoding='utf-8', xml_declaration=True,
+                           pretty_print=True, doctype=self.__doctype)
+        )
 
         self._logging('created')
 
@@ -230,7 +238,7 @@ class MatroskaXMLChapters(Chapters):
         for new, old in zip(names, olds):
             old.text = new
 
-        with open(self.chapter_file, 'wb') as file:
+        with self.chapter_file.open('wb') as file:
             tree.write(file, pretty_print=True, xml_declaration=True, with_comments=True)
 
         self._logging('updated')
@@ -257,12 +265,12 @@ class MatroskaXMLChapters(Chapters):
                 t_e.text = Convert.seconds2ts(max(0, Convert.ts2seconds(t_e.text) + shifttime), precision=9)
 
 
-        with open(self.chapter_file, 'wb') as file:
+        with self.chapter_file.open('wb') as file:
             tree.write(file, pretty_print=True, xml_declaration=True, with_comments=True)
 
         self._logging('shifted')
 
-    def xml_to_chapters(self, fps: Fraction, lang: Optional[Language] = None) -> List[Chapter]:
+    def to_chapters(self, fps: Fraction, lang: Optional[Language] = None) -> List[Chapter]:
         """Convert XML Chapters to a list of Chapter"""
         tree = self._get_tree()
 
@@ -314,7 +322,6 @@ class MatroskaXMLChapters(Chapters):
 
         return chapters
 
-
     def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:  # noqa: PLW0212
 
         atom = etree.Element(self.__chap_atom)
@@ -355,6 +362,11 @@ class MplsChapters(Chapters):
 
     def set_names(self, names: List[Optional[str]]) -> NoReturn:
         raise NotImplementedError("Can't change name from a mpls file!")
+
+    def to_chapters(self, fps: Fraction, lang: Optional[Language]) -> List[Chapter]:
+        if not hasattr(self, 'chapters'):
+            self.chapters = []
+        return self.chapters
 
 
 class MplsReader():
@@ -420,17 +432,19 @@ class MplsReader():
 
         for mpls_file in playlist:
             for mpls_chapters in mpls_file.mpls_chapters:
+
                 # Some mpls_chapters don't necessarily have attributes mpls_chapters.chapters
-                try:
-                    MatroskaXMLChapters(str(output_folder.joinpath(f'{mpls_file.mpls_file.stem}_{mpls_chapters.m2ts.stem}.xml'))) \
-                        .create(mpls_chapters.chapters, mpls_chapters.fps)
-                except AttributeError:
-                    pass
+                fps = mpls_chapters.fps
+                chapters = mpls_chapters.to_chapters(fps, None)
+
+                if chapters:
+                    xmlchaps = MatroskaXMLChapters(output_folder / f'{mpls_file.mpls_file.stem}_{mpls_chapters.m2ts.stem}.xml')
+                    xmlchaps.create(chapters, fps)
 
 
     def parse_mpls(self, mpls_file: Path) -> List[MplsChapters]:
         """Parse a mpls file and return a list of chapters that were in the mpls file."""
-        with open(mpls_file, 'rb') as file:
+        with mpls_file.open('rb') as file:
             header = mpls.load_movie_playlist(file)
 
             file.seek(header.playlist_start_address, os.SEEK_SET)
@@ -452,7 +466,7 @@ class MplsReader():
             for i, playitem in enumerate(playlist.play_items):
 
                 # Create a MplsChapters and add its linked mpls
-                mpls_chap = MplsChapters(str(mpls_file))
+                mpls_chap = MplsChapters(mpls_file)
 
                 # Add the m2ts name
                 if (name := playitem.clip_information_filename) and \
