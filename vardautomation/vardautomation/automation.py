@@ -108,17 +108,18 @@ class AudioEncoder(BasicTool):  # noqa
 
 class AudioCutter():
     """Audio cutter using eztrim"""
-    def __init__(self, file: Optional[FileInfo], /, *, track: int) -> None:
+    def __init__(self, file: FileInfo, /, *, track: int, **kwargs) -> None:
         self.file = file
         self.track = track
+        self.kwargs = kwargs
         super().__init__()
 
     def run(self) -> None:  # noqa
-        assert self.file
         assert self.file.a_src
         assert self.file.a_src_cut
         eztrim(self.file.clip, (self.file.frame_start, self.file.frame_end),
-               self.file.a_src.format(self.track), self.file.a_src_cut.format(self.track))
+               self.file.a_src.format(self.track), self.file.a_src_cut.format(self.track),
+               **self.kwargs)
 
 
 
