@@ -91,9 +91,10 @@ class BasicTool(Tool):
         subprocess.run(self.params, check=True, text=True, encoding='utf-8')
 
 
-class AudioEncoder(BasicTool):  # noqa
+class AudioEncoder(BasicTool):
+    """BasicTool interface for audio encoding"""
     def __init__(self, binary: str, settings: Union[Path, List[str]], /,
-                 file: Optional[FileInfo], *, track: int) -> None:
+                 file: FileInfo, *, track: int) -> None:
         super().__init__(binary, settings, file=file)
         self.track = track
 
