@@ -1,6 +1,8 @@
 """Automation module"""
 
-__all__ = ['Tool', 'BasicTool', 'AudioEncoder', 'AudioCutter',
+__all__ = ['Tool', 'BasicTool',
+           'AudioEncoder', 'QAACEncoder', 'FlacCompressionLevel', 'FlacEncoder',
+           'AudioCutter',
            'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
            'Parser', 'EncodeGoBrr', 'progress_update_func']
 
@@ -8,6 +10,7 @@ import argparse
 import re
 import subprocess
 from abc import ABC, abstractmethod
+from enum import IntEnum
 from fractions import Fraction
 from pathlib import Path
 from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Sequence,
@@ -105,6 +108,71 @@ class AudioEncoder(BasicTool):
         dico = dict(a_src_cut=self.file.a_src_cut.format(self.track),
                     a_enc_cut=self.file.a_enc_cut.format(self.track))
         return dico
+
+
+class QAACEncoder(AudioEncoder):
+    """QAAC AudioEncoder"""
+    def __init__(self, /, file: FileInfo, *,
+                 track: int, tvbr_quality: int = 127, qaac_args: Optional[List[str]] = None) -> None:
+        binary = 'qaac'
+        args = qaac_args if qaac_args else ['']
+        settings = ['{a_src_cut:s}', '-V', str(tvbr_quality), '--no-delay', '-o', '{a_enc_cut:s}', *args]
+        super().__init__(binary, settings, file, track=track)
+
+
+class FlacCompressionLevel(IntEnum):
+    ZERO = 0
+    ONE = 1
+    TWO = 2
+    THREE = 3
+    FOUR = 4
+    FIVE = 5
+    SIX = 6
+    SEVEN = 7
+    EIGHT = 8
+    NINE = 9
+    TEN = 10
+    ELEVEN = 11
+    TWELVE = 12
+    FAST = 0
+    BEST = 8
+    VARDOU = 99
+
+
+class FlacEncoder(AudioEncoder):
+    """Flac AudioEncoder"""
+    def __init__(self, file: FileInfo, *,
+                 track: int, level: FlacCompressionLevel = FlacCompressionLevel.VARDOU,
+                 use_ffmpeg: bool = True, flac_args: Optional[List[str]] = None) -> None:
+        """
+        Args:
+            track (int):
+                Track number
+
+            level (FlacCompressionLevel, optional):
+                See FlacCompressionLevel for all levels available.
+                Defaults to FlacCompressionLevel.VARDOU.
+
+            use_ffmpeg (bool, optional):
+                Will use flac if false.
+                Defaults to True.
+        """
+        args = flac_args if flac_args else ['']
+        if use_ffmpeg:
+            binary = 'ffmpeg'
+            if level == FlacCompressionLevel.VARDOU:
+                level_args = ['-compression_level 12', '-lpc_type', 'cholesky',
+                              '-lpc_passes', '3', '-exact_rice_parameters', '1']
+            else:
+                level_args = [f'-compression_level {level}']
+            settings = ['-i', '{a_src_cut:s}', *level_args, *args, '{a_enc_cut:s}']
+        else:
+            binary = 'flac'
+            if level <= FlacCompressionLevel.EIGHT:
+                settings = [*args, f'-{level}', '-o', '{a_enc_cut:s}', '{a_src_cut:s}']
+            else:
+                raise ValueError('FlacEncoder: "level" must be <= 8 if use_ffmpeg is false')
+        super().__init__(binary, settings, file, track=track)
 
 
 class AudioCutter():
