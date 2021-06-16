@@ -150,7 +150,7 @@ class VideoEncoder(Tool):
             progress_update (Optional[Callable[[int, int], None]], optional):
                 Current progress can be reported by passing a callback function
                 of the form func(current_frame, total_frames) to progress_update.
-                Defaults to None.
+                Defaults to progress_update_func.
         """
         self.progress_update = progress_update
         super().__init__(binary, settings)
