@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from fractions import Fraction
 from pathlib import Path
 from shutil import copyfile
-from typing import List, NamedTuple, NoReturn, Optional, Set, Union, cast
+from typing import Any, Dict, List, NamedTuple, NoReturn, Optional, Set, Union, cast
 
 from langcodes import Language as L
 from lxml import etree
@@ -184,14 +184,15 @@ class OGMChapters(Chapters):
 
 
 class ElementTree(etree._ElementTree):  # type: ignore
-    def xpath(self, _path: etree._AnyStr, namespaces: Optional[etree._DictAnyStr] = None,  # type: ignore
-              extensions: etree.Any = None, smart_strings: bool = True,
-              **_variables: etree._XPathObject) -> List[etree._Element]:  # type: ignore
-        xpahobject = super().xpath(  # type: ignore
+    def xpath(self, _path: Union[str, bytes],  # type: ignore
+              namespaces: Optional[Union[Dict[str, str], Dict[bytes, bytes]]] = None,  # type: ignore
+              extensions: Any = None, smart_strings: bool = True,
+              **_variables) -> List[etree._Element]:  # type: ignore
+        xpathobject = super().xpath(  # type: ignore
             _path, namespaces=namespaces, extensions=extensions,
             smart_strings=smart_strings, **_variables
         )
-        return cast(List[etree._Element], xpahobject)  # type: ignore
+        return cast(List[etree._Element], xpathobject)  # type: ignore
 
 
 class MatroskaXMLChapters(Chapters):
