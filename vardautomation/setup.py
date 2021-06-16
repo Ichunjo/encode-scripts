@@ -8,7 +8,7 @@ with open("requirements.txt") as fh:
     install_requires = fh.read()
 
 NAME = 'vardautomation'
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 
 setuptools.setup(
     name=NAME,
@@ -19,6 +19,9 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=['vardautomation'],
+    package_data={
+        'vardautomation': ['py.typed'],
+    },
     url='https://github.com/Ichunjo/encode-scripts/tree/master/vardautomation',
     zip_safe=False,
     classifiers=[
