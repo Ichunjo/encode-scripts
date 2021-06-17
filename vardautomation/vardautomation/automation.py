@@ -4,7 +4,8 @@ __all__ = ['Tool', 'BasicTool',
            'AudioEncoder', 'QAACEncoder', 'FlacCompressionLevel', 'FlacEncoder',
            'AudioCutter',
            'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
-           'Parser', 'EncodeGoBrr', 'progress_update_func']
+           'Parser', 'EncodeGoBrr', 'progress_update_func',
+           'BasicTools', 'AudioCutters', 'AudioEncoders']
 
 import argparse
 import re
@@ -362,6 +363,12 @@ class Parser():  # noqa
         return file, clip[frame_start:frame_end]
 
 
+
+BasicTools = Optional[Union[BasicTool, Sequence[BasicTool]]]
+AudioCutters = Optional[Union[AudioCutter, Sequence[AudioCutter]]]
+AudioEncoders = Optional[Union[AudioEncoder, Sequence[AudioEncoder]]]
+
+
 class EncodeGoBrr(ABC):
     """Self runner interface"""
     clip: vs.VideoNode
@@ -375,9 +382,9 @@ class EncodeGoBrr(ABC):
     def __init__(self,
                  clip: vs.VideoNode, file: FileInfo, /,
                  v_encoder: VideoEncoder, v_lossless_encoder: Optional[LosslessEncoder] = None,
-                 a_extracters: Optional[Union[BasicTool, Sequence[BasicTool]]] = None,
-                 a_cutters: Optional[Union[AudioCutter, Sequence[AudioCutter]]] = None,
-                 a_encoders: Optional[Union[AudioEncoder, Sequence[AudioEncoder]]] = None) -> None:
+                 a_extracters: BasicTools = None,
+                 a_cutters: AudioCutters = None,
+                 a_encoders: AudioEncoders = None) -> None:
         """
         Args:
             clip (vs.VideoNode):
