@@ -248,10 +248,11 @@ class VideoEncoder(Tool):
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name)
 
     def create_qpfile(self) -> None:
-        scenes = find_scene_changes(self.clip, SceneChangeMode.WWXD_SCXVID_UNION)
+        if not (qpfile := Path(self.file.qpfile)).exists():
+            scenes = find_scene_changes(self.clip, SceneChangeMode.WWXD_SCXVID_UNION)
 
-        with open(self.file.qpfile, 'w') as qpfile:
-            qpfile.writelines([f"{s} K" for s in scenes])
+            with qpfile.open('w') as qpf:
+                qpf.writelines([f"{s} K" for s in scenes])
 
     def _do_encode(self) -> None:
         print(Colors.INFO)
