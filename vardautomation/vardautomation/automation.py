@@ -454,7 +454,11 @@ class EncodeGoBrr(ABC):
         # Method to be used
         chap.create(chapters, fps)
         chap.set_names(chap_names)
+        chap.copy(Path(self.file.chapter).parent / 'new_chap.xml')
         chap.shift_times(0 - self.file.frame_start, fps)
+        chap.create_qpfile(self.file.qpfile, fps)
+
+        self.file.chapter = str(chap.chapter_file)
 
     @abstractmethod
     def merge(self) -> None:
