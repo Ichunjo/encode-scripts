@@ -87,10 +87,11 @@ class Chapters(ABC):
         """Convert the Chapters object to a list of chapter"""
 
     def copy(self, destination: Union[Path, str]) -> None:
-        """Copy source chapter to destination."""
+        """Copy source chapter to destination and change target of chapter_file to the destination one."""
         if isinstance(destination, str):
             destination = Path(destination)
         copyfile(self.chapter_file.absolute(), destination.absolute())
+        self.chapter_file = destination
         print(
             f'{Colors.INFO}Chapter file sucessfully copied from: '
             + f'"{str(self.chapter_file.absolute())}" to "{str(destination.absolute())}" {Colors.RESET}\n'
