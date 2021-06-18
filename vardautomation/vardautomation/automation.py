@@ -4,15 +4,18 @@ __all__ = ['Tool', 'BasicTool',
            'AudioEncoder', 'QAACEncoder', 'FlacCompressionLevel', 'FlacEncoder',
            'AudioCutter',
            'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
-           'Parser', 'EncodeGoBrr', 'progress_update_func',
-           'BasicTools', 'AudioCutters', 'AudioEncoders']
+           'Parser', 'EncodeGoBrr',
+           'progress_update_func', 'write_encoder_name_file',
+           'Mux', 'Stream', 'MediaStream', 'VideoStream', 'AudioStream', 'ChapterStream',
+           # Type:
+           'BasicTools', 'AudioCutters', 'AudioEncoders', 'AudioStreams']
 
 import argparse
 import re
 import subprocess
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import IntEnum
-from fractions import Fraction
 from pathlib import Path
 from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Sequence,
                     Tuple, Union, cast)
@@ -22,9 +25,9 @@ from acsuite import eztrim
 from lvsfunc.render import SceneChangeMode, find_scene_changes
 from lxml import etree
 
-from .chapterisation import Chapter, MatroskaXMLChapters, OGMChapters
 from .colors import Colors
 from .config import FileInfo
+from .language import UNDEFINED, Lang
 from .properties import Properties
 
 core = vs.core
