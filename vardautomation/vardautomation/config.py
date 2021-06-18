@@ -21,8 +21,9 @@ core = vs.core
 
 class FileInfo():  # noqa: PLR0902
     """File info object"""
-    path: str
-    src: str
+    path: Path
+    path_without_ext: Path
+
     idx: Optional[Callable[[str], vs.VideoNode]]
     preset: List[Preset]
 
@@ -38,23 +39,24 @@ class FileInfo():  # noqa: PLR0902
     frame_end: Optional[int]
     clip_cut: vs.VideoNode
 
-    name_clip_output: str
-    name_file_final: str
+    name_clip_output: Path
+    name_file_final: Path
 
-    name_clip_output_lossless: str
+    name_clip_output_lossless: Path
     do_lossless: bool
 
-    qpfile: str
+    qpfile: Path
     do_qpfile: bool
 
 
-    def __init__(self, src: str, /,
+    def __init__(self, path: Path, /,
                  frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
-                 idx: Optional[Callable[[str], vs.VideoNode]] = None, preset: Union[List[Preset], Preset] = NoPreset) -> None:
+                 idx: Optional[Callable[[str], vs.VideoNode]] = None,
+                 preset: Union[List[Preset], Preset] = NoPreset) -> None:
         """Helper which allows to store the data related to your file to be encoded
 
         Args:
-            src (str):
+            path (Path):
                 Path to your source file.
 
             frame_start (Optional[int], optional):
@@ -73,8 +75,8 @@ class FileInfo():  # noqa: PLR0902
                 Preset used to fill idx, a_src, a_src_cut, a_enc_cut and chapter attributes.
                 Defaults to NoPreset.
         """
-        self.path = str(Path(src).parent.joinpath(Path(src).stem))
-        self.src = src
+        self.path = path
+        self.path_without_ext = self.path.with_suffix('')
         self.idx = idx
 
         self.name = Path(sys.argv[0]).stem
@@ -86,19 +88,18 @@ class FileInfo():  # noqa: PLR0902
         self._params_fill_preset()
 
         if self.idx:
-            self.clip = self.idx(src)
+            self.clip = self.idx(str(path))
+            self.frame_start = frame_start
+            self.frame_end = frame_end
+            self.clip_cut = self.clip[self.frame_start:self.frame_end] if (self.frame_start or self.frame_end) else self.clip
 
-        self.frame_start = frame_start
-        self.frame_end = frame_end
-        self.clip_cut = self.clip[self.frame_start:self.frame_end] if (self.frame_start or self.frame_end) else self.clip
+        self.name_clip_output = Path(self.name + '.265')
+        self.name_file_final = Path(self.name + '.mkv')
 
-        self.name_clip_output = self.name + '.265'
-        self.name_file_final = self.name + '.mkv'
-
-        self.name_clip_output_lossless = self.name + '_lossless.mkv'
+        self.name_clip_output_lossless = Path(self.name + '_lossless.mkv')
         self.do_lossless = False
 
-        self.qpfile = self.name + '_qpfile.log'
+        self.qpfile = Path(self.name + '_qpfile.log')
         self.do_qpfile = False
 
         super().__init__()
@@ -116,14 +117,14 @@ class FileInfo():  # noqa: PLR0902
                 _, v = d1  # noqa: PLC0103
                 kp, vp = d2  # noqa: PLC0103
                 if isinstance(vp, str):
-                    vp = vp.format(path=self.path, name=self.name, num='{}')  # noqa: PLC0103
+                    vp = vp.format(path=str(self.path_without_ext), name=self.name, num='{}')  # noqa: PLC0103
                 setattr(self, kp, vp if not v else v)
 
     def cleanup(self, *,  # noqa
                 a_src: bool = True, a_src_cut: bool = True, a_enc_cut: bool = True,
-                chapter: bool = False, name_clip_output: bool = False) -> None:
-        files = (self.a_src, self.a_src_cut, self.a_enc_cut, self.chapter, self.name_clip_output)
-        booleans = (a_src, a_src_cut, a_enc_cut, chapter, name_clip_output)
+                chapter: bool = False) -> None:
+        files = (self.a_src, self.a_src_cut, self.a_enc_cut, self.chapter)
+        booleans = (a_src, a_src_cut, a_enc_cut, chapter)
 
         for file, boolean in zip(files, booleans):
             if boolean and file and Path(file).exists():

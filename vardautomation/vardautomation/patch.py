@@ -99,7 +99,7 @@ class Patch():  # noqa
         return fra_s, fra_e
 
     def _encode(self, clip: vs.VideoNode) -> None:
-        self.file.name_clip_output = str(self.fix_raw)
+        self.file.name_clip_output = self.fix_raw
 
         self.encoder.run_enc(clip, self.file)
 

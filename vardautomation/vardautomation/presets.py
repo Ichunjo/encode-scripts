@@ -23,7 +23,7 @@ class Preset():  # noqa
                  a_src: Optional[str], a_src_cut: Optional[str],
                  a_enc_cut: Optional[str], chapter: Optional[str]) -> None:
         self.path = None
-        self.src = None
+        self.path_without_ext = None
         self.idx = idx
         self.name = None
         self.a_src = a_src

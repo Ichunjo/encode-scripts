@@ -492,7 +492,7 @@ class EncodeGoBrr:
     def _encode(self) -> None:
         if self.file.do_lossless and self.v_lossless_encoder:
             self.v_lossless_encoder.run_enc(self.clip, self.file)
-            self.clip = core.lsmas.LWLibavSource(self.file.name_clip_output_lossless)
+            self.clip = core.lsmas.LWLibavSource(str(self.file.name_clip_output_lossless))
 
         if not Path(self.file.name_clip_output).exists():
             self.v_encoder.run_enc(self.clip, self.file)
