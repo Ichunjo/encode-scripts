@@ -369,7 +369,7 @@ AudioCutters = Optional[Union[AudioCutter, Sequence[AudioCutter]]]
 AudioEncoders = Optional[Union[AudioEncoder, Sequence[AudioEncoder]]]
 
 
-class EncodeGoBrr(ABC):
+class EncodeGoBrr:
     """Self runner interface"""
     clip: vs.VideoNode
     file: FileInfo
@@ -432,54 +432,54 @@ class EncodeGoBrr(ABC):
         super().__init__()
 
 
-    @abstractmethod
     def run(self) -> None:
         """Tool chain"""
         self._parsing()
         self._encode()
         self._audio_getter()
-        # self.write_encoder_name_file()
-        # self.chapter()
-        self.merge()
 
-    @abstractmethod
-    def chapter(self) -> None:
-        """Chapterisation"""
-        # Examples
-        assert self.file.chapter
-        assert self.file.frame_start
+    # @abstractmethod
+    # def chapter(self) -> None:
+    #     """Chapterisation"""
+    #     # Examples
+    #     assert self.file.chapter
+    #     assert self.file.frame_start
 
-        # Variables
-        chap_names: List[Optional[str]] = []
-        chapters: List[Chapter] = []
-        fps: Fraction = self.clip.fps
+    #     # Variables
+    #     chap_names: List[Optional[str]] = []
+    #     chapters: List[Chapter] = []
+    #     fps: Fraction = self.clip.fps
 
-        # XML or OGM chapters
-        chap = MatroskaXMLChapters(self.file.chapter)  # type: ignore
-        chap = OGMChapters(self.file.chapter)  # type: ignore
+    #     # XML or OGM chapters
+    #     chap = MatroskaXMLChapters(self.file.chapter)  # type: ignore
+    #     chap = OGMChapters(self.file.chapter)  # type: ignore
 
-        # Method to be used
-        chap.create(chapters, fps)
-        chap.set_names(chap_names)
-        chap.copy(Path(self.file.chapter).parent / 'new_chap.xml')
-        chap.shift_times(0 - self.file.frame_start, fps)
-        chap.create_qpfile(self.file.qpfile, fps)
+    #     # Method to be used
+    #     chap.create(chapters, fps)
+    #     chap.set_names(chap_names)
+    #     chap.copy(Path(self.file.chapter).parent / 'new_chap.xml')
+    #     chap.shift_times(0 - self.file.frame_start, fps)
+    #     chap.create_qpfile(self.file.qpfile, fps)
 
-        self.file.chapter = str(chap.chapter_file)
+    #     self.file.chapter = str(chap.chapter_file)
 
-    @abstractmethod
-    def merge(self) -> None:
-        """Merge function"""
-        assert self.file.a_enc_cut
-        assert self.file.chapter
-        BasicTool('mkvmerge', [
-            '-o', self.file.name_file_final,
-            '--track-name', '0:HEVC BDRip by Vardë@Raws-Maji', '--language', '0:jpn', self.file.name_clip_output,
-            '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', self.file.a_enc_cut.format(1),
-            '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 5.1', '--language', '0:jpn', self.file.a_enc_cut.format(2),
-            '--chapter-language', 'jpn', '--chapters', self.file.chapter
-        ]).run()
+    # def merge(self) -> None:
+    #     """Merge function"""
+    #     video = VideoStream(
+    #         path=Path(self.file.name_clip_output),
+    #         name='HEVC BDRip by Vardë@Raws-Maji',
+    #         lang=JAPANESE
+    #     )
 
+    #     assert self.file.a_enc_cut
+    #     assert self.file.chapter
+    #     BasicTool('mkvmerge', [
+    #         '-o', self.file.name_file_final,
+    #         '--track-name', '0:HEVC BDRip by Vardë@Raws-Maji', '--language', '0:jpn', self.file.name_clip_output,
+    #         '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', self.file.a_enc_cut.format(1),
+    #         '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 5.1', '--language', '0:jpn', self.file.a_enc_cut.format(2),
+    #         '--chapter-language', 'jpn', '--chapters', self.file.chapter
+    #     ]).run()
 
 
     def _parsing(self) -> None:
@@ -532,3 +532,113 @@ def write_encoder_name_file(file: FileInfo, tags_file_name: str, track: int) -> 
         )
 
 
+
+@dataclass
+class Stream:
+    path: Path
+
+
+@dataclass
+class MediaStream(Stream):
+    name: Optional[str] = None
+    lang: Lang = UNDEFINED
+    tag_file: Optional[Path] = None
+
+
+@dataclass
+class VideoStream(MediaStream):
+    pass
+
+
+@dataclass
+class AudioStream(MediaStream):
+    pass
+
+
+@dataclass
+class ChapterStream(Stream):
+    lang: Lang = UNDEFINED
+    charset: Optional[str] = None
+
+
+
+AudioStreams = Optional[Union[AudioStream, Sequence[AudioStream]]]
+
+
+class Mux:
+    """Muxing interface using mkvmerge"""
+    output: Path
+    video: VideoStream
+    audios: List[AudioStream]
+    chapters: Optional[ChapterStream]
+    mkvmerge_path: Path
+
+    def __init__(self, file: Optional[FileInfo] = None,
+                 output: Optional[Path] = None,
+                 streams: Optional[Tuple[VideoStream, AudioStreams, Optional[ChapterStream]]] = None, *,
+                 mkvmerge_path: Path = Path('mkvmerge')) -> None:
+        """
+            If `file` is specified:
+                - Will find `file.name_file_final` as VideoStream
+                - Will try to find in this order file.a_enc_cut, file.a_src_cut, file.a_src as long as there is a file.a_xxxx.format(n)
+                - All languages are set to `und` and names to None.
+            Otherwise will mux the `streams` to `output` if specified.
+        """
+        self.mkvmerge_path = mkvmerge_path
+
+        if file:
+            self.output = Path(file.name_file_final)
+            self.video = VideoStream(Path(file.name_clip_output), '')
+
+            self.audios = []
+
+            i = 1
+            while True:
+                if (audio_path := Path(file.a_enc_cut.format(i))).exists():
+                    self.audios += [AudioStream(audio_path)]
+                elif (audio_path := Path(file.a_src_cut.format(i))).exists():
+                    self.audios += [AudioStream(audio_path)]
+                elif (audio_path := Path(file.a_src.format(i))).exists():
+                    self.audios += [AudioStream(audio_path)]
+                else:
+                    break
+                i += 1
+
+            if file.chapter and (chap := Path(file.chapter)).exists():
+                self.chapters = ChapterStream(chap)
+
+        elif output and streams:
+            self.output = output
+            self.video, audios, self.chapters = streams
+            if not audios:
+                self.audios = []
+            else:
+                self.audios = [audios] if isinstance(audios, AudioStream) else list(audios)
+        else:
+            raise ValueError('Mux: either `file` or `output` and `streams` has to be not None!')
+
+    def run(self) -> None:
+        """Make and launch the command"""
+        cmd = ['-o', str(self.output)]
+
+        if self.video.tag_file:
+            cmd += ['--tags', '0:' + str(self.video.tag_file)]
+        if self.video.name:
+            cmd += ['--track-name', '0:' + self.video.name]
+        cmd += ['--language', '0:' + self.video.lang.iso639, str(self.video.path)]
+
+        if self.audios:
+            for audio in self.audios:
+                if audio.tag_file:
+                    cmd += ['--tags', '0:' + str(audio.tag_file)]
+                if audio.name:
+                    cmd += ['--track-name', '0:' + audio.name]
+                cmd += ['--language', '0:' + audio.lang.iso639, str(audio.path)]
+
+        if self.chapters:
+            cmd += ['--chapter-language', self.chapters.lang.iso639]
+            if self.chapters.charset:
+                cmd += ['--chapter-charset', self.chapters.charset]
+            cmd += ['--chapters', str(self.chapters.path)]
+
+        BasicTool(str(self.mkvmerge_path), cmd).run()
