@@ -481,21 +481,6 @@ class EncodeGoBrr(ABC):
         ]).run()
 
 
-    def write_encoder_name_file(self, tags_file_name: str, track: int) -> None:
-        assert (a_enc_sut := self.file.a_enc_cut)
-        aac_encoder_name = Properties.get_encoder_name(a_enc_sut.format(track))
-
-        tags = etree.Element('Tags')
-        tag = etree.SubElement(tags, 'Tag')
-        _ = etree.SubElement(tag, 'Targets')
-        simple = etree.SubElement(tag, 'Simple')
-        etree.SubElement(simple, 'Name').text = 'ENCODER'
-        etree.SubElement(simple, 'String').text = aac_encoder_name
-
-        with open(tags_file_name, 'wb') as f:
-            f.write(etree.tostring(
-                tags, encoding='utf-8', xml_declaration=True, pretty_print=True)
-            )
 
     def _parsing(self) -> None:
         parser = Parser(self.file)
@@ -527,3 +512,23 @@ class EncodeGoBrr(ABC):
 
     def cleanup(self, **kwargs: Any) -> None:  # noqa
         self.file.cleanup(**kwargs)
+
+
+
+def write_encoder_name_file(file: FileInfo, tags_file_name: str, track: int) -> None:
+    assert (a_enc_sut := file.a_enc_cut)
+    aac_encoder_name = Properties.get_encoder_name(a_enc_sut.format(track))
+
+    tags = etree.Element('Tags')
+    tag = etree.SubElement(tags, 'Tag')
+    _ = etree.SubElement(tag, 'Targets')
+    simple = etree.SubElement(tag, 'Simple')
+    etree.SubElement(simple, 'Name').text = 'ENCODER'
+    etree.SubElement(simple, 'String').text = aac_encoder_name
+
+    with open(tags_file_name, 'wb') as f:
+        f.write(etree.tostring(
+            tags, encoding='utf-8', xml_declaration=True, pretty_print=True)
+        )
+
+
