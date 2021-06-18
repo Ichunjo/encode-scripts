@@ -237,7 +237,7 @@ class VideoEncoder(Tool):
         self._get_settings()
 
         if self.file.do_qpfile:
-            self.create_qpfile()
+            self._create_qpfile()
             self.params += ['--qpfile', self.file.qpfile]
 
         self._do_encode()
@@ -248,7 +248,7 @@ class VideoEncoder(Tool):
     def set_variable(self) -> Dict[str, Any]:
         return dict(clip_output=self.file.name_clip_output, filename=self.file.name)
 
-    def create_qpfile(self) -> None:
+    def _create_qpfile(self) -> None:
         if not (qpfile := Path(self.file.qpfile)).exists():
             scenes = find_scene_changes(self.clip, SceneChangeMode.WWXD_SCXVID_UNION)
 
