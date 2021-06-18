@@ -249,7 +249,7 @@ class VideoEncoder(Tool):
         raise NameError('Use `run_enc` instead')
 
     def set_variable(self) -> Dict[str, Any]:
-        return dict(clip_output=self.file.name_clip_output, filename=self.file.name)
+        return dict(clip_output=str(self.file.name_clip_output), filename=self.file.name)
 
     def _create_qpfile(self) -> None:
         if not (qpfile := Path(self.file.qpfile)).exists():
@@ -276,7 +276,7 @@ class X265Encoder(VideoEncoder):
     def set_variable(self) -> Dict[str, Any]:
         assert self.clip
         min_luma, max_luma = Properties.get_color_range(self.params, self.clip, self.bits)
-        return dict(clip_output=self.file.name_clip_output, filename=self.file.name, frames=self.clip.num_frames,
+        return dict(clip_output=str(self.file.name_clip_output), filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
                     bits=self.bits,
                     min_luma=min_luma, max_luma=max_luma)
@@ -291,7 +291,7 @@ class X264Encoder(VideoEncoder):
     def set_variable(self) -> Dict[str, Any]:
         assert self.clip
         csp = Properties.get_csp(self.clip)
-        return dict(clip_output=self.file.name_clip_output, filename=self.file.name, frames=self.clip.num_frames,
+        return dict(clip_output=str(self.file.name_clip_output), filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
                     bits=self.bits, csp=csp)
 
@@ -302,7 +302,7 @@ class LosslessEncoder(VideoEncoder):  # noqa
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
-        return dict(clip_output_lossless=self.file.name_clip_output_lossless)
+        return dict(clip_output_lossless=str(self.file.name_clip_output_lossless))
 
 
 
