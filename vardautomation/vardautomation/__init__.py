@@ -3,6 +3,7 @@
 from .automation import *
 from .chapterisation import *
 from .config import *
+from .language import *
 from .patch import *
 from .placebo_shaders import *
 from .presets import *
