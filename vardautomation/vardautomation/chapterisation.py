@@ -1,7 +1,6 @@
 """Chapterisation module"""
 
-__all__ = ['Language', 'Chapter', 'Chapters', 'OGMChapters', 'MatroskaXMLChapters',
-           'FRENCH', 'ENGLISH', 'JAPANESE', 'UNDEFINED',
+__all__ = ['Chapter', 'Chapters', 'OGMChapters', 'MatroskaXMLChapters',
            'MplsChapters', 'MplsReader']
 
 import os
@@ -12,40 +11,14 @@ from pathlib import Path
 from shutil import copyfile
 from typing import Any, Dict, List, NamedTuple, NoReturn, Optional, Set, Union, cast
 
-from langcodes import Language as L
 from lxml import etree
 from prettyprinter import doc, pretty_call, pretty_repr, register_pretty
 from prettyprinter.prettyprinter import PrettyContext
 from pyparsebluray import mpls
 
+from .language import UNDEFINED, Lang
 from .colors import Colors
 from .timeconv import Convert
-
-
-class Language:
-    """Language"""
-    name: str
-    ietf: str
-    iso639: str
-
-    def __init__(self, lang: L) -> None:
-        self.name = lang.autonym()
-        self.ietf = str(lang)
-        self.iso639 = lang.to_alpha3(variant='B')
-
-    def __repr__(self) -> str:
-        @register_pretty(Language)
-        def _repr(value: object, ctx: PrettyContext) -> doc.Doc:
-            dic = vars(value)
-            return pretty_call(ctx, Language, dic)
-
-        return pretty_repr(self)
-
-
-FRENCH = Language(L.make('fr'))
-ENGLISH = Language(L.make('en'))
-JAPANESE = Language(L.make('ja'))
-UNDEFINED = Language(L.make())
 
 
 
@@ -54,7 +27,7 @@ class Chapter(NamedTuple):
     name: str
     start_frame: int
     end_frame: Optional[int]
-    lang: Language = UNDEFINED
+    lang: Lang = UNDEFINED
 
 
 class Chapters(ABC):
@@ -83,7 +56,7 @@ class Chapters(ABC):
         """Change chapter names."""
 
     @abstractmethod
-    def to_chapters(self, fps: Fraction, lang: Optional[Language]) -> List[Chapter]:
+    def to_chapters(self, fps: Fraction, lang: Optional[Lang]) -> List[Chapter]:
         """Convert the Chapters object to a list of chapter"""
 
     def copy(self, destination: Union[Path, str]) -> None:
@@ -159,7 +132,7 @@ class OGMChapters(Chapters):
 
         self._logging('shifted')
 
-    def to_chapters(self, fps: Fraction, lang: Optional[Language]) -> List[Chapter]:
+    def to_chapters(self, fps: Fraction, lang: Optional[Lang]) -> List[Chapter]:
         """Convert OGM Chapters to a list of Chapter"""
         data = self._get_data()
 
@@ -279,7 +252,7 @@ class MatroskaXMLChapters(Chapters):
 
         self._logging('shifted')
 
-    def to_chapters(self, fps: Fraction, lang: Optional[Language] = None) -> List[Chapter]:
+    def to_chapters(self, fps: Fraction, lang: Optional[Lang] = None) -> List[Chapter]:
         """Convert XML Chapters to a list of Chapter"""
         tree = self._get_tree()
 
@@ -321,7 +294,7 @@ class MatroskaXMLChapters(Chapters):
                 pass
 
             if not lang and isinstance(ietf.text, str):
-                lang = Language(L.make(ietf.text))
+                lang = Lang.make(ietf.text)
             else:
                 assert lang
 
@@ -371,7 +344,7 @@ class MplsChapters(Chapters):
     def set_names(self, names: List[Optional[str]]) -> NoReturn:
         raise NotImplementedError("Can't change name from a mpls file!")
 
-    def to_chapters(self, fps: Fraction, lang: Optional[Language]) -> List[Chapter]:
+    def to_chapters(self, fps: Fraction, lang: Optional[Lang]) -> List[Chapter]:
         if not hasattr(self, 'chapters'):
             self.chapters = []
         return self.chapters
@@ -384,14 +357,14 @@ class MplsReader():
     mpls_folder: Path
     m2ts_folder: Path
 
-    set_lang: Language
+    set_lang: Lang
     default_chap_name: str
 
     class MplsFile(NamedTuple):  # noqa: PLC0115
         mpls_file: Path
         mpls_chapters: List[MplsChapters]
 
-    def __init__(self, bd_folder: Path = Path(), set_lang: Language = UNDEFINED, default_chap_name: str = 'Chapter') -> None:
+    def __init__(self, bd_folder: Path = Path(), set_lang: Lang = UNDEFINED, default_chap_name: str = 'Chapter') -> None:
         """Initialise a MplsReader.
            All parameters are optionnal if you just want to use the `parse_mpls` method.
 
