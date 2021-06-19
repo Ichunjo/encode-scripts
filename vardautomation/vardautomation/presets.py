@@ -8,91 +8,104 @@ __all__ = [
     'PresetChapXML'
 ]
 
-import os
+from dataclasses import dataclass
+from enum import IntEnum
 from typing import Callable, Optional
 
-import lvsfunc
 import vapoursynth as vs
+
+from .vpathlib import VPath
 
 core = vs.core
 
 
-# TODO: Rewrite this logic
-class Preset():  # noqa
-    def __init__(self, idx: Optional[Callable[[str], vs.VideoNode]],
-                 a_src: Optional[str], a_src_cut: Optional[str],
-                 a_enc_cut: Optional[str], chapter: Optional[str]) -> None:
-        self.path = None
-        self.path_without_ext = None
-        self.idx = idx
-        self.name = None
-        self.a_src = a_src
-        self.a_src_cut = a_src_cut
-        self.a_enc_cut = a_enc_cut
-        self.chapter = chapter
-        super().__init__()
+class PresetType(IntEnum):
+    NO_PRESET = 0
+    VIDEO = 10
+    AUDIO = 20
+    CHAPTER = 30
 
 
+@dataclass
+class Preset:
+    idx: Optional[Callable[[str], vs.VideoNode]]
+    a_src: Optional[VPath]
+    a_src_cut: Optional[VPath]
+    a_enc_cut: Optional[VPath]
+    chapter: Optional[VPath]
+    preset_type: PresetType
+
+
+
+NoPreset = Preset(
+    idx=None,
+    a_src=VPath(''),
+    a_src_cut=VPath(''),
+    a_enc_cut=VPath(''),
+    chapter=VPath(''),
+    preset_type=PresetType.NO_PRESET
+)
 PresetBD = Preset(
     idx=core.lsmas.LWLibavSource,
-    a_src='{path:s}_track_{num:s}.wav',
-    a_src_cut='{path:s}_cut_track_{num:s}.wav',
+    a_src=VPath('{work_filename:s}_track_{num:s}.wav'),
+    a_src_cut=VPath('{work_filename:s}_cut_track_{num:s}.wav'),
     a_enc_cut=None,
-    chapter=None
+    chapter=None,
+    preset_type=PresetType.VIDEO
 )
 PresetWEB = Preset(
     idx=core.ffms2.Source,
     a_src=None,
     a_src_cut=None,
-    a_enc_cut='',
-    chapter=''
+    a_enc_cut=VPath(''),
+    chapter=None,
+    preset_type=PresetType.VIDEO
 )
 PresetAAC = Preset(
     idx=None,
-    a_src='{path:s}_track_{num:s}.aac',
-    a_src_cut='{path:s}_cut_track_{num:s}.aac',
-    a_enc_cut='{path:s}_cut_enc_track_{num:s}.m4a',
-    chapter=None
+    a_src=VPath('{work_filename:s}_track_{num:s}.aac'),
+    a_src_cut=VPath('{work_filename:s}_cut_track_{num:s}.aac'),
+    a_enc_cut=VPath('{work_filename:s}_cut_enc_track_{num:s}.m4a'),
+    chapter=None,
+    preset_type=PresetType.AUDIO
 )
 PresetOpus = Preset(
     idx=None,
-    a_src='{path:s}_track_{num:s}.opus',
-    a_src_cut='{path:s}_cut_track_{num:s}.opus',
-    a_enc_cut='{path:s}_cut_enc_track_{num:s}.opus',
-    chapter=None
+    a_src=VPath('{work_filename:s}_track_{num:s}.opus'),
+    a_src_cut=VPath('{work_filename:s}_cut_track_{num:s}.opus'),
+    a_enc_cut=VPath('{work_filename:s}_cut_enc_track_{num:s}.opus'),
+    chapter=None,
+    preset_type=PresetType.AUDIO
 )
 PresetEAC3 = Preset(
     idx=None,
-    a_src='{path:s}_track_{num:s}.eac3',
-    a_src_cut='{path:s}_cut_track_{num:s}.eac3',
-    a_enc_cut='{path:s}_cut_enc_track_{num:s}.eac3',
-    chapter=None
+    a_src=VPath('{work_filename:s}_track_{num:s}.eac3'),
+    a_src_cut=VPath('{work_filename:s}_cut_track_{num:s}.eac3'),
+    a_enc_cut=VPath('{work_filename:s}_cut_enc_track_{num:s}.eac3'),
+    chapter=None,
+    preset_type=PresetType.AUDIO
 )
 PresetFLAC = Preset(
     idx=None,
-    a_src='{path:s}_track_{num:s}.flac',
-    a_src_cut='{path:s}_cut_track_{num:s}.flac',
-    a_enc_cut='{path:s}_cut_enc_track_{num:s}.flac',
-    chapter=None
-)
-NoPreset = Preset(
-    idx=lvsfunc.misc.source,
-    a_src='',
-    a_src_cut='',
-    a_enc_cut='',
-    chapter=''
+    a_src=VPath('{work_filename:s}_track_{num:s}.flac'),
+    a_src_cut=VPath('{work_filename:s}_cut_track_{num:s}.flac'),
+    a_enc_cut=VPath('{work_filename:s}_cut_enc_track_{num:s}.flac'),
+    chapter=None,
+    preset_type=PresetType.AUDIO
 )
 PresetChapOGM = Preset(
     idx=None,
     a_src=None,
     a_src_cut=None,
     a_enc_cut=None,
-    chapter=os.path.abspath('chapters/{name:s}.txt')
+    chapter=VPath('chapters/{name:s}.txt'),
+    preset_type=PresetType.CHAPTER
 )
 PresetChapXML = Preset(
     idx=None,
     a_src=None,
     a_src_cut=None,
     a_enc_cut=None,
-    chapter=os.path.abspath('chapters/{name:s}.xml')
+    chapter=VPath('chapters/{name:s}.xml'),
+    preset_type=PresetType.CHAPTER
 )
