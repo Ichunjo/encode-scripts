@@ -4,9 +4,9 @@ __all__ = ['Language',
            'FRENCH', 'ENGLISH', 'JAPANESE', 'UNDEFINED']
 
 
+from pprint import pformat
+
 from langcodes import Language
-from prettyprinter import doc, pretty_call, pretty_repr, register_pretty
-from prettyprinter.prettyprinter import PrettyContext
 
 
 class Lang:
@@ -21,12 +21,7 @@ class Lang:
         self.iso639 = language.to_alpha3(variant=iso639_variant)
 
     def __repr__(self) -> str:
-        @register_pretty(Lang)
-        def _repr(value: object, ctx: PrettyContext) -> doc.Doc:
-            dic = vars(value)
-            return pretty_call(ctx, Lang, dic)
-
-        return pretty_repr(self)
+        return pformat(vars(self), indent=4, width=200, sort_dicts=False)
 
     @staticmethod
     def make(ietf: str):

@@ -14,9 +14,8 @@ import argparse
 import re
 import subprocess
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from enum import IntEnum
-from pathlib import Path
+from pprint import pformat
 from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Sequence,
                     Tuple, Union, cast)
 
@@ -29,6 +28,7 @@ from .colors import Colors
 from .config import FileInfo
 from .language import UNDEFINED, Lang
 from .properties import Properties
+from .vpathlib import AnyPath, VPath
 
 core = vs.core
 

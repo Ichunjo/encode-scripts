@@ -7,17 +7,16 @@ import os
 import random
 from abc import ABC, abstractmethod
 from fractions import Fraction
-from pathlib import Path
+from pprint import pformat
 from shutil import copyfile
-from typing import Any, Dict, List, NamedTuple, NoReturn, Optional, Set, Union, cast
+from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Set,
+                    Union, cast)
 
 from lxml import etree
-from prettyprinter import doc, pretty_call, pretty_repr, register_pretty
-from prettyprinter.prettyprinter import PrettyContext
 from pyparsebluray import mpls
 
-from .language import UNDEFINED, Lang
 from .colors import Colors
+from .language import UNDEFINED, Lang
 from .timeconv import Convert
 from .vpathlib import AnyPath, VPath
 
@@ -40,12 +39,7 @@ class Chapters(ABC):
         super().__init__()
 
     def __repr__(self) -> str:
-        @register_pretty(Chapters)
-        def _repr(value: object, ctx: PrettyContext) -> doc.Doc:
-            dic = vars(value)
-            return pretty_call(ctx, Chapters, dic)
-
-        return pretty_repr(self)
+        return pformat(vars(self), indent=1, width=200, sort_dicts=False)
 
     @abstractmethod
     def create(self, chapters: List[Chapter], fps: Fraction) -> None:
