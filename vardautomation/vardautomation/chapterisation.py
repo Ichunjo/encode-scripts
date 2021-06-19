@@ -493,3 +493,7 @@ class MplsReader():
                         end_frame=None,
                         lang=self.lang))
         return chapters
+
+
+class IFOReader:
+    pass
