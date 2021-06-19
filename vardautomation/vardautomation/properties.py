@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 import vapoursynth as vs
 
 from .colors import Colors
+from .vpathlib import AnyPath
 
 core = vs.core
 
@@ -80,7 +81,7 @@ class Properties():
         return csp_avc[clip.format.color_family]
 
     @staticmethod
-    def get_encoder_name(path: str) -> str:
+    def get_encoder_name(path: AnyPath) -> str:
         ffprobe_args = ['ffprobe', '-loglevel', 'quiet', '-show_entries', 'format_tags=encoder',
-                        '-print_format', 'default=nokey=1:noprint_wrappers=1', path]
+                        '-print_format', 'default=nokey=1:noprint_wrappers=1', str(path)]
         return subprocess.check_output(ffprobe_args, shell=True, encoding='utf-8')

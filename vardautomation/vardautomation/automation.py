@@ -37,7 +37,7 @@ core = vs.core
 
 class Tool(ABC):
     """Abstract tooling interface"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]]) -> None:
+    def __init__(self, binary: str, settings: Union[AnyPath, List[str]]) -> None:
         self.binary = binary
         self.settings = settings
         self.params: List[str] = []
@@ -52,14 +52,11 @@ class Tool(ABC):
         """Set variables in the settings"""
 
     def _get_settings(self) -> None:
-        if isinstance(self.settings, Path):
-            with open(self.settings, 'r') as sttgs:
-                self.params = re.split(r'[\n\s]\s*', sttgs.read())
-        elif isinstance(self.settings, list):
+        if isinstance(self.settings, list):
             self.params = self.settings
         else:
-            print(Colors.FAIL)
-            raise ValueError('Tool: "settings" parameter must be a Path or a list of string')
+            with open(self.settings, 'r') as sttgs:
+                self.params = re.split(r'[\n\s]\s*', sttgs.read())
 
         self.params.insert(0, self.binary)
 
@@ -68,7 +65,7 @@ class Tool(ABC):
 
 class BasicTool(Tool):
     """BasicTool interface"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]], /, file: Optional[FileInfo] = None) -> None:
+    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /, file: Optional[FileInfo] = None) -> None:
         """Helper allowing the use of CLI programs for basic tasks like video or audio track extraction.
 
         Args:
@@ -100,7 +97,7 @@ class BasicTool(Tool):
 
 class AudioEncoder(BasicTool):
     """BasicTool interface for audio encoding"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
                  file: FileInfo, *, track: int) -> None:
         super().__init__(binary, settings, file=file)
         self.track = track
@@ -191,7 +188,7 @@ class AudioCutter():
         assert self.file.a_src
         assert self.file.a_src_cut
         eztrim(self.file.clip, (self.file.frame_start, self.file.frame_end),
-               self.file.a_src.format(self.track), self.file.a_src_cut.format(self.track),
+               str(self.file.a_src.format(self.track)), str(self.file.a_src_cut.format(self.track)),
                **self.kwargs)
 
 
@@ -207,7 +204,7 @@ class VideoEncoder(Tool):
     clip: vs.VideoNode
     bits: int
 
-    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
                  progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
         """Helper intended to facilitate video encoding
 
@@ -241,7 +238,7 @@ class VideoEncoder(Tool):
 
         if self.file.do_qpfile:
             self._create_qpfile()
-            self.params += ['--qpfile', self.file.qpfile]
+            self.params += ['--qpfile', str(self.file.qpfile)]
 
         self._do_encode()
 
@@ -252,7 +249,7 @@ class VideoEncoder(Tool):
         return dict(clip_output=str(self.file.name_clip_output), filename=self.file.name)
 
     def _create_qpfile(self) -> None:
-        if not (qpfile := Path(self.file.qpfile)).exists():
+        if not (qpfile := self.file.qpfile).exists():
             scenes = find_scene_changes(self.clip, SceneChangeMode.WWXD_SCXVID_UNION)
 
             with qpfile.open('w') as qpf:
@@ -269,7 +266,7 @@ class VideoEncoder(Tool):
 
 class X265Encoder(VideoEncoder):
     """Video encoder using x265 in HEVC"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
                  progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
@@ -284,7 +281,7 @@ class X265Encoder(VideoEncoder):
 
 class X264Encoder(VideoEncoder):
     """Video encoder using x264 in AVC"""
-    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
                  progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
@@ -297,7 +294,7 @@ class X264Encoder(VideoEncoder):
 
 
 class LosslessEncoder(VideoEncoder):  # noqa
-    def __init__(self, binary: str, settings: Union[Path, List[str]], /,
+    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
                  progress_update: Optional[Callable[[int, int], None]] = None) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
@@ -495,23 +492,23 @@ class EncodeGoBrr:
                 self.v_lossless_encoder.run_enc(self.clip, self.file)
             self.clip = core.lsmas.LWLibavSource(str(self.file.name_clip_output_lossless))
 
-        if not Path(self.file.name_clip_output).exists():
+        if not self.file.name_clip_output.exists():
             self.v_encoder.run_enc(self.clip, self.file)
 
     def _audio_getter(self) -> None:
         for i, a_extracter in enumerate(self.a_extracters, start=1):
             assert self.file.a_src
-            if not Path(self.file.a_src.format(i)).exists():
+            if not self.file.a_src.format(i).exists():
                 a_extracter.run()
 
         for i, a_cutter in enumerate(self.a_cutters, start=1):
             assert self.file.a_src_cut
-            if not Path(self.file.a_src_cut.format(i)).exists():
+            if not self.file.a_src_cut.format(i).exists():
                 a_cutter.run()
 
         for i, a_encoder in enumerate(self.a_encoders, start=1):
             assert self.file.a_enc_cut
-            if not Path(self.file.a_enc_cut.format(i)).exists():
+            if not self.file.a_enc_cut.format(i).exists():
                 a_encoder.run()
 
     def cleanup(self, **kwargs: Any) -> None:  # noqa
@@ -519,7 +516,7 @@ class EncodeGoBrr:
 
 
 
-def write_encoder_name_file(file: FileInfo, tags_file_name: str, track: int) -> None:
+def write_encoder_name_file(file: FileInfo, tags_file_name: AnyPath, track: int) -> None:
     assert (a_enc_sut := file.a_enc_cut)
     aac_encoder_name = Properties.get_encoder_name(a_enc_sut.format(track))
 
@@ -531,38 +528,56 @@ def write_encoder_name_file(file: FileInfo, tags_file_name: str, track: int) -> 
     etree.SubElement(simple, 'String').text = aac_encoder_name
 
     with open(tags_file_name, 'wb') as f:
-        f.write(etree.tostring(
-            tags, encoding='utf-8', xml_declaration=True, pretty_print=True)
+        f.write(
+            etree.tostring(tags, encoding='utf-8', xml_declaration=True, pretty_print=True)
         )
 
 
 
-@dataclass
 class Stream:
-    path: Path
+    path: VPath
+
+    def __init__(self, path: AnyPath) -> None:
+        self.path = VPath(path)
+
+    def __repr__(self) -> str:
+        return pformat(vars(self), indent=1, width=80, sort_dicts=True)
 
 
-@dataclass
 class MediaStream(Stream):
     name: Optional[str] = None
     lang: Lang = UNDEFINED
-    tag_file: Optional[Path] = None
+    tag_file: Optional[VPath] = None
+
+    def __init__(self, path: AnyPath, name: Optional[str] = None,
+                 lang: Lang = UNDEFINED, tag_file: Optional[AnyPath] = None) -> None:
+        super().__init__(path)
+        self.name = name
+        self.lang = lang
+        self.tag_file = VPath(tag_file) if tag_file is not None else tag_file
 
 
-@dataclass
 class VideoStream(MediaStream):
-    pass
+    def __init__(self, path: AnyPath, name: Optional[str] = None,
+                 lang: Lang = UNDEFINED, tag_file: Optional[AnyPath] = None) -> None:
+        super().__init__(path, name=name, lang=lang, tag_file=tag_file)
 
 
-@dataclass
 class AudioStream(MediaStream):
-    pass
+    def __init__(self, path: AnyPath, name: Optional[str] = None,
+                 lang: Lang = UNDEFINED, tag_file: Optional[AnyPath] = None) -> None:
+        super().__init__(path, name=name, lang=lang, tag_file=tag_file)
 
 
-@dataclass
 class ChapterStream(Stream):
     lang: Lang = UNDEFINED
     charset: Optional[str] = None
+
+    def __init__(self, path: AnyPath,
+                 lang: Lang = UNDEFINED, charset: Optional[str] = None) -> None:
+        super().__init__(path)
+        self.lang = lang
+        self.charset = charset
 
 
 
@@ -571,16 +586,16 @@ AudioStreams = Optional[Union[AudioStream, Sequence[AudioStream]]]
 
 class Mux:
     """Muxing interface using mkvmerge"""
-    output: Path
+    output: VPath
     video: VideoStream
     audios: List[AudioStream]
     chapters: Optional[ChapterStream]
-    mkvmerge_path: Path
+    mkvmerge_path: VPath
 
     def __init__(self, file: Optional[FileInfo] = None,
-                 output: Optional[Path] = None,
+                 output: Optional[AnyPath] = None,
                  streams: Optional[Tuple[VideoStream, AudioStreams, Optional[ChapterStream]]] = None, *,
-                 mkvmerge_path: Path = Path('mkvmerge')) -> None:
+                 mkvmerge_path: AnyPath = VPath('mkvmerge')) -> None:
         """
             If `file` is specified:
                 - Will find `file.name_file_final` as VideoStream
@@ -588,31 +603,31 @@ class Mux:
                 - All languages are set to `und` and names to None.
             Otherwise will mux the `streams` to `output` if specified.
         """
-        self.mkvmerge_path = mkvmerge_path
+        self.mkvmerge_path = VPath(mkvmerge_path)
 
         if file:
-            self.output = Path(file.name_file_final)
-            self.video = VideoStream(Path(file.name_clip_output), '')
+            self.output = file.name_file_final
+            self.video = VideoStream(file.name_clip_output, '')
 
             self.audios = []
 
             i = 1
             while True:
-                if (audio_path := Path(file.a_enc_cut.format(i))).exists():
+                if (audio_path := file.a_enc_cut) and audio_path.format(i).exists():
                     self.audios += [AudioStream(audio_path)]
-                elif (audio_path := Path(file.a_src_cut.format(i))).exists():
+                elif (audio_path := file.a_src_cut) and audio_path.format(i).exists():
                     self.audios += [AudioStream(audio_path)]
-                elif (audio_path := Path(file.a_src.format(i))).exists():
+                elif (audio_path := file.a_src) and audio_path.format(i).exists():
                     self.audios += [AudioStream(audio_path)]
                 else:
                     break
                 i += 1
 
-            if file.chapter and (chap := Path(file.chapter)).exists():
+            if file.chapter and (chap := file.chapter).exists():
                 self.chapters = ChapterStream(chap)
 
         elif output and streams:
-            self.output = output
+            self.output = VPath(output)
             self.video, audios, self.chapters = streams
             if not audios:
                 self.audios = []

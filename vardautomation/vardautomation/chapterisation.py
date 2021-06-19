@@ -19,7 +19,7 @@ from pyparsebluray import mpls
 from .language import UNDEFINED, Lang
 from .colors import Colors
 from .timeconv import Convert
-
+from .vpathlib import AnyPath, VPath
 
 
 class Chapter(NamedTuple):
@@ -32,11 +32,11 @@ class Chapter(NamedTuple):
 
 class Chapters(ABC):
     """Abtract chapters interface"""
-    chapter_file: Path
+    chapter_file: VPath
 
-    def __init__(self, chapter_file: Union[Path, str]) -> None:
+    def __init__(self, chapter_file: AnyPath) -> None:
         """Chapter file path as parameter"""
-        self.chapter_file = Path(chapter_file) if isinstance(chapter_file, str) else chapter_file
+        self.chapter_file = VPath(chapter_file)
         super().__init__()
 
     def __repr__(self) -> str:
@@ -59,10 +59,9 @@ class Chapters(ABC):
     def to_chapters(self, fps: Fraction, lang: Optional[Lang]) -> List[Chapter]:
         """Convert the Chapters object to a list of chapter"""
 
-    def copy(self, destination: Union[Path, str]) -> None:
+    def copy(self, destination: AnyPath) -> None:
         """Copy source chapter to destination and change target of chapter_file to the destination one."""
-        if isinstance(destination, str):
-            destination = Path(destination)
+        destination = VPath(destination)
         copyfile(self.chapter_file.absolute(), destination.absolute())
         self.chapter_file = destination
         print(
@@ -70,9 +69,9 @@ class Chapters(ABC):
             + f'"{str(self.chapter_file.absolute())}" to "{str(destination.absolute())}" {Colors.RESET}\n'
         )
 
-    def create_qpfile(self, qpfile: Union[Path, str], fps: Fraction) -> None:
+    def create_qpfile(self, qpfile: AnyPath, fps: Fraction) -> None:
         """Create a qp file from the current Chapters object"""
-        qpfile = Path(qpfile) if isinstance(qpfile, str) else qpfile
+        qpfile = VPath(qpfile)
 
         keyf = [chap.start_frame for chap in self.to_chapters(fps, None)]
 
@@ -334,7 +333,7 @@ class MatroskaXMLChapters(Chapters):
 
 class MplsChapters(Chapters):
     """MplsChapters object"""
-    m2ts: Path
+    m2ts: VPath
     chapters: List[Chapter]
     fps: Fraction
 
@@ -352,40 +351,40 @@ class MplsChapters(Chapters):
 
 class MplsReader():
     """Mpls reader"""
-    bd_folder: Path
+    bd_folder: VPath
 
-    mpls_folder: Path
-    m2ts_folder: Path
+    mpls_folder: VPath
+    m2ts_folder: VPath
 
-    set_lang: Lang
+    lang: Lang
     default_chap_name: str
 
     class MplsFile(NamedTuple):  # noqa: PLC0115
-        mpls_file: Path
+        mpls_file: VPath
         mpls_chapters: List[MplsChapters]
 
-    def __init__(self, bd_folder: Path = Path(), set_lang: Lang = UNDEFINED, default_chap_name: str = 'Chapter') -> None:
+    def __init__(self, bd_folder: AnyPath = VPath(), lang: Lang = UNDEFINED, default_chap_name: str = 'Chapter') -> None:
         """Initialise a MplsReader.
            All parameters are optionnal if you just want to use the `parse_mpls` method.
 
         Args:
-            bd_folder (Path, optional):
+            bd_folder (AnyPath, optional):
                 A valid bluray folder path should contain a BDMV and CERTIFICATE folders.
-                Defaults to pathlib.Path().
+                Defaults to VPath().
 
-            set_lang (Language, optional):
+            lang (Language, optional):
                 Language to be set. Defaults to UNDEFINED.
 
             default_chap_name (str, optional):
                 Prefix used as default name for the generated chapters.
                 Defaults to 'Chapter'.
         """
-        self.bd_folder = bd_folder
+        self.bd_folder = VPath(bd_folder)
 
         self.mpls_folder = self.bd_folder / 'BDMV/PLAYLIST'
         self.m2ts_folder = self.bd_folder / 'BDMV/STREAM'
 
-        self.set_lang = set_lang
+        self.lang = lang
         self.default_chap_name = default_chap_name
 
     def get_playlist(self) -> List[MplsFile]:
@@ -398,11 +397,11 @@ class MplsReader():
             for mpls_file in mpls_files
         ]
 
-    def write_playlist(self, output_folder: Optional[Path] = None) -> None:
+    def write_playlist(self, output_folder: Optional[VPath] = None) -> None:
         """Extract and write the playlist folder to XML chapters files.
 
         Args:
-            output_folder (Optional[Path], optional):
+            output_folder (Optional[VPath], optional):
                 Will write in the mpls folder if not specified.
                 Defaults to None.
         """
@@ -423,7 +422,7 @@ class MplsReader():
                     xmlchaps.create(chapters, fps)
 
 
-    def parse_mpls(self, mpls_file: Path) -> List[MplsChapters]:
+    def parse_mpls(self, mpls_file: VPath) -> List[MplsChapters]:
         """Parse a mpls file and return a list of chapters that were in the mpls file."""
         with mpls_file.open('rb') as file:
             header = mpls.load_movie_playlist(file)

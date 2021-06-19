@@ -4,7 +4,6 @@ __all__ = ['Patch']
 
 import platform
 import shutil
-from pathlib import Path
 from subprocess import call
 from typing import NoReturn, Tuple
 
@@ -12,6 +11,7 @@ import vapoursynth as vs
 
 from .automation import BasicTool, VideoEncoder
 from .config import FileInfo
+from .vpathlib import AnyPath, VPath
 
 
 class Patch():  # noqa
@@ -19,21 +19,21 @@ class Patch():  # noqa
     ffmsindex: str = 'ffmsindex'
     mkvmerge: str = 'mkvmerge'
 
-    workdir: Path
-    fix_raw: Path
-    fix_mkv: Path
+    workdir: VPath
+    fix_raw: VPath
+    fix_mkv: VPath
 
-    file_to_fix: Path
+    file_to_fix: VPath
     filtered_clip: vs.VideoNode
     frame_start: int
     frame_end: int
     encoder: VideoEncoder
     file: FileInfo
 
-    def __init__(self, file_to_fix: Path, filtered_clip: vs.VideoNode,
+    def __init__(self, file_to_fix: AnyPath, filtered_clip: vs.VideoNode,
                  frame_start: int, frame_end: int,
                  encoder: VideoEncoder, file: FileInfo) -> None:
-        self.file_to_fix = file_to_fix.resolve()
+        self.file_to_fix = VPath(file_to_fix).resolve()
         self.filtered_clip = filtered_clip
         self.frame_start = frame_start
         self.frame_end = frame_end

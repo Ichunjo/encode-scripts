@@ -12,7 +12,7 @@ from prettyprinter.doc import Doc
 from prettyprinter.prettyprinter import PrettyContext
 
 from .presets import NoPreset, Preset
-from .vpathlib import VPath
+from .vpathlib import AnyPath, VPath
 
 core = vs.core
 
@@ -52,16 +52,16 @@ class FileInfo():  # noqa: PLR0902
 
 
     def __init__(
-        self, path: PathLike, /,
+        self, path: AnyPath, /,
         frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
         idx: Optional[Callable[[str], vs.VideoNode]] = None,
         preset: Union[Sequence[Preset], Preset] = NoPreset,
-        workdir: PathLike = VPath().cwd()
+        workdir: AnyPath = VPath().cwd()
     ) -> None:
         """Helper which allows to store the data related to your file to be encoded
 
         Args:
-            path (PathLike):
+            path (AnyPath):
                 Path to your source file.
 
             frame_start (Optional[int], optional):
@@ -80,7 +80,8 @@ class FileInfo():  # noqa: PLR0902
                 Preset used to fill idx, a_src, a_src_cut, a_enc_cut and chapter attributes.
                 Defaults to NoPreset.
 
-            workdir
+            workdir (AnyPath, optional):
+                Work directory. Default to the current directorie where the script is launched.
         """
         self.workdir = VPath(workdir)
 
