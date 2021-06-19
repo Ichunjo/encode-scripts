@@ -2,10 +2,9 @@
 
 __all__ = ['FileInfo']
 
-import os
 import sys
-from pathlib import Path
-from typing import Callable, List, Optional, Union
+from os import PathLike, remove
+from typing import Callable, List, Optional, Sequence, Union
 
 import vapoursynth as vs
 from prettyprinter import pretty_call, pretty_repr, register_pretty
@@ -13,6 +12,7 @@ from prettyprinter.doc import Doc
 from prettyprinter.prettyprinter import PrettyContext
 
 from .presets import NoPreset, Preset
+from .vpathlib import VPath
 
 core = vs.core
 
@@ -21,42 +21,47 @@ core = vs.core
 
 class FileInfo():  # noqa: PLR0902
     """File info object"""
-    path: Path
-    path_without_ext: Path
+    path: VPath
+    path_without_ext: VPath
 
     idx: Optional[Callable[[str], vs.VideoNode]]
     preset: List[Preset]
 
     name: str
 
-    a_src: Optional[str]
-    a_src_cut: Optional[str]
-    a_enc_cut: Optional[str]
-    chapter: Optional[str]
+    workdir: VPath
+
+    a_src: Optional[VPath]
+    a_src_cut: Optional[VPath]
+    a_enc_cut: Optional[VPath]
+    chapter: Optional[VPath]
 
     clip: vs.VideoNode
     frame_start: Optional[int]
     frame_end: Optional[int]
     clip_cut: vs.VideoNode
 
-    name_clip_output: Path
-    name_file_final: Path
+    name_clip_output: VPath
+    name_file_final: VPath
 
-    name_clip_output_lossless: Path
+    name_clip_output_lossless: VPath
     do_lossless: bool
 
-    qpfile: Path
+    qpfile: VPath
     do_qpfile: bool
 
 
-    def __init__(self, path: Path, /,
-                 frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
-                 idx: Optional[Callable[[str], vs.VideoNode]] = None,
-                 preset: Union[List[Preset], Preset] = NoPreset) -> None:
+    def __init__(
+        self, path: PathLike, /,
+        frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
+        idx: Optional[Callable[[str], vs.VideoNode]] = None,
+        preset: Union[Sequence[Preset], Preset] = NoPreset,
+        workdir: PathLike = VPath().cwd()
+    ) -> None:
         """Helper which allows to store the data related to your file to be encoded
 
         Args:
-            path (Path):
+            path (PathLike):
                 Path to your source file.
 
             frame_start (Optional[int], optional):
@@ -74,17 +79,22 @@ class FileInfo():  # noqa: PLR0902
             preset (Union[List[Preset], Preset], optional):
                 Preset used to fill idx, a_src, a_src_cut, a_enc_cut and chapter attributes.
                 Defaults to NoPreset.
+
+            workdir
         """
-        self.path = path
+        self.workdir = VPath(workdir)
+
+
+        self.path = VPath(path)
         self.path_without_ext = self.path.with_suffix('')
         self.idx = idx
 
-        self.name = Path(sys.argv[0]).stem
+        self.name = VPath(sys.argv[0]).stem
 
         self.a_src, self.a_src_cut, self.a_enc_cut, self.chapter = (None, ) * 4
 
         # TODO: Rewrite this logic
-        self.preset = [preset] if isinstance(preset, Preset) else preset
+        self.preset = [preset] if isinstance(preset, Preset) else list(preset)
         self._params_fill_preset()
 
         if self.idx:
@@ -93,13 +103,13 @@ class FileInfo():  # noqa: PLR0902
             self.frame_end = frame_end
             self.clip_cut = self.clip[self.frame_start:self.frame_end] if (self.frame_start or self.frame_end) else self.clip
 
-        self.name_clip_output = Path(self.name + '.265')
-        self.name_file_final = Path(self.name + '.mkv')
+        self.name_clip_output = VPath(self.name + '.265')
+        self.name_file_final = VPath(self.name + '.mkv')
 
-        self.name_clip_output_lossless = Path(self.name + '_lossless.mkv')
+        self.name_clip_output_lossless = VPath(self.name + '_lossless.mkv')
         self.do_lossless = False
 
-        self.qpfile = Path(self.name + '_qpfile.log')
+        self.qpfile = VPath(self.name + '_qpfile.log')
         self.do_qpfile = False
 
         super().__init__()
@@ -117,7 +127,7 @@ class FileInfo():  # noqa: PLR0902
                 _, v = d1  # noqa: PLC0103
                 kp, vp = d2  # noqa: PLC0103
                 if isinstance(vp, str):
-                    vp = vp.format(path=str(self.path_without_ext), name=self.name, num='{}')  # noqa: PLC0103
+                    vp = VPath(vp.format(path=str(self.path_without_ext), name=self.name, num='{}'))  # noqa: PLC0103
                 setattr(self, kp, vp if not v else v)
 
     def cleanup(self, *,  # noqa
@@ -127,8 +137,8 @@ class FileInfo():  # noqa: PLR0902
         booleans = (a_src, a_src_cut, a_enc_cut, chapter)
 
         for file, boolean in zip(files, booleans):
-            if boolean and file and Path(file).exists():
-                os.remove(file)
+            if boolean and file and file.exists():
+                remove(file)
             for i in range(10):
-                if boolean and file and file.format(i) and Path(file.format(i)).exists():
-                    os.remove(file.format(i))
+                if boolean and file and file.format(i) and file.format(i).exists():
+                    remove(file.format(i))
