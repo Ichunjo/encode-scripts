@@ -150,16 +150,20 @@ class OGMChapters(Chapters):
         return data
 
 
+
+Element = etree._Element
+
+
 class ElementTree(etree._ElementTree):  # type: ignore
     def xpath(self, _path: Union[str, bytes],  # type: ignore
               namespaces: Optional[Union[Dict[str, str], Dict[bytes, bytes]]] = None,  # type: ignore
               extensions: Any = None, smart_strings: bool = True,
-              **_variables) -> List[etree._Element]:  # type: ignore
+              **_variables) -> List[Element]:  # type: ignore
         xpathobject = super().xpath(  # type: ignore
             _path, namespaces=namespaces, extensions=extensions,
             smart_strings=smart_strings, **_variables
         )
-        return cast(List[etree._Element], xpathobject)  # type: ignore
+        return cast(List[Element], xpathobject)  # type: ignore
 
 
 class MatroskaXMLChapters(Chapters):
@@ -226,10 +230,7 @@ class MatroskaXMLChapters(Chapters):
 
 
         timestarts = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_start}')
-        timestarts = cast(List[etree._Element], timestarts)  # noqa: PLW0212
-
         timeends = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_end}')
-        timeends = cast(List[etree._Element], timeends)  # noqa: PLW0212
 
         for t_s in timestarts:
             if isinstance(t_s.text, str):
@@ -252,20 +253,20 @@ class MatroskaXMLChapters(Chapters):
         timestarts = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_start}')
 
 
-        timeends = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_end}')
-        timeends = cast(List[Optional[etree._Element]], timeends)  # type: ignore
+        timeends: List[Optional[Element]] = []
+        timeends += tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_end}')
         if len(timeends) != len(timestarts):
             timeends += [None] * (len(timestarts) - len(timeends))
 
 
-        names = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
-        names = cast(List[Optional[etree._Element]], names)  # type: ignore
+        names: List[Optional[Element]] = []
+        names += tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
         if len(names) != len(timestarts):
             names += [None] * (len(timestarts) - len(names))
 
 
-        ietfs = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_ietf}')
-        ietfs = cast(List[Optional[etree._Element]], ietfs)  # type: ignore
+        ietfs: List[Optional[Element]] = []
+        ietfs += tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_ietf}')
         if len(ietfs) != len(timestarts):
             ietfs += [None] * (len(timestarts) - len(ietfs))
 
@@ -273,7 +274,10 @@ class MatroskaXMLChapters(Chapters):
         chapters: List[Chapter] = []
         for name, timestart, timeend, ietf in zip(names, timestarts, timeends, ietfs):
 
-            nametxt = name.text if isinstance(name.text, str) else ''
+            if name and isinstance(name.text, str):
+                nametxt = name.text
+            else:
+                nametxt = ''
 
             if isinstance(timestart.text, str):
                 start_frame = Convert.ts2f(timestart.text, fps)
@@ -286,17 +290,22 @@ class MatroskaXMLChapters(Chapters):
             except AttributeError:
                 pass
 
-            if not lang and isinstance(ietf.text, str):
-                lang = Lang.make(ietf.text)
+
+            if lang is None:
+                if ietf is not None and isinstance(ietf.text, str):
+                    lang = Lang.make(ietf.text)
+                else:
+                    lang = UNDEFINED
             else:
-                assert lang
+                lang = UNDEFINED
+
 
             chapter = Chapter(name=nametxt, start_frame=start_frame, end_frame=end_frame, lang=lang)
             chapters.append(chapter)
 
         return chapters
 
-    def _make_chapter_xml(self, chapter: Chapter) -> etree._Element:  # noqa: PLW0212
+    def _make_chapter_xml(self, chapter: Chapter) -> Element:
 
         atom = etree.Element(self.__chap_atom)
 
@@ -316,7 +325,7 @@ class MatroskaXMLChapters(Chapters):
 
         return atom
 
-    def _get_tree(self) -> ElementTree:  # noqa: PLW0212
+    def _get_tree(self) -> ElementTree:
         try:
             return cast(ElementTree, etree.parse(str(self.chapter_file)))
         except OSError as oserr:
@@ -457,11 +466,14 @@ class MplsReader():
                     offset = min(playitem.intime, linked_marks[0].mark_timestamp)
 
                     # Extract the fps and store it
-                    try:
-                        assert (fps_n := playitem.stn_table.prim_video_stream_entries[0][1].framerate)
-                        mpls_chap.fps = mpls.FRAMERATE[fps_n]
-                    except KeyError as kerr:
-                        raise ValueError('Framerate not found') from kerr
+                    if playitem.stn_table and playitem.stn_table.prim_video_stream_entries \
+                            and (fps_n := playitem.stn_table.prim_video_stream_entries[0][1].framerate):
+                        if fps_n in mpls.FRAMERATE:
+                            mpls_chap.fps = mpls.FRAMERATE[fps_n]
+                        else:
+                            raise ValueError('Unknown framerate!')
+                    else:
+                        raise AttributeError('No STNTable in playitem!')
 
                     # Finally extract the chapters
                     mpls_chap.chapters = sorted(self._mplschapters_to_chapters(linked_marks, offset, mpls_chap.fps))
@@ -479,5 +491,5 @@ class MplsReader():
                 Chapter(name=f'{self.default_chap_name} {i:02.0f}',
                         start_frame=Convert.seconds2f((mark.mark_timestamp - offset) / 45000, fps),
                         end_frame=None,
-                        lang=self.set_lang))
+                        lang=self.lang))
         return chapters
