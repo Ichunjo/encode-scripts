@@ -410,11 +410,11 @@ class Mux:
             i = 1
             while True:
                 if (audio_path := file.a_enc_cut) and audio_path.format(i).exists():
-                    self.audios += [AudioStream(audio_path)]
+                    self.audios += [AudioStream(audio_path.format(i))]
                 elif (audio_path := file.a_src_cut) and audio_path.format(i).exists():
-                    self.audios += [AudioStream(audio_path)]
+                    self.audios += [AudioStream(audio_path.format(i))]
                 elif (audio_path := file.a_src) and audio_path.format(i).exists():
-                    self.audios += [AudioStream(audio_path)]
+                    self.audios += [AudioStream(audio_path.format(i))]
                 else:
                     break
                 i += 1
