@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from fractions import Fraction
 from pprint import pformat
 from shutil import copyfile
-from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Set,
+from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Sequence, Set,
                     Union, cast)
 
 from lxml import etree
@@ -46,7 +46,7 @@ class Chapters(ABC):
         """Create a chapter"""
 
     @abstractmethod
-    def set_names(self, names: List[Optional[str]]) -> None:
+    def set_names(self, names: Sequence[Optional[str]]) -> None:
         """Change chapter names."""
 
     @abstractmethod
@@ -89,8 +89,9 @@ class OGMChapters(Chapters):
                                  f'CHAPTER{i:02.0f}NAME={chapter.name}\n'])
         self._logging('created')
 
-    def set_names(self, names: List[Optional[str]]) -> None:
+    def set_names(self, names: Sequence[Optional[str]]) -> None:
         data = self._get_data()
+        names = list(names)
 
         times = data[::2]
         old = data[1::2]
@@ -204,8 +205,9 @@ class MatroskaXMLChapters(Chapters):
 
         self._logging('created')
 
-    def set_names(self, names: List[Optional[str]]) -> None:
+    def set_names(self, names: Sequence[Optional[str]]) -> None:
         tree = self._get_tree()
+        names = list(names)
 
         olds = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
 
@@ -274,7 +276,7 @@ class MatroskaXMLChapters(Chapters):
         chapters: List[Chapter] = []
         for name, timestart, timeend, ietf in zip(names, timestarts, timeends, ietfs):
 
-            if name and isinstance(name.text, str):
+            if name is not None and isinstance(name.text, str):
                 nametxt = name.text
             else:
                 nametxt = ''
@@ -343,7 +345,7 @@ class MplsChapters(Chapters):
     def create(self, chapters: List[Chapter], fps: Fraction) -> NoReturn:
         raise NotImplementedError("Can't create a mpls file!")
 
-    def set_names(self, names: List[Optional[str]]) -> NoReturn:
+    def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
         raise NotImplementedError("Can't change name from a mpls file!")
 
     def to_chapters(self, fps: Fraction, lang: Optional[Lang]) -> List[Chapter]:
