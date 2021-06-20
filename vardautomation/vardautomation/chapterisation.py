@@ -71,7 +71,7 @@ class Chapters(ABC):
 
         qpfile.write_text('\n'.join([f"{f} K" for f in sorted(keyf)]), encoding='utf-8')
 
-        print(f'{Colors.INFO}Chapter file sucessfully copied at: "{str(qpfile.absolute())}"{Colors.RESET}\n')
+        print(f'{Colors.INFO}Qpfile sucessfully created at: "{str(qpfile.absolute())}"{Colors.RESET}\n')
 
     def _logging(self, action: str) -> None:
         print(f'{Colors.INFO}Chapter file sucessfully {action} at: "{str(self.chapter_file.absolute())}"{Colors.RESET}\n')
