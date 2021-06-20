@@ -7,4 +7,5 @@ from .language import *
 from .patch import *
 from .placebo_shaders import *
 from .presets import *
+from .tooling import *
 from .vpathlib import *
