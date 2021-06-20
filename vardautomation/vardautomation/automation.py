@@ -135,25 +135,6 @@ class SelfRunner:
 
     #     self.file.chapter = str(chap.chapter_file)
 
-    # def merge(self) -> None:
-    #     """Merge function"""
-    #     video = VideoStream(
-    #         path=Path(self.file.name_clip_output),
-    #         name='HEVC BDRip by Vardë@Raws-Maji',
-    #         lang=JAPANESE
-    #     )
-
-    #     assert self.file.a_enc_cut
-    #     assert self.file.chapter
-    #     BasicTool('mkvmerge', [
-    #         '-o', self.file.name_file_final,
-    #         '--track-name', '0:HEVC BDRip by Vardë@Raws-Maji', '--language', '0:jpn', self.file.name_clip_output,
-    #         '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 2.0', '--language', '0:jpn', self.file.a_enc_cut.format(1),
-    #         '--tags', '0:tags_aac.xml', '--track-name', '0:AAC 5.1', '--language', '0:jpn', self.file.a_enc_cut.format(2),
-    #         '--chapter-language', 'jpn', '--chapters', self.file.chapter
-    #     ]).run()
-
-
     def _parsing(self) -> None:
         parser = Parser(self.file)
         self.file, self.clip = parser.parsing(self.file, self.clip)
@@ -171,28 +152,26 @@ class SelfRunner:
     def _audio_getter(self) -> None:
         if self.config.a_extracters:
             for i, a_extracter in enumerate(self.config.a_extracters, start=1):
-                assert self.file.a_src
-                if not self.file.a_src.format(i).exists():
+                if self.file.a_src and not self.file.a_src.format(i).exists():
                     a_extracter.run()
-                    self.cleanup.add(self.file.a_src)
+                    self.cleanup.add(self.file.a_src.format(i))
 
         if self.config.a_cutters:
             for i, a_cutter in enumerate(self.config.a_cutters, start=1):
-                assert self.file.a_src_cut
-                if not self.file.a_src_cut.format(i).exists():
+                if self.file.a_src_cut and not self.file.a_src_cut.format(i).exists():
                     a_cutter.run()
-                    self.cleanup.add(self.file.a_src_cut)
+                    self.cleanup.add(self.file.a_src_cut.format(i))
 
         if self.config.a_encoders:
             for i, a_encoder in enumerate(self.config.a_encoders, start=1):
-                assert self.file.a_enc_cut
-                if not self.file.a_enc_cut.format(i).exists():
+                if self.file.a_enc_cut and not self.file.a_enc_cut.format(i).exists():
                     a_encoder.run()
-                    self.cleanup.add(self.file.a_enc_cut)
+                    self.cleanup.add(self.file.a_enc_cut.format(i))
 
     def _muxer(self) -> None:
-        wfs = self.config.muxer.run()
-        self.cleanup.update(wfs)
+        if self.config.muxer:
+            wfs = self.config.muxer.run()
+            self.cleanup.update(wfs)
 
     def do_cleanup(self, *extra_files: AnyPath) -> None:
         """Delete working files"""
