@@ -79,73 +79,28 @@ class Parser():  # noqa
         return file, clip[frame_start:frame_end]
 
 
+class RunnerConfig(NamedTuple):
+    v_encoder: VideoEncoder
+    v_lossless_encoder: Optional[LosslessEncoder] = None
+    a_extracters: Optional[Sequence[BasicTool]] = None
+    a_cutters: Optional[Sequence[AudioCutter]] = None
+    a_encoders: Optional[Sequence[AudioEncoder]] = None
+    muxer: Optional[Mux] = None
 
-BasicTools = Optional[Union[BasicTool, Sequence[BasicTool]]]
-AudioCutters = Optional[Union[AudioCutter, Sequence[AudioCutter]]]
-AudioEncoders = Optional[Union[AudioEncoder, Sequence[AudioEncoder]]]
 
-
-class EncodeGoBrr:
+class SelfRunner:
     """Self runner interface"""
     clip: vs.VideoNode
     file: FileInfo
-    v_encoder: VideoEncoder
-    v_lossless_encoder: Optional[LosslessEncoder]
-    a_extracters: List[BasicTool]
-    a_cutters: List[AudioCutter]
-    a_encoders: List[AudioEncoder]
+    config: RunnerConfig
 
-    def __init__(self,
-                 clip: vs.VideoNode, file: FileInfo, /,
-                 v_encoder: VideoEncoder, v_lossless_encoder: Optional[LosslessEncoder] = None,
-                 a_extracters: BasicTools = None,
-                 a_cutters: AudioCutters = None,
-                 a_encoders: AudioEncoders = None) -> None:
-        """
-        Args:
-            clip (vs.VideoNode):
-                (Filtered) clip.
-            file (FileInfo):
-                FileInfo object.
+    cleanup: Set[AnyPath]
 
-            v_encoder (VideoEncoder):
-                Video encoder(s) used.
-
-            v_lossless_encoder (Optional[LosslessEncoder]):
-                Lossless encoder used if necessary.
-
-            a_extracters (Union[BasicTool, Sequence[BasicTool]]):
-                Audio extracter(s) used.
-
-            a_cutters (Optional[Union[AudioCutter, Sequence[AudioCutter]]]):
-                Audio cutter(s) used.
-
-            a_encoders (Optional[Union[AudioEncoder, Sequence[AudioEncoder]]]):
-                Audio encoder(s) used.
-        """
+    def __init__(self, clip: vs.VideoNode, file: FileInfo, /, config: RunnerConfig) -> None:
         self.clip = clip
         self.file = file
-        self.v_lossless_encoder = v_lossless_encoder
-        self.v_encoder = v_encoder
-
-
-        if a_extracters:
-            self.a_extracters = list(a_extracters) if isinstance(a_extracters, Sequence) else [a_extracters]
-        else:
-            self.a_extracters = []
-
-        if a_cutters:
-            self.a_cutters = list(a_cutters) if isinstance(a_cutters, Sequence) else [a_cutters]
-        else:
-            self.a_cutters = []
-
-        if a_encoders:
-            self.a_encoders = list(a_encoders) if isinstance(a_encoders, Sequence) else [a_encoders]
-        else:
-            self.a_encoders = []
-
-
-        super().__init__()
+        self.config = config
+        self.cleanup = set()
 
 
     def run(self) -> None:
@@ -153,6 +108,7 @@ class EncodeGoBrr:
         self._parsing()
         self._encode()
         self._audio_getter()
+        self._muxer()
 
     # @abstractmethod
     # def chapter(self) -> None:
@@ -203,32 +159,40 @@ class EncodeGoBrr:
         self.file, self.clip = parser.parsing(self.file, self.clip)
 
     def _encode(self) -> None:
-        if self.file.do_lossless and self.v_lossless_encoder:
+        if self.file.do_lossless and self.config.v_lossless_encoder:
             if not self.file.name_clip_output_lossless.exists():
-                self.v_lossless_encoder.run_enc(self.clip, self.file)
-            self.clip = core.lsmas.LWLibavSource(str(self.file.name_clip_output_lossless))
+                self.config.v_lossless_encoder.run_enc(self.clip, self.file)
+            self.clip = core.lsmas.LWLibavSource(self.file.name_clip_output_lossless.to_str())
 
         if not self.file.name_clip_output.exists():
-            self.v_encoder.run_enc(self.clip, self.file)
+            self.config.v_encoder.run_enc(self.clip, self.file)
+            self.cleanup.add(self.file.name_clip_output)
 
     def _audio_getter(self) -> None:
-        for i, a_extracter in enumerate(self.a_extracters, start=1):
-            assert self.file.a_src
-            if not self.file.a_src.format(i).exists():
-                a_extracter.run()
+        if self.config.a_extracters:
+            for i, a_extracter in enumerate(self.config.a_extracters, start=1):
+                assert self.file.a_src
+                if not self.file.a_src.format(i).exists():
+                    a_extracter.run()
+                    self.cleanup.add(self.file.a_src)
 
-        for i, a_cutter in enumerate(self.a_cutters, start=1):
-            assert self.file.a_src_cut
-            if not self.file.a_src_cut.format(i).exists():
-                a_cutter.run()
+        if self.config.a_cutters:
+            for i, a_cutter in enumerate(self.config.a_cutters, start=1):
+                assert self.file.a_src_cut
+                if not self.file.a_src_cut.format(i).exists():
+                    a_cutter.run()
+                    self.cleanup.add(self.file.a_src_cut)
 
-        for i, a_encoder in enumerate(self.a_encoders, start=1):
-            assert self.file.a_enc_cut
-            if not self.file.a_enc_cut.format(i).exists():
-                a_encoder.run()
+        if self.config.a_encoders:
+            for i, a_encoder in enumerate(self.config.a_encoders, start=1):
+                assert self.file.a_enc_cut
+                if not self.file.a_enc_cut.format(i).exists():
+                    a_encoder.run()
+                    self.cleanup.add(self.file.a_enc_cut)
 
-    def cleanup(self, **kwargs: Any) -> None:  # noqa
-        self.file.cleanup(**kwargs)
+    def _muxer(self) -> None:
+        wfs = self.config.muxer.run()
+        self.cleanup.update(wfs)
 
     def do_cleanup(self, *extra_files: AnyPath) -> None:
         """Delete working files"""
