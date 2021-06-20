@@ -384,10 +384,16 @@ AudioStreams = Union[AudioStream, Sequence[AudioStream]]
 class Mux:
     """Muxing interface using mkvmerge"""
     output: VPath
+
+    file: FileInfo
+
     video: VideoStream
-    audios: List[AudioStream]
+    audios: Optional[List[AudioStream]]
     chapters: Optional[ChapterStream]
+
     mkvmerge_path: AnyPath = VPath('mkvmerge')
+
+    __workfiles: Set[VPath]
 
     def __init__(self, file: FileInfo,
                  streams: Optional[Tuple[VideoStream, Optional[AudioStreams], Optional[ChapterStream]]] = None) -> None:
@@ -398,36 +404,20 @@ class Mux:
                 - All languages are set to `und` and names to None.
             Otherwise will mux the `streams` to `output` if specified.
         """
-        self.mkvmerge_path = VPath(mkvmerge_path)
+        self.output = file.name_file_final
 
-        if file and not streams:
-            self.output = file.name_file_final
-            self.video = VideoStream(file.name_clip_output)
 
-            self.audios = []
-
-            i = 1
-            while True:
-                if (audio_path := file.a_enc_cut) and audio_path.format(i).exists():
-                    self.audios += [AudioStream(audio_path.format(i))]
-                elif (audio_path := file.a_src_cut) and audio_path.format(i).exists():
-                    self.audios += [AudioStream(audio_path.format(i))]
-                elif (audio_path := file.a_src) and audio_path.format(i).exists():
-                    self.audios += [AudioStream(audio_path.format(i))]
-                else:
-                    break
-                i += 1
-
-            if file.chapter and (chap := file.chapter).exists():
-                self.chapters = ChapterStream(chap)
-
-        elif file and streams:
-            self.output = file.name_file_final
+        if file and streams:
             self.video, audios, self.chapters = streams
             if not audios:
                 self.audios = []
             else:
                 self.audios = [audios] if isinstance(audios, AudioStream) else list(audios)
+        elif file and streams is None:
+            self.file = file
+            self.video = VideoStream(file.name_clip_output)
+            self.audios = None
+            self.chapters = None
         else:
             raise ValueError('Mux:')
 
@@ -435,30 +425,63 @@ class Mux:
         """Make and launch the command"""
         cmd = ['-o', str(self.output)]
 
-        work_files: Set[VPath] = set()
+        self.__workfiles = set()
 
         if self.video.tag_file:
             cmd += ['--tags', '0:' + str(self.video.tag_file)]
         if self.video.name:
             cmd += ['--track-name', '0:' + self.video.name]
         cmd += ['--language', '0:' + self.video.lang.iso639, str(self.video.path)]
-        work_files.add(self.video.path)
+        self.__workfiles.add(self.video.path)
 
-        if self.audios:
-            for audio in self.audios:
-                if audio.tag_file:
-                    cmd += ['--tags', '0:' + str(audio.tag_file)]
-                if audio.name:
-                    cmd += ['--track-name', '0:' + audio.name]
-                cmd += ['--language', '0:' + audio.lang.iso639, str(audio.path)]
-                work_files.add(audio.path)
 
-        if self.chapters:
-            cmd += ['--chapter-language', self.chapters.lang.iso639]
-            if self.chapters.charset:
-                cmd += ['--chapter-charset', self.chapters.charset]
-            cmd += ['--chapters', str(self.chapters.path)]
-            work_files.add(self.chapters.path)
+        if self.audios is not None:
+            cmd += self._audios_cmd()
+        else:
+            if hasattr(self, 'file'):
+                self.audios = []
+                i = 1
+                while True:
+                    if self.file.a_enc_cut is not None and self.file.a_enc_cut.format(i).exists():
+                        self.audios += [AudioStream(self.file.a_enc_cut.format(i))]
+                    elif self.file.a_src_cut is not None and self.file.a_src_cut.format(i).exists():
+                        self.audios += [AudioStream(self.file.a_src_cut.format(i))]
+                    elif self.file.a_src is not None and self.file.a_src.format(i).exists():
+                        self.audios += [AudioStream(self.file.a_src.format(i))]
+                    else:
+                        break
+                    i += 1
+                cmd += self._audios_cmd()
+
+
+        if self.chapters is not None:
+            cmd += self._chapters_cmd()
+        else:
+            if hasattr(self, 'file'):
+                if self.file.chapter and (chap := self.file.chapter).exists():
+                    self.chapters = ChapterStream(chap)
+                cmd += self._chapters_cmd()
 
         BasicTool(str(self.mkvmerge_path), cmd).run()
-        return work_files
+
+        return self.__workfiles
+
+
+    def _audios_cmd(self) -> List[str]:
+        cmd: List[str] = []
+        for audio in self.audios:
+            if audio.tag_file:
+                cmd += ['--tags', '0:' + str(audio.tag_file)]
+            if audio.name:
+                cmd += ['--track-name', '0:' + audio.name]
+            cmd += ['--language', '0:' + audio.lang.iso639, str(audio.path)]
+            self.__workfiles.add(audio.path)
+        return cmd
+
+    def _chapters_cmd(self) -> List[str]:
+        cmd = ['--chapter-language', self.chapters.lang.iso639]
+        if self.chapters.charset:
+            cmd += ['--chapter-charset', self.chapters.charset]
+        cmd += ['--chapters', str(self.chapters.path)]
+        self.__workfiles.add(self.chapters.path)
+        return cmd
