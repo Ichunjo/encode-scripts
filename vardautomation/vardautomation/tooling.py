@@ -387,11 +387,10 @@ class Mux:
     video: VideoStream
     audios: List[AudioStream]
     chapters: Optional[ChapterStream]
-    mkvmerge_path: VPath
+    mkvmerge_path: AnyPath = VPath('mkvmerge')
 
     def __init__(self, file: FileInfo,
-                 streams: Optional[Tuple[VideoStream, Optional[AudioStreams], Optional[ChapterStream]]] = None, *,
-                 mkvmerge_path: AnyPath = VPath('mkvmerge')) -> None:
+                 streams: Optional[Tuple[VideoStream, Optional[AudioStreams], Optional[ChapterStream]]] = None) -> None:
         """
             If `file` is specified:
                 - Will find `file.name_file_final` as VideoStream
