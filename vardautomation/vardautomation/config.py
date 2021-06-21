@@ -8,7 +8,6 @@ from os import remove
 from pprint import pformat
 from typing import Callable, List, Optional, Sequence, Union
 
-import lvsfunc
 import vapoursynth as vs
 
 from .presets import NoPreset, Preset
@@ -56,7 +55,7 @@ class FileInfo():  # noqa: PLR0902
     def __init__(
         self, path: AnyPath, /,
         frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
-        idx: Optional[VPSIdx] = lvsfunc.misc.source,
+        idx: Optional[VPSIdx] = None,
         preset: Union[Sequence[Preset], Preset] = NoPreset,
         workdir: AnyPath = VPath().cwd()
     ) -> None:
