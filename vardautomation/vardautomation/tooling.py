@@ -31,12 +31,14 @@ from .vpathlib import AnyPath, VPath
 
 class Tool(ABC):
     """Abstract Tool interface"""
+    binary: VPath
+    settings: Union[AnyPath, List[str]]
+    params: List[str]
 
-    """Abstract tooling interface"""
-    def __init__(self, binary: str, settings: Union[AnyPath, List[str]]) -> None:
-        self.binary = binary
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]]) -> None:
+        self.binary = VPath(binary)
         self.settings = settings
-        self.params: List[str] = []
+        self.params = []
         super().__init__()
 
     @abstractmethod
@@ -54,21 +56,23 @@ class Tool(ABC):
             with open(self.settings, 'r') as sttgs:
                 self.params = re.split(r'[\n\s]\s*', sttgs.read())
 
-        self.params.insert(0, self.binary)
+        self.params.insert(0, self.binary.to_str())
 
         self.params = [p.format(**self.set_variable()) for p in self.params]
 
 
 class BasicTool(Tool):
     """BasicTool interface"""
-    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /, file: Optional[FileInfo] = None) -> None:
+    file: Optional[FileInfo]
+
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /, file: Optional[FileInfo] = None) -> None:
         """Helper allowing the use of CLI programs for basic tasks like video or audio track extraction.
 
         Args:
-            binary (str):
+            binary (AnyPath):
                 Path to your binary file.
 
-            settings (Union[Path, List[str]]):
+            settings (Union[AnyPath, List[str]]):
                 Path to your settings file or list of string containing your settings.
 
             file (Optional[FileInfo]):
@@ -85,14 +89,37 @@ class BasicTool(Tool):
         return {}
 
     def _do_tooling(self) -> None:
-        print(f'{Colors.INFO}{self.binary} command:', ' '.join(self.params) + f'{Colors.RESET}\n')
+        print(f'{Colors.INFO}{self.binary.to_str()} command:', ' '.join(self.params) + f'{Colors.RESET}\n')
         subprocess.run(self.params, check=True, text=True, encoding='utf-8')
 
 
 class AudioEncoder(BasicTool):
     """BasicTool interface for audio encoding"""
-    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
+    track: int
+    xml_tag: Optional[AnyPath]
+
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
                  file: FileInfo, *, track: int, xml_tag: Optional[AnyPath] = None) -> None:
+        """Helper for audio extraction.
+
+        Args:
+            binary (AnyPath):
+                Path to your binary file.
+
+            settings (Union[AnyPath, List[str]]):
+                Path to your settings file or list of string containing your settings.
+
+            file (FileInfo):
+                FileInfo object. Needed in AudioEncoder implementation.
+
+            track (int):
+                Track number.
+
+            xml_tag (Optional[AnyPath], optional):
+                XML file path. If specified, will write a file containing the encoder info
+                to be passed to the muxer.
+                Defaults to None.
+        """
         super().__init__(binary, settings, file=file)
         self.track = track
         self.xml_tag = xml_tag
@@ -137,6 +164,25 @@ class QAACEncoder(AudioEncoder):
     def __init__(self, /, file: FileInfo, *,
                  track: int, xml_tag: Optional[AnyPath] = None,
                  tvbr_quality: int = 127, qaac_args: Optional[List[str]] = None) -> None:
+        """
+        Args:
+            file (FileInfo):
+                FileInfo object. Needed in AudioEncoder implementation.
+
+            track (int):
+                Track number.
+
+            xml_tag (Optional[AnyPath], optional):
+                XML file path. If specified, will write a file containing the encoder info
+                to be passed to the muxer.
+                Defaults to None.
+
+            tvbr_quality (int, optional):
+                Read the QAAC doc. Defaults to 127.
+
+            qaac_args (Optional[List[str]], optional):
+                Additionnal arguments. Defaults to None.
+        """
         binary = 'qaac'
         settings = ['{a_src_cut:s}', '-V', str(tvbr_quality), '--no-delay', '-o', '{a_enc_cut:s}']
         if qaac_args is not None:
@@ -145,6 +191,10 @@ class QAACEncoder(AudioEncoder):
 
 
 class FlacCompressionLevel(IntEnum):
+    """
+        Flac compression level.
+        Keep in mind that the max FLAC can handle is 8 and ffmpeg 12
+    """
     ZERO = 0
     ONE = 1
     TWO = 2
@@ -171,8 +221,16 @@ class FlacEncoder(AudioEncoder):
                  use_ffmpeg: bool = True, flac_args: Optional[List[str]] = None) -> None:
         """
         Args:
+            file (FileInfo):
+                FileInfo object. Needed in AudioEncoder implementation.
+
             track (int):
-                Track number
+                Track number.
+
+            xml_tag (Optional[AnyPath], optional):
+                XML file path. If specified, will write a file containing the encoder info
+                to be passed to the muxer.
+                Defaults to None.
 
             level (FlacCompressionLevel, optional):
                 See FlacCompressionLevel for all levels available.
@@ -181,6 +239,9 @@ class FlacEncoder(AudioEncoder):
             use_ffmpeg (bool, optional):
                 Will use flac if false.
                 Defaults to True.
+
+            flac_args (Optional[List[str]], optional):
+                Additionnal arguments. Defaults to None.
         """
         if use_ffmpeg:
             binary = 'ffmpeg'
@@ -206,15 +267,27 @@ class FlacEncoder(AudioEncoder):
         super().__init__(binary, settings, file, track=track, xml_tag=xml_tag)
 
 
-class AudioCutter():
+class AudioCutter:
     """Audio cutter using eztrim"""
+    file: FileInfo
+    track: int
+    kwargs: Dict[str, Any]
+
     def __init__(self, file: FileInfo, /, *, track: int, **kwargs) -> None:
+        """
+        Args:
+            file (FileInfo):
+                FileInfo object.
+
+            track (int):
+                Track number.
+        """
         self.file = file
         self.track = track
         self.kwargs = kwargs
-        super().__init__()
 
-    def run(self) -> None:  # noqa
+    def run(self) -> None:
+        """Run eztrim"""
         assert self.file.a_src
         assert self.file.a_src_cut
         eztrim(self.file.clip, (self.file.frame_start, self.file.frame_end),
@@ -222,6 +295,8 @@ class AudioCutter():
                **self.kwargs)
 
 
+
+UpdateFunc = Callable[[int, int], None]
 
 
 def progress_update_func(value: int, endvalue: int) -> None:
@@ -235,8 +310,8 @@ class VideoEncoder(Tool):
     clip: vs.VideoNode
     bits: int
 
-    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
-                 progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+                 progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
         """Helper intended to facilitate video encoding
 
         Args:
@@ -249,7 +324,7 @@ class VideoEncoder(Tool):
             file (FileInfo):
                 FileInfo object.
 
-            progress_update (Optional[Callable[[int, int], None]], optional):
+            progress_update (Optional[UpdateFunc], optional):
                 Current progress can be reported by passing a callback function
                 of the form func(current_frame, total_frames) to progress_update.
                 Defaults to progress_update_func.
@@ -287,9 +362,7 @@ class VideoEncoder(Tool):
                 qpf.writelines([f"{s} K" for s in scenes])
 
     def _do_encode(self) -> None:
-        print(Colors.INFO)
-        print('VideoEncoder command:', " ".join(self.params))
-        print(f'{Colors.RESET}\n')
+        print(f'{Colors.INFO}VideoEncoder command:', " ".join(self.params) + f'{Colors.RESET}\n')
 
         with subprocess.Popen(self.params, stdin=subprocess.PIPE) as process:
             self.clip.output(cast(BinaryIO, process.stdin), y4m=True, progress_update=self.progress_update)
@@ -297,8 +370,9 @@ class VideoEncoder(Tool):
 
 class X265Encoder(VideoEncoder):
     """Video encoder using x265 in HEVC"""
-    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
-                 progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
+
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+                 progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
@@ -311,8 +385,9 @@ class X265Encoder(VideoEncoder):
 
 class X264Encoder(VideoEncoder):
     """Video encoder using x264 in AVC"""
-    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
-                 progress_update: Optional[Callable[[int, int], None]] = progress_update_func) -> None:
+
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+                 progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
@@ -322,9 +397,11 @@ class X264Encoder(VideoEncoder):
                     bits=self.bits, csp=csp)
 
 
-class LosslessEncoder(VideoEncoder):  # noqa
-    def __init__(self, binary: str, settings: Union[AnyPath, List[str]], /,
-                 progress_update: Optional[Callable[[int, int], None]] = None) -> None:
+class LosslessEncoder(VideoEncoder):
+    """Video encoder for lossless encoding"""
+
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+                 progress_update: Optional[UpdateFunc] = None) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:

@@ -80,6 +80,7 @@ class Parser():  # noqa
 
 
 class RunnerConfig(NamedTuple):
+    """Config for the SelfRunner"""
     v_encoder: VideoEncoder
     v_lossless_encoder: Optional[LosslessEncoder] = None
     a_extracters: Optional[Sequence[BasicTool]] = None
