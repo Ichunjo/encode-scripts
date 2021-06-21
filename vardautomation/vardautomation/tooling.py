@@ -402,7 +402,7 @@ class Mux:
                 - Will find `file.name_file_final` as VideoStream
                 - Will try to find in this order file.a_enc_cut, file.a_src_cut, file.a_src as long as there is a file.a_xxxx.format(n)
                 - All languages are set to `und` and names to None.
-            Otherwise will mux the `streams` to `output` if specified.
+            Otherwise will mux the `streams` to `file.name_file_final`.
         """
         self.output = file.name_file_final
 
