@@ -427,12 +427,8 @@ class Mux:
 
         self.__workfiles = set()
 
-        if self.video.tag_file:
-            cmd += ['--tags', '0:' + str(self.video.tag_file)]
-        if self.video.name:
-            cmd += ['--track-name', '0:' + self.video.name]
-        cmd += ['--language', '0:' + self.video.lang.iso639, str(self.video.path)]
-        self.__workfiles.add(self.video.path)
+
+        cmd += self._video_cmd()
 
 
         if self.audios is not None:
@@ -466,6 +462,16 @@ class Mux:
 
         return self.__workfiles
 
+
+    def _video_cmd(self) -> List[str]:
+        cmd: List[str] = []
+        if self.video.tag_file:
+            cmd += ['--tags', '0:' + self.video.tag_file.to_str()]
+        if self.video.name:
+            cmd += ['--track-name', '0:' + self.video.name]
+        cmd += ['--language', '0:' + self.video.lang.iso639, self.video.path.to_str()]
+        self.__workfiles.add(self.video.path)
+        return cmd
 
     def _audios_cmd(self) -> List[str]:
         cmd: List[str] = []
