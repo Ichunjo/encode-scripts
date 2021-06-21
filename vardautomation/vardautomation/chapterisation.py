@@ -295,14 +295,14 @@ class MatroskaXMLChapters(Chapters):
 
             if lang is None:
                 if ietf is not None and isinstance(ietf.text, str):
-                    lang = Lang.make(ietf.text)
+                    lng = Lang.make(ietf.text)
                 else:
-                    lang = UNDEFINED
+                    lng = UNDEFINED
             else:
-                lang = UNDEFINED
+                lng = lang
 
 
-            chapter = Chapter(name=nametxt, start_frame=start_frame, end_frame=end_frame, lang=lang)
+            chapter = Chapter(name=nametxt, start_frame=start_frame, end_frame=end_frame, lang=lng)
             chapters.append(chapter)
 
         return chapters
@@ -402,11 +402,11 @@ class MplsReader():
             for mpls_file in mpls_files
         ]
 
-    def write_playlist(self, output_folder: Optional[VPath] = None) -> None:
+    def write_playlist(self, output_folder: Optional[AnyPath] = None) -> None:
         """Extract and write the playlist folder to XML chapters files.
 
         Args:
-            output_folder (Optional[VPath], optional):
+            output_folder (Optional[AnyPath], optional):
                 Will write in the mpls folder if not specified.
                 Defaults to None.
         """
@@ -414,6 +414,8 @@ class MplsReader():
 
         if not output_folder:
             output_folder = self.mpls_folder
+        else:
+            output_folder = VPath(output_folder)
 
         for mpls_file in playlist:
             for mpls_chapters in mpls_file.mpls_chapters:
@@ -427,8 +429,9 @@ class MplsReader():
                     xmlchaps.create(chapters, fps)
 
 
-    def parse_mpls(self, mpls_file: VPath) -> List[MplsChapters]:
+    def parse_mpls(self, mpls_file: AnyPath) -> List[MplsChapters]:
         """Parse a mpls file and return a list of chapters that were in the mpls file."""
+        mpls_file = VPath(mpls_file)
         with mpls_file.open('rb') as file:
             header = mpls.load_movie_playlist(file)
 
