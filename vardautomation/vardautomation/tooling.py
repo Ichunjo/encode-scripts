@@ -281,7 +281,7 @@ class VideoEncoder(Tool):
 
     def _create_qpfile(self) -> None:
         if not (qpfile := self.file.qpfile).exists():
-            scenes = find_scene_changes(self.clip, SceneChangeMode.WWXD_SCXVID_UNION)
+            scenes = find_scene_changes(self.file.clip_cut, SceneChangeMode.WWXD_SCXVID_UNION)
 
             with qpfile.open('w') as qpf:
                 qpf.writelines([f"{s} K" for s in scenes])
