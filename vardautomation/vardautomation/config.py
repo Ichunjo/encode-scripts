@@ -75,7 +75,7 @@ class FileInfo():  # noqa: PLR0902
 
             idx (Optional[Callable[[str], vs.VideoNode]], optional):
                 Indexer used to index the video track.
-                Defaults to lvsfunc.misc.source.
+                Defaults to None.
 
             preset (Union[Sequence[Preset], Preset], optional):
                 Preset used to fill idx, a_src, a_src_cut, a_enc_cut and chapter attributes.
