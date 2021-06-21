@@ -218,7 +218,7 @@ class AudioCutter():
         assert self.file.a_src
         assert self.file.a_src_cut
         eztrim(self.file.clip, (self.file.frame_start, self.file.frame_end),
-               str(self.file.a_src.format(self.track)), str(self.file.a_src_cut.format(self.track)),
+               self.file.a_src.format(self.track).to_str(), self.file.a_src_cut.format(self.track).to_str(),
                **self.kwargs)
 
 
@@ -269,7 +269,7 @@ class VideoEncoder(Tool):
 
         if self.file.do_qpfile:
             self._create_qpfile()
-            self.params += ['--qpfile', str(self.file.qpfile)]
+            self.params += ['--qpfile', self.file.qpfile.to_str()]
 
         self._do_encode()
 
@@ -277,7 +277,7 @@ class VideoEncoder(Tool):
         raise NameError('Use `run_enc` instead')
 
     def set_variable(self) -> Dict[str, Any]:
-        return dict(clip_output=str(self.file.name_clip_output), filename=self.file.name)
+        return dict(clip_output=self.file.name_clip_output.to_str(), filename=self.file.name)
 
     def _create_qpfile(self) -> None:
         if not (qpfile := self.file.qpfile).exists():
@@ -303,7 +303,7 @@ class X265Encoder(VideoEncoder):
 
     def set_variable(self) -> Dict[str, Any]:
         min_luma, max_luma = Properties.get_color_range(self.params, self.clip, self.bits)
-        return dict(clip_output=str(self.file.name_clip_output), filename=self.file.name, frames=self.clip.num_frames,
+        return dict(clip_output=self.file.name_clip_output.to_str(), filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
                     bits=self.bits,
                     min_luma=min_luma, max_luma=max_luma)
@@ -317,7 +317,7 @@ class X264Encoder(VideoEncoder):
 
     def set_variable(self) -> Dict[str, Any]:
         csp = Properties.get_csp(self.clip)
-        return dict(clip_output=str(self.file.name_clip_output), filename=self.file.name, frames=self.clip.num_frames,
+        return dict(clip_output=self.file.name_clip_output.to_str(), filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
                     bits=self.bits, csp=csp)
 
@@ -328,7 +328,7 @@ class LosslessEncoder(VideoEncoder):  # noqa
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
-        return dict(clip_output_lossless=str(self.file.name_clip_output_lossless))
+        return dict(clip_output_lossless=self.file.name_clip_output_lossless.to_str())
 
 
 class Stream:
@@ -423,7 +423,7 @@ class Mux:
 
     def run(self) -> Set[VPath]:
         """Make and launch the command"""
-        cmd = ['-o', str(self.output)]
+        cmd = ['-o', self.output.to_str()]
 
         self.__workfiles = set()
 
@@ -477,10 +477,10 @@ class Mux:
         cmd: List[str] = []
         for audio in self.audios:
             if audio.tag_file:
-                cmd += ['--tags', '0:' + str(audio.tag_file)]
+                cmd += ['--tags', '0:' + audio.tag_file.to_str()]
             if audio.name:
                 cmd += ['--track-name', '0:' + audio.name]
-            cmd += ['--language', '0:' + audio.lang.iso639, str(audio.path)]
+            cmd += ['--language', '0:' + audio.lang.iso639, audio.path.to_str()]
             self.__workfiles.add(audio.path)
         return cmd
 
@@ -488,6 +488,6 @@ class Mux:
         cmd = ['--chapter-language', self.chapters.lang.iso639]
         if self.chapters.charset:
             cmd += ['--chapter-charset', self.chapters.charset]
-        cmd += ['--chapters', str(self.chapters.path)]
+        cmd += ['--chapters', self.chapters.path.to_str()]
         self.__workfiles.add(self.chapters.path)
         return cmd
