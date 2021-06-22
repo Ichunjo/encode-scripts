@@ -11,7 +11,7 @@ from fractions import Fraction
 from pprint import pformat
 from shutil import copyfile
 from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Sequence,
-                    Set, Union, cast)
+                    Union, cast)
 
 from lxml import etree
 from pyparsebluray import mpls
@@ -500,7 +500,7 @@ class MplsReader():
                     raise AttributeError('No STNTable in playitem!')
 
                 # Finally extract the chapters
-                mpls_chap.chapters = sorted(self._mplschapters_to_chapters(linked_marks, offset, mpls_chap.fps))
+                mpls_chap.chapters = self._mplschapters_to_chapters(linked_marks, offset, mpls_chap.fps)
 
             # And add to the list
             mpls_chaps.append(mpls_chap)
@@ -508,15 +508,16 @@ class MplsReader():
         return mpls_chaps
 
 
-    def _mplschapters_to_chapters(self, marks: List[mpls.playlist_mark.PlaylistMark], offset: int, fps: Fraction) -> Set[Chapter]:
-        chapters: Set[Chapter] = set()
-        for i, mark in enumerate(marks, start=1):
-            chapters.add(
-                Chapter(name=f'{self.default_chap_name} {i:02.0f}',
-                        start_frame=Convert.seconds2f((mark.mark_timestamp - offset) / 45000, fps),
-                        end_frame=None,
-                        lang=self.lang))
-        return chapters
+    def _mplschapters_to_chapters(self, marks: List[mpls.playlist_mark.PlaylistMark], offset: int, fps: Fraction) -> List[Chapter]:
+        return [
+            Chapter(
+                name=f'{self.default_chap_name} {i:02.0f}',
+                start_frame=Convert.seconds2f((mark.mark_timestamp - offset) / 45000, fps),
+                end_frame=None,
+                lang=self.lang
+            )
+            for i, mark in enumerate(marks, start=1)
+        ]
 
 
 class IfoReader():
@@ -602,7 +603,7 @@ class IfoReader():
             playback_times += program.playback_times + [program.duration]
 
             # Finally extract the chapters
-            ifo_chap.chapters = sorted(self._ifochapters_to_chapters(playback_times, ifo_chap.fps))
+            ifo_chap.chapters = self._ifochapters_to_chapters(playback_times, ifo_chap.fps)
 
             # And add to the list
             ifo_chaps.append(ifo_chap)
@@ -610,13 +611,11 @@ class IfoReader():
         return ifo_chaps
 
 
-    def _ifochapters_to_chapters(self, pb_times: List[vts_ifo.vts_pgci.PlaybackTime], fps: Fraction) -> Set[Chapter]:
-        chapters: Set[Chapter] = set()
-
-        if round(fpsnum := fps.numerator / 1000) == 0:
+    def _ifochapters_to_chapters(self, pb_times: List[vts_ifo.vts_pgci.PlaybackTime], fps: Fraction) -> List[Chapter]:
+        if (fpsnum := int(fps.numerator / 1000)) == 0:
             raw_fps = fps.numerator
         else:
-            raw_fps = int(fpsnum)
+            raw_fps = fpsnum
 
         pb_frames = [
             pb_time.frames + (pb_time.hours * 3600 + pb_time.minutes * 60 + pb_time.seconds) * raw_fps
@@ -628,10 +627,12 @@ class IfoReader():
             for i, pb_frame in enumerate(pb_frames[:-1])
         ]
 
-        for i, pb_frame in enumerate(pb_frames[:-1], start=1):
-            chapters.add(
-                Chapter(name=f'{self.default_chap_name} {i:02.0f}',
-                        start_frame=pb_frame,
-                        end_frame=pb_frames[i],
-                        lang=self.lang))
-        return chapters
+        return [
+            Chapter(
+                name=f'{self.default_chap_name} {i:02.0f}',
+                start_frame=pb_frame,
+                end_frame=pb_frames[i],
+                lang=self.lang
+            )
+            for i, pb_frame in enumerate(pb_frames[:-1], start=1)
+        ]
