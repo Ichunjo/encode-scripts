@@ -149,6 +149,8 @@ class SelfRunner:
         if not self.file.name_clip_output.exists():
             self.config.v_encoder.run_enc(self.clip, self.file)
             self.cleanup.add(self.file.name_clip_output)
+            if self.file.do_qpfile:
+                self.cleanup.add(self.file.qpfile)
 
     def _audio_getter(self) -> None:
         if self.config.a_extracters:
