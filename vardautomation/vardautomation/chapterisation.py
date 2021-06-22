@@ -350,6 +350,10 @@ class MplsChapters(Chapters):
     def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
         raise NotImplementedError("Can't change name from a mpls file!")
 
+    def to_chapters(self, fps: Fraction, lang: Optional[Lang] = None) -> List[Chapter]:
+        if not hasattr(self, 'chapters'):
+            self.chapters = []
+        return self.chapters
 
 
 class IfoChapters(Chapters):
@@ -464,44 +468,44 @@ class MplsReader():
                 raise ValueError('There is no playlist marks in this file!')
 
 
-            mpls_chaps: List[MplsChapters] = []
+        mpls_chaps: List[MplsChapters] = []
 
-            for i, playitem in enumerate(playlist.play_items):
+        for i, playitem in enumerate(playlist.play_items):
 
-                # Create a MplsChapters and add its linked mpls
-                mpls_chap = MplsChapters(mpls_file)
+            # Create a MplsChapters and add its linked mpls
+            mpls_chap = MplsChapters(mpls_file)
 
-                # Add the m2ts name
-                if (name := playitem.clip_information_filename) and \
-                   (ext := playitem.clip_codec_identifier):
-                    mpls_chap.m2ts = self.m2ts_folder / f'{name}.{ext}'.lower()
+            # Add the m2ts name
+            if (name := playitem.clip_information_filename) and \
+                    (ext := playitem.clip_codec_identifier):
+                mpls_chap.m2ts = self.m2ts_folder / f'{name}.{ext}'.lower()
 
-                # Sort the chapters/marks linked to the current item
-                linked_marks = [mark for mark in marks if mark.ref_to_play_item_id == i]
+            # Sort the chapters/marks linked to the current item
+            linked_marks = [mark for mark in marks if mark.ref_to_play_item_id == i]
 
-                # linked_marks could be empty
-                if linked_marks:
-                    # Extract the offset
-                    assert playitem.intime
-                    offset = min(playitem.intime, linked_marks[0].mark_timestamp)
+            # linked_marks could be empty
+            if linked_marks:
+                # Extract the offset
+                assert playitem.intime
+                offset = min(playitem.intime, linked_marks[0].mark_timestamp)
 
-                    # Extract the fps and store it
-                    if playitem.stn_table and playitem.stn_table.prim_video_stream_entries \
-                            and (fps_n := playitem.stn_table.prim_video_stream_entries[0][1].framerate):
-                        if fps_n in mpls.FRAMERATE:
-                            mpls_chap.fps = mpls.FRAMERATE[fps_n]
-                        else:
-                            raise ValueError('Unknown framerate!')
+                # Extract the fps and store it
+                if playitem.stn_table and playitem.stn_table.prim_video_stream_entries \
+                        and (fps_n := playitem.stn_table.prim_video_stream_entries[0][1].framerate):
+                    if fps_n in mpls.FRAMERATE:
+                        mpls_chap.fps = mpls.FRAMERATE[fps_n]
                     else:
-                        raise AttributeError('No STNTable in playitem!')
+                        raise ValueError('Unknown framerate!')
+                else:
+                    raise AttributeError('No STNTable in playitem!')
 
-                    # Finally extract the chapters
-                    mpls_chap.chapters = sorted(self._mplschapters_to_chapters(linked_marks, offset, mpls_chap.fps))
+                # Finally extract the chapters
+                mpls_chap.chapters = sorted(self._mplschapters_to_chapters(linked_marks, offset, mpls_chap.fps))
 
-                # And add to the list
-                mpls_chaps.append(mpls_chap)
+            # And add to the list
+            mpls_chaps.append(mpls_chap)
 
-            return mpls_chaps
+        return mpls_chaps
 
 
     def _mplschapters_to_chapters(self, marks: List[mpls.playlist_mark.PlaylistMark], offset: int, fps: Fraction) -> Set[Chapter]:
