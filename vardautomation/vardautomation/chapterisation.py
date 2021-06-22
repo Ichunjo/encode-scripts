@@ -1,7 +1,8 @@
 """Chapterisation module"""
 
 __all__ = ['Chapter', 'Chapters', 'OGMChapters', 'MatroskaXMLChapters',
-           'MplsChapters', 'MplsReader']
+           'MplsChapters', 'MplsReader',
+           'IfoChapters', 'IfoReader']
 
 import os
 import random
@@ -9,11 +10,12 @@ from abc import ABC, abstractmethod
 from fractions import Fraction
 from pprint import pformat
 from shutil import copyfile
-from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Sequence, Set,
-                    Union, cast)
+from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Sequence,
+                    Set, Union, cast)
 
 from lxml import etree
 from pyparsebluray import mpls
+from pyparsedvd import vts_ifo
 
 from .colors import Colors
 from .language import UNDEFINED, Lang
@@ -348,7 +350,20 @@ class MplsChapters(Chapters):
     def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
         raise NotImplementedError("Can't change name from a mpls file!")
 
-    def to_chapters(self, fps: Fraction, lang: Optional[Lang]) -> List[Chapter]:
+
+
+class IfoChapters(Chapters):
+    """IfoChapters object"""
+    chapters: List[Chapter]
+    fps: Fraction
+
+    def create(self, chapters: List[Chapter], fps: Fraction) -> NoReturn:
+        raise NotImplementedError("Can't create an ifo file!")
+
+    def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
+        raise NotImplementedError("Can't change name from an ifo file!")
+
+    def to_chapters(self, fps: Fraction, lang: Optional[Lang] = None) -> List[Chapter]:
         if not hasattr(self, 'chapters'):
             self.chapters = []
         return self.chapters
@@ -500,5 +515,119 @@ class MplsReader():
         return chapters
 
 
-class IFOReader:
-    pass
+class IfoReader():
+    """Mpls reader"""
+    dvd_folder: VPath
+
+    ifo_folder: VPath
+
+    lang: Lang
+    default_chap_name: str
+
+    def __init__(self, dvd_folder: AnyPath = VPath(), lang: Lang = UNDEFINED, default_chap_name: str = 'Chapter') -> None:
+        """Initialise a IfoReader.
+           All parameters are optionnal if you just want to use the `parse_ifo` method.
+
+        Args:
+            dvd_folder (AnyPath, optional):
+                A valid dvd folder path should contain at least a VIDEO_TS folder.
+                Defaults to VPath().
+
+            lang (Language, optional):
+                Language to be set. Defaults to UNDEFINED.
+
+            default_chap_name (str, optional):
+                Prefix used as default name for the generated chapters.
+                Defaults to 'Chapter'.
+        """
+        self.dvd_folder = VPath(dvd_folder)
+
+        self.ifo_folder = self.dvd_folder / 'VIDEO_TS'
+
+        self.lang = lang
+        self.default_chap_name = default_chap_name
+
+    def write_programs(self, output_folder: Optional[AnyPath] = None, *, ifo_file: str = 'VTS_01_0.IFO') -> None:
+        """Extract and write the programs from the IFO file to XML chapters files.
+
+        Args:
+            output_folder (Optional[AnyPath], optional):
+                Will write in the IFO folder if not specified.
+                Defaults to None.
+        """
+        ifo_chapters = self.parse_ifo(self.ifo_folder / ifo_file)
+
+        if not output_folder:
+            output_folder = self.ifo_folder
+        else:
+            output_folder = VPath(output_folder)
+
+        for i, ifo_chapter in enumerate(ifo_chapters):
+
+            # Some ifo_chapter don't necessarily have attributes mpls_chapters.chapters
+            fps = ifo_chapter.fps
+            chapters = ifo_chapter.to_chapters(fps, None)
+
+            if chapters:
+                xmlchaps = MatroskaXMLChapters(output_folder / f'{ifo_file}_{i:02.0f}.xml')
+                xmlchaps.create(chapters, fps)
+
+
+    def parse_ifo(self, ifo_file: AnyPath) -> List[IfoChapters]:
+        """Parse a mpls file and return a list of chapters that were in the ifo file."""
+        ifo_file = VPath(ifo_file)
+
+        with ifo_file.open('rb') as file:
+            pgci = vts_ifo.load_vts_pgci(file)
+
+        ifo_chaps: List[IfoChapters] = []
+        for program in pgci.program_chains:
+
+            # Create a IfoChapters and add its linked ifo
+            ifo_chap = IfoChapters(ifo_file)
+
+            # Extract the fps and store it
+            dvd_fpss = [pb_time.fps for pb_time in program.playback_times]
+            if all(dvd_fpss[0] == dvd_fps for dvd_fps in dvd_fpss):
+                ifo_chap.fps = vts_ifo.FRAMERATE[dvd_fpss[0]]
+            else:
+                raise ValueError('parse_ifo: No VFR allowed!')
+
+            # Add a zero PlaybackTime and the duration which is the last chapter
+            playback_times = [vts_ifo.vts_pgci.PlaybackTime(dvd_fpss[0], 0, 0, 0, 0)]
+            playback_times += program.playback_times + [program.duration]
+
+            # Finally extract the chapters
+            ifo_chap.chapters = sorted(self._ifochapters_to_chapters(playback_times, ifo_chap.fps))
+
+            # And add to the list
+            ifo_chaps.append(ifo_chap)
+
+        return ifo_chaps
+
+
+    def _ifochapters_to_chapters(self, pb_times: List[vts_ifo.vts_pgci.PlaybackTime], fps: Fraction) -> Set[Chapter]:
+        chapters: Set[Chapter] = set()
+
+        if round(fpsnum := fps.numerator / 1000) == 0:
+            raw_fps = fps.numerator
+        else:
+            raw_fps = int(fpsnum)
+
+        pb_frames = [
+            pb_time.frames + (pb_time.hours * 3600 + pb_time.minutes * 60 + pb_time.seconds) * raw_fps
+            for pb_time in pb_times
+        ]
+
+        pb_frames = [
+            pb_frame + sum(pb_frames[:-(len(pb_frames) - i)])
+            for i, pb_frame in enumerate(pb_frames[:-1])
+        ]
+
+        for i, pb_frame in enumerate(pb_frames[:-1], start=1):
+            chapters.add(
+                Chapter(name=f'{self.default_chap_name} {i:02.0f}',
+                        start_frame=pb_frame,
+                        end_frame=pb_frames[i],
+                        lang=self.lang))
+        return chapters

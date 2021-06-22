@@ -8,3 +8,4 @@ lxml-stubs>=0.2.0
 colorama>=0.4.4
 types-colorama>=0.4.2
 pyparsebluray>=0.1.1
+pyparsedvd>=0.0.1
