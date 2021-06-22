@@ -246,7 +246,7 @@ class FlacEncoder(AudioEncoder):
         if use_ffmpeg:
             binary = 'ffmpeg'
             if level == FlacCompressionLevel.VARDOU:
-                level_args = ['-compression_level 12', '-lpc_type', 'cholesky',
+                level_args = ['-compression_level', '12', '-lpc_type', 'cholesky',
                               '-lpc_passes', '3', '-exact_rice_parameters', '1']
             else:
                 level_args = [f'-compression_level {level}']
