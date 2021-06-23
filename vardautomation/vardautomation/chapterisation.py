@@ -350,8 +350,8 @@ class MplsChapters(Chapters):
     def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
         raise NotImplementedError("Can't change name from a mpls file!")
 
-    def to_chapters(self, fps: Fraction, lang: Optional[Lang] = None) -> List[Chapter]:
-        if not hasattr(self, 'chapters'):
+    def to_chapters(self, fps: Optional[Fraction] = None, lang: Optional[Lang] = None) -> List[Chapter]:
+        if not hasattr(self, 'chapters') or not hasattr(self, 'fps'):
             self.chapters = []
         return self.chapters
 
@@ -367,8 +367,8 @@ class IfoChapters(Chapters):
     def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
         raise NotImplementedError("Can't change name from an ifo file!")
 
-    def to_chapters(self, fps: Fraction, lang: Optional[Lang] = None) -> List[Chapter]:
-        if not hasattr(self, 'chapters'):
+    def to_chapters(self, fps: Optional[Fraction] = None, lang: Optional[Lang] = None) -> List[Chapter]:
+        if not hasattr(self, 'chapters') or not hasattr(self, 'fps'):
             self.chapters = []
         return self.chapters
 
@@ -439,13 +439,12 @@ class MplsReader():
         for mpls_file in playlist:
             for mpls_chapters in mpls_file.mpls_chapters:
 
-                # Some mpls_chapters don't necessarily have attributes mpls_chapters.chapters
-                fps = mpls_chapters.fps
-                chapters = mpls_chapters.to_chapters(fps, None)
+                # Some mpls_chapters don't necessarily have attributes mpls_chapters.chapters or mpls_chapters.fps
+                chapters = mpls_chapters.to_chapters()
 
                 if chapters:
                     xmlchaps = MatroskaXMLChapters(output_folder / f'{mpls_file.mpls_file.stem}_{mpls_chapters.m2ts.stem}.xml')
-                    xmlchaps.create(chapters, fps)
+                    xmlchaps.create(chapters, mpls_chapters.fps)
 
 
     def parse_mpls(self, mpls_file: AnyPath) -> List[MplsChapters]:
@@ -569,13 +568,12 @@ class IfoReader():
 
         for i, ifo_chapter in enumerate(ifo_chapters):
 
-            # Some ifo_chapter don't necessarily have attributes mpls_chapters.chapters
-            fps = ifo_chapter.fps
-            chapters = ifo_chapter.to_chapters(fps, None)
+            # Some ifo_chapter don't necessarily have attributes ifo_chapter.chapters
+            chapters = ifo_chapter.to_chapters()
 
             if chapters:
                 xmlchaps = MatroskaXMLChapters(output_folder / f'{ifo_file}_{i:02.0f}.xml')
-                xmlchaps.create(chapters, fps)
+                xmlchaps.create(chapters, ifo_chapter.fps)
 
 
     def parse_ifo(self, ifo_file: AnyPath) -> List[IfoChapters]:
