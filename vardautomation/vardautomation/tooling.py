@@ -414,9 +414,9 @@ class VideoEncoder(Tool):
 class X265Encoder(VideoEncoder):
     """Video encoder using x265 in HEVC"""
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, settings: Union[AnyPath, List[str]], /,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
-        super().__init__(binary, settings, progress_update=progress_update)
+        super().__init__('x265', settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
         min_luma, max_luma = Properties.get_color_range(self.params, self.clip, self.bits)
@@ -429,9 +429,9 @@ class X265Encoder(VideoEncoder):
 class X264Encoder(VideoEncoder):
     """Video encoder using x264 in AVC"""
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, settings: Union[AnyPath, List[str]], /,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
-        super().__init__(binary, settings, progress_update=progress_update)
+        super().__init__('x264', settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
         csp = Properties.get_csp(self.clip)
