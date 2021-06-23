@@ -143,6 +143,7 @@ class AudioEncoder(BasicTool):
 
 
     def _write_encoder_name_file(self) -> None:
+        assert self.file
         assert (a_enc_sut := self.file.a_enc_cut)
 
         tags = etree.Element('Tags')
@@ -552,6 +553,7 @@ class Mux:
 
     def _audios_cmd(self) -> List[str]:
         cmd: List[str] = []
+        assert self.audios
         for audio in self.audios:
             if audio.tag_file:
                 cmd += ['--tags', '0:' + audio.tag_file.to_str()]
@@ -562,6 +564,7 @@ class Mux:
         return cmd
 
     def _chapters_cmd(self) -> List[str]:
+        assert self.chapters
         cmd = ['--chapter-language', self.chapters.lang.iso639]
         if self.chapters.charset:
             cmd += ['--chapter-charset', self.chapters.charset]
