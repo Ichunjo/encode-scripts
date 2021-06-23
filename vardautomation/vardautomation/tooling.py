@@ -191,6 +191,48 @@ class QAACEncoder(AudioEncoder):
         super().__init__(binary, settings, file, track=track, xml_tag=xml_tag)
 
 
+class OpusEncoder(AudioEncoder):
+    """Opus AudioEncoder"""
+    def __init__(self, /, file: FileInfo, *,
+                 track: int, xml_tag: Optional[AnyPath] = None,
+                 bitrate: int = 192,
+                 use_ffmpeg: bool = True, opus_args: Optional[List[str]] = None) -> None:
+        """
+        Args:
+            file (FileInfo):
+                FileInfo object. Needed in AudioEncoder implementation.
+
+            track (int):
+                Track number.
+
+            xml_tag (Optional[AnyPath], optional):
+                XML file path. If specified, will write a file containing the encoder info
+                to be passed to the muxer.
+                Defaults to None.
+
+            bitrate (int, optional):
+                Opus bitrate in vbr mode. Defaults to 192.
+
+            use_ffmpeg (bool, optional):
+                Will use opusenc if false.
+                Defaults to True.
+
+            opus_args (Optional[List[str]], optional):
+                Additionnal arguments. Defaults to None.
+        """
+        if use_ffmpeg:
+            binary = 'ffmpeg'
+            settings = ['-i', '{a_src_cut:s}', '-c:a', 'libopus', '-b:a', f'{bitrate}k', '-o', '{a_enc_cut:s}']
+        else:
+            binary = 'opusenc'
+            settings = ['--bitrate', str(bitrate), '{a_src_cut:s}', '{a_enc_cut:s}']
+
+        if opus_args is not None:
+            settings.append(*opus_args)
+
+        super().__init__(binary, settings, file, track=track, xml_tag=xml_tag)
+
+
 class FlacCompressionLevel(IntEnum):
     """
         Flac compression level.
