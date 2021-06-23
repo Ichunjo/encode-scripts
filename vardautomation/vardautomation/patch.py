@@ -65,7 +65,11 @@ class Patch():  # noqa
         """Launch patch"""
         # Local folder
         self.workdir = self.file_to_fix.parent / (self.file.name + '_temp')
-        self.workdir.mkdir()
+        try:
+            self.workdir.mkdir()
+        except FileExistsError as file_exists_err:
+            raise FileExistsError('Patch: Workdir already exists!') from file_exists_err
+
         self.fix_raw = self.workdir / 'fix'
         self.fix_mkv = self.workdir / 'fix.mkv'
 
