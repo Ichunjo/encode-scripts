@@ -5,7 +5,7 @@ __all__ = ['Patch']
 import platform
 import shutil
 from subprocess import call
-from typing import NoReturn, Tuple
+from typing import NoReturn, Optional, Tuple
 
 import vapoursynth as vs
 
@@ -29,16 +29,31 @@ class Patch():  # noqa
     frame_end: int
     encoder: VideoEncoder
     file: FileInfo
+    output_filename: Optional[str]
 
-    def __init__(self, file_to_fix: AnyPath, filtered_clip: vs.VideoNode,
+    def __init__(self,
+                 file_to_fix: AnyPath, filtered_clip: vs.VideoNode,
                  frame_start: int, frame_end: int,
-                 encoder: VideoEncoder, file: FileInfo) -> None:
+                 encoder: VideoEncoder, file: FileInfo, *,
+                 output_filename: Optional[str] = None) -> None:
+        """TODO: Make a proper docstring
+
+        Args:
+            file_to_fix (AnyPath): [description]
+            filtered_clip (vs.VideoNode): [description]
+            frame_start (int): [description]
+            frame_end (int): [description]
+            encoder (VideoEncoder): [description]
+            file (FileInfo): [description]
+            output_filename (Optional[str], optional): [description]. Defaults to None.
+        """
         self.file_to_fix = VPath(file_to_fix).resolve()
         self.filtered_clip = filtered_clip
         self.frame_start = frame_start
         self.frame_end = frame_end
         self.encoder = encoder
         self.file = file
+        self.output_filename = output_filename
 
         whech = self._where_which()
         if call([whech, self.ffmsindex]) != 0:
@@ -46,11 +61,10 @@ class Patch():  # noqa
         if call([whech, self.mkvmerge]) != 0:
             self._throw_error(self.mkvmerge)
 
-
     def run(self) -> None:
         """Launch patch"""
         # Local folder
-        self.workdir = self.file_to_fix.parent / '_temp_workdir'
+        self.workdir = self.file_to_fix.parent / (self.file.name + '_temp')
         self.workdir.mkdir()
         self.fix_raw = self.workdir / 'fix'
         self.fix_mkv = self.workdir / 'fix.mkv'
@@ -110,7 +124,12 @@ class Patch():  # noqa
         name = self.file_to_fix.stem
         tmp = self.workdir / f'{name}_tmp.mkv'
         tmpnoaudio = self.workdir / f'{name}_tmp_noaudio.mkv'
-        final = self.file_to_fix.parent / f'{name}_new.mkv'
+
+        final = self.file_to_fix.parent
+        if self.output_filename is not None:
+            final /= self.output_filename
+        else:
+            final /= f'{name}_new.mkv'
 
 
         if start == 0:
