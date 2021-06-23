@@ -62,7 +62,7 @@ class Chapters(ABC):
         self.chapter_file = destination
         print(
             f'{Colors.INFO}Chapter file sucessfully copied from: '
-            + f'"{str(self.chapter_file.absolute())}" to "{str(destination.absolute())}" {Colors.RESET}\n'
+            + f'"{self.chapter_file.absolute().to_str()}" to "{destination.absolute().to_str()}" {Colors.RESET}\n'
         )
 
     def create_qpfile(self, qpfile: AnyPath, fps: Fraction) -> None:
@@ -73,10 +73,10 @@ class Chapters(ABC):
 
         qpfile.write_text('\n'.join([f"{f} K" for f in sorted(keyf)]), encoding='utf-8')
 
-        print(f'{Colors.INFO}Qpfile sucessfully created at: "{str(qpfile.absolute())}"{Colors.RESET}\n')
+        print(f'{Colors.INFO}Qpfile sucessfully created at: "{qpfile.absolute().to_str()}"{Colors.RESET}\n')
 
     def _logging(self, action: str) -> None:
-        print(f'{Colors.INFO}Chapter file sucessfully {action} at: "{str(self.chapter_file.absolute())}"{Colors.RESET}\n')
+        print(f'{Colors.INFO}Chapter file sucessfully {action} at: "{self.chapter_file.absolute().to_str()}"{Colors.RESET}\n')
 
 
 class OGMChapters(Chapters):
@@ -331,7 +331,7 @@ class MatroskaXMLChapters(Chapters):
 
     def _get_tree(self) -> ElementTree:
         try:
-            return cast(ElementTree, etree.parse(str(self.chapter_file)))
+            return cast(ElementTree, etree.parse(self.chapter_file.to_str()))
         except OSError as oserr:
             raise FileNotFoundError('_get_tree: xml file not found!') from oserr
 

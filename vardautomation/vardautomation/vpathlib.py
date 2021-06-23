@@ -11,6 +11,7 @@ AnyPath = Union[PathLike, str]
 
 
 class VPath(Path):
+    """Vardë Path"""
     _flavour = type(Path())._flavour  # type: ignore
 
     def __format__(self, format_spec: str) -> str:
@@ -23,7 +24,7 @@ class VPath(Path):
             Return a formatted version of `vpath`, using substitutions from args and kwargs.
             The substitutions are identified by braces ('{' and '}')
         """
-        return VPath(str(self).format(*args, **kwargs))
+        return VPath(self.to_str().format(*args, **kwargs))
 
     def to_str(self) -> str:
         """

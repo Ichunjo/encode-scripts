@@ -16,8 +16,8 @@ from .vpathlib import AnyPath, VPath
 
 class Patch():  # noqa
     """Allow easy video patching"""
-    ffmsindex: str = 'ffmsindex'
-    mkvmerge: str = 'mkvmerge'
+    ffmsindex: VPath = VPath('ffmsindex')
+    mkvmerge: VPath = VPath('mkvmerge')
 
     workdir: VPath
     fix_raw: VPath
@@ -57,9 +57,9 @@ class Patch():  # noqa
 
         whech = self._where_which()
         if call([whech, self.ffmsindex]) != 0:
-            self._throw_error(self.ffmsindex)
+            self._throw_error(self.ffmsindex.to_str())
         if call([whech, self.mkvmerge]) != 0:
-            self._throw_error(self.mkvmerge)
+            self._throw_error(self.mkvmerge.to_str())
 
     def run(self) -> None:
         """Launch patch"""
@@ -73,24 +73,25 @@ class Patch():  # noqa
         self._encode(self.filtered_clip[start:end])
         self._cut_and_merge(start, end)
 
-    def cleanup(self) -> None:
+    def do_cleanup(self) -> None:
         """Delete workdir folder"""
         shutil.rmtree(self.workdir, ignore_errors=True)
 
     def _generate_keyframes(self) -> Tuple[int, int]:
-        idx_file = f'{self.workdir}/index.ffindex'
-        kf_file = f'{idx_file}_track00.kf.txt'
+        idx_file = self.workdir / 'index.ffindex'
+        kf_file = idx_file.with_suffix(idx_file.suffix + '_track00.kf.txt')
 
-        idxing = BasicTool(self.ffmsindex, ['-k', '-f', str(self.file_to_fix), idx_file])
+        idxing = BasicTool(
+            self.ffmsindex,
+            ['-k', '-f', self.file_to_fix.to_str(), idx_file.to_str()]
+        )
         idxing.run()
 
-        with open(kf_file, 'r', encoding='utf-8') as f:
+        with kf_file.open('r', encoding='utf-8') as f:
             kfsstr = f.read().splitlines()
 
-        kfsint = list(map(int, kfsstr[2:]))
-        # Add the last frame
-        kfsint.append(self.filtered_clip.num_frames)
-
+        # Convert to int and add the last frame
+        kfsint = [int(x) for x in kfsstr[2:]] + [self.filtered_clip.num_frames]
 
         fra_s, fra_e = None, None
 
@@ -108,7 +109,7 @@ class Patch():  # noqa
                 break
 
         if fra_s is None or fra_e is None:
-            raise ValueError('Something is wrong in frame_start or frame_end')
+            raise ValueError('_generate_keyframes: Something is wrong in frame_start or frame_end')
 
         return fra_s, fra_e
 
@@ -117,7 +118,7 @@ class Patch():  # noqa
 
         self.encoder.run_enc(clip, self.file)
 
-        merge = BasicTool('mkvmerge', ['-o', str(self.fix_mkv), str(self.fix_raw)])
+        merge = BasicTool(self.mkvmerge, ['-o', self.fix_mkv.to_str(), self.fix_raw.to_str()])
         merge.run()
 
     def _cut_and_merge(self, start: int, end: int) -> None:
@@ -136,7 +137,11 @@ class Patch():  # noqa
             split_args = ['--split', f'frames:{end}']
         else:
             split_args = ['--split', f'frames:{start},{end}']
-        merge = BasicTool(self.mkvmerge, ['-o', str(tmp), '--no-audio', '--no-track-tags', '--no-chapters', str(self.file_to_fix), *split_args])
+        merge = BasicTool(
+            self.mkvmerge,
+            ['-o', tmp.to_str(), '--no-audio', '--no-track-tags', '--no-chapters',
+             self.file_to_fix.to_str(), *split_args]
+        )
         merge.run()
 
 
@@ -145,15 +150,21 @@ class Patch():  # noqa
         tmp003 = self.workdir / f'{tmp.stem}-003.mkv'
 
         if start == 0:
-            merge_args = [str(self.fix_mkv), '+', str(tmp002)]
+            merge_args = [self.fix_mkv.to_str(), '+', tmp002.to_str()]
         elif end == self.filtered_clip.num_frames:
-            merge_args = [str(tmp001), '+', str(self.fix_mkv)]
+            merge_args = [tmp001.to_str(), '+', self.fix_mkv.to_str()]
         else:
-            merge_args = [str(tmp001), '+', str(self.fix_mkv), '+', str(tmp003)]
+            merge_args = [tmp001.to_str(), '+', self.fix_mkv.to_str(), '+', tmp003.to_str()]
 
-        merge = BasicTool(self.mkvmerge, ['-o', str(tmpnoaudio), '--no-audio', '--no-track-tags', '--no-chapters', *merge_args])
+        merge = BasicTool(
+            self.mkvmerge,
+            ['-o', tmpnoaudio.to_str(), '--no-audio', '--no-track-tags', '--no-chapters', *merge_args]
+        )
         merge.run()
-        merge = BasicTool(self.mkvmerge, ['-o', str(final), str(tmpnoaudio), '--no-video', str(self.file_to_fix)])
+        merge = BasicTool(
+            self.mkvmerge,
+            ['-o', final.to_str(), tmpnoaudio.to_str(), '--no-video', self.file_to_fix.to_str()]
+        )
         merge.run()
 
     @staticmethod
