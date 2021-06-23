@@ -333,7 +333,13 @@ class AudioCutter:
         """Run eztrim"""
         assert self.file.a_src
         assert self.file.a_src_cut
-        eztrim(self.file.clip, (self.file.frame_start, self.file.frame_end),
+
+        if not self.file.frame_start:
+            frame_start = 0
+        else:
+            frame_start = self.file.frame_start
+
+        eztrim(self.file.clip, (frame_start, self.file.frame_end),
                self.file.a_src.format(self.track).to_str(), self.file.a_src_cut.format(self.track).to_str(),
                **self.kwargs)
 
