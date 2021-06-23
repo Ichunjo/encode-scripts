@@ -463,6 +463,20 @@ class NvenccEncoder(LosslessEncoder):
             progress_update=None
         )
 
+
+class FFV1Encoder(LosslessEncoder):
+    def __init__(self, *, threads: int = 16) -> None:
+        super().__init__(
+            'ffmpeg',
+            ['-i', '-',
+             '-vcodec', 'ffv1',
+             '-coder', '1', '-context', '0', '-g', '1', '-level', '3',
+             '-threads', str(threads), '-slices', '24', '-slicecrc', '1', '-slicecrc', '1',
+             '{clip_output_lossless:s}'],
+            progress_update=None
+        )
+
+
 class Stream:
     path: VPath
 
