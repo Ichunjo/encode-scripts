@@ -451,6 +451,18 @@ class LosslessEncoder(VideoEncoder):
         return dict(clip_output_lossless=self.file.name_clip_output_lossless.to_str())
 
 
+class NvenccEncoder(LosslessEncoder):
+    def __init__(self) -> None:
+        super().__init__(
+            'nvencc',
+            ['-i', '-', '--y4m',
+             '--lossless',
+             '-c', 'hevc',
+             '--output-depth', str(self.bits),
+             '-o', '{clip_output_lossless:s}'],
+            progress_update=None
+        )
+
 class Stream:
     path: VPath
 
