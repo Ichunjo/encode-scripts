@@ -14,7 +14,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from pprint import pformat
-from typing import (Any, BinaryIO, Callable, Dict, List, Optional, Sequence,
+from typing import (Any, BinaryIO, Callable, Dict, List, NoReturn, Optional, Sequence,
                     Set, Tuple, Union, cast)
 
 import vapoursynth as vs
@@ -397,7 +397,7 @@ class VideoEncoder(Tool):
 
         self._do_encode()
 
-    def run(self) -> None:
+    def run(self) -> NoReturn:
         raise NameError('Use `run_enc` instead')
 
     def set_variable(self) -> Dict[str, Any]:
@@ -483,7 +483,7 @@ class FFV1Encoder(LosslessEncoder):
         )
 
 
-class Stream:
+class Stream(ABC):
     path: VPath
 
     def __init__(self, path: AnyPath) -> None:
