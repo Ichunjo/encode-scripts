@@ -11,7 +11,7 @@ from fractions import Fraction
 from pprint import pformat
 from shutil import copyfile
 from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Sequence,
-                    Union, cast)
+                    Type, Union, cast)
 
 from lxml import etree
 from pyparsebluray import mpls
@@ -81,6 +81,10 @@ class Chapters(ABC):
 
 class OGMChapters(Chapters):
     """OGMChapters object"""
+
+    def __init__(self, chapter_file: AnyPath) -> None:
+        super().__init__(chapter_file)
+        self.chapter_file = self.chapter_file.with_suffix('.txt')
 
     def create(self, chapters: List[Chapter], fps: Fraction) -> None:
         """Create a txt chapter file."""
@@ -186,6 +190,10 @@ class MatroskaXMLChapters(Chapters):
     __chap_iso639 = 'ChapterLanguage'
 
     __doctype = '<!-- <!DOCTYPE Tags SYSTEM "matroskatags.dtd"> -->'
+
+    def __init__(self, chapter_file: AnyPath) -> None:
+        super().__init__(chapter_file)
+        self.chapter_file = self.chapter_file.with_suffix('.xml')
 
     def create(self, chapters: List[Chapter], fps: Fraction) -> None:
         """Create a xml chapter file."""
@@ -421,13 +429,17 @@ class MplsReader():
             for mpls_file in mpls_files
         ]
 
-    def write_playlist(self, output_folder: Optional[AnyPath] = None) -> None:
-        """Extract and write the playlist folder to XML chapters files.
+    def write_playlist(self, output_folder: Optional[AnyPath] = None, *,
+                       chapters_obj: Type[Chapters] = MatroskaXMLChapters) -> None:
+        """Extract and write the playlist folder.
 
         Args:
             output_folder (Optional[AnyPath], optional):
                 Will write in the mpls folder if not specified.
                 Defaults to None.
+
+            chapters_obj (Type[Chapters], optional):
+                Defaults to MatroskaXMLChapters.
         """
         playlist = self.get_playlist()
 
@@ -443,8 +455,8 @@ class MplsReader():
                 chapters = mpls_chapters.to_chapters()
 
                 if chapters:
-                    xmlchaps = MatroskaXMLChapters(output_folder / f'{mpls_file.mpls_file.stem}_{mpls_chapters.m2ts.stem}.xml')
-                    xmlchaps.create(chapters, mpls_chapters.fps)
+                    chaps = chapters_obj(output_folder / f'{mpls_file.mpls_file.stem}_{mpls_chapters.m2ts.stem}')
+                    chaps.create(chapters, mpls_chapters.fps)
 
 
     def parse_mpls(self, mpls_file: AnyPath) -> List[MplsChapters]:
@@ -551,13 +563,20 @@ class IfoReader():
         self.lang = lang
         self.default_chap_name = default_chap_name
 
-    def write_programs(self, output_folder: Optional[AnyPath] = None, *, ifo_file: str = 'VTS_01_0.IFO') -> None:
+    def write_programs(self, output_folder: Optional[AnyPath] = None, *,
+                       chapters_obj: Type[Chapters] = MatroskaXMLChapters, ifo_file: str = 'VTS_01_0.IFO') -> None:
         """Extract and write the programs from the IFO file to XML chapters files.
 
         Args:
             output_folder (Optional[AnyPath], optional):
                 Will write in the IFO folder if not specified.
                 Defaults to None.
+
+            chapters_obj (Type[Chapters], optional):
+                Defaults to MatroskaXMLChapters.
+
+            ifo_file (str, optional):
+                Name of the ifo file. Defaults to VTS_01_0.IFO.
         """
         ifo_chapters = self.parse_ifo(self.ifo_folder / ifo_file)
 
@@ -572,8 +591,8 @@ class IfoReader():
             chapters = ifo_chapter.to_chapters()
 
             if chapters:
-                xmlchaps = MatroskaXMLChapters(output_folder / f'{ifo_file}_{i:02.0f}.xml')
-                xmlchaps.create(chapters, ifo_chapter.fps)
+                chaps = chapters_obj(output_folder / f'{ifo_file}_{i:02.0f}')
+                chaps.create(chapters, ifo_chapter.fps)
 
 
     def parse_ifo(self, ifo_file: AnyPath) -> List[IfoChapters]:
