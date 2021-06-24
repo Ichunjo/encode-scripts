@@ -370,9 +370,6 @@ class VideoEncoder(Tool):
             settings (Union[Path, List[str]]):
                 Path to your settings file or list of string containing your settings.
 
-            file (FileInfo):
-                FileInfo object.
-
             progress_update (Optional[UpdateFunc], optional):
                 Current progress can be reported by passing a callback function
                 of the form func(current_frame, total_frames) to progress_update.
