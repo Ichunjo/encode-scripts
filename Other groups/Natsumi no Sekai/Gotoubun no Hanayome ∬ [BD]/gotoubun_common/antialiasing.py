@@ -44,3 +44,24 @@ class AA():
             flt = core.rgvs.Repair(flt, clip, rep)
 
         return flt
+
+    @staticmethod
+    def sraa_sangnom(clip: vs.VideoNode, rep: Optional[int] = None, aa: int = 48) -> vs.VideoNode:
+        flt = core.std.Transpose(clip)
+        flt = core.sangnom.SangNom(flt, 1, False, aa=aa)
+        flt = core.std.Transpose(flt)
+        flt = core.sangnom.SangNom(flt, 1, False, aa=aa)
+
+        if rep:
+            flt = core.rgvs.Repair(flt, clip, rep)
+
+        return flt
+
+    def upscaled_sraa_sangnom(self, clip: vs.VideoNode, height: int, aa: int = 48) -> vs.VideoNode:
+        bicu_args = dict(filter_param_a=-0.5, filter_param_b=0.25)
+        ssing = vdf.scale.eedi3_upscale(clip).resize.Bicubic(get_w(height), height, **bicu_args)
+
+        sraeedi3ing = self.sraa_eedi3(ssing, None, alpha=0.8, beta=0.2, gamma=20, mdis=25, nrad=3)
+        sraesgning = self.sraa_sangnom(sraeedi3ing, 9, aa)
+
+        return core.resize.Bicubic(sraesgning, clip.width, clip.height, **bicu_args)
