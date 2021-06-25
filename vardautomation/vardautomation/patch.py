@@ -58,7 +58,6 @@ class Patch:
         """Launch patch"""
         # Local folder
         self.workdir.mkdir()
-
         self._resolve_range()
         self._encode()
         self._cut_and_merge()
@@ -171,20 +170,14 @@ class Patch:
         # [(0, 67), (0, 115), (67, 204), (67, 377), (115, 204), (962, 2006), (3960, 5053), (4883, 5053)]
         # to:
         # [(0, 377), (962, 2006), (3960, 5053)]
-        rng_res: List[Tuple[int, int]] = []
-        i = 0
-        while i < len(rng):
-            if i < len(rng) - 1 and rng[i][1] > rng[i+1][0]:
-                j = 0
-                frames: Tuple[Set[int], Set[int]] = (set(), set())
-                while i + j < len(rng) - 1 and rng[j+i][1] >= rng[j+i+1][0]:
-                    for k in range(2):
-                        frames[k].add(rng[j+i][k])
-                        frames[k].add(rng[j+i+1][k])
-                    j += 1
-                rng_res.append((min(frames[0]), max(frames[1])))
-                i += j + 1
-            else:
-                rng_res.append(rng[i])
-                i += 1
-        return rng_res
+        values = dict(rng)
+        values_e = sorted(values.items(), reverse=True)
+
+        for (start1, end1), (start2, end2) in zip(values_e, values_e[1:]):
+            if start2 < start1 < end2 < end1:
+                values[start2] = end1
+                del values[start1]
+            if start2 < start1 and end1 <= end2:
+                del values[start1]
+
+        return list(values.items())
