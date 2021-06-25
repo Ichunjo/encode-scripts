@@ -7,11 +7,11 @@ from itertools import chain
 from typing import List, Optional, Set, Tuple, Union
 
 import vapoursynth as vs
-from lvsfunc.types import Range
 from lvsfunc.util import normalize_ranges
 
 from .automation import BasicTool, VideoEncoder
 from .config import FileInfo
+from .types import Range
 from .vpathlib import VPath
 
 

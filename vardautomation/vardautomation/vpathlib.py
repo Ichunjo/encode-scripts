@@ -1,13 +1,8 @@
 """pathlib.Path inheritance"""
 
-__all__ = ['VPath', 'AnyPath']
+__all__ = ['VPath']
 
-from os import PathLike
 from pathlib import Path
-from typing import Union
-
-
-AnyPath = Union[PathLike, str]
 
 
 class VPath(Path):

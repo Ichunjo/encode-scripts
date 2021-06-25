@@ -20,7 +20,8 @@ from pyparsedvd import vts_ifo
 from .colors import Colors
 from .language import UNDEFINED, Lang
 from .timeconv import Convert
-from .vpathlib import AnyPath, VPath
+from .types import AnyPath, Element
+from .vpathlib import VPath
 
 
 class Chapter(NamedTuple):
@@ -157,8 +158,6 @@ class OGMChapters(Chapters):
         return data
 
 
-
-Element = etree._Element
 
 
 class ElementTree(etree._ElementTree):  # type: ignore

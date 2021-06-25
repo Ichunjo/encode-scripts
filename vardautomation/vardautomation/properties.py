@@ -5,12 +5,12 @@ from typing import Dict, List, Tuple
 import vapoursynth as vs
 
 from .colors import Colors
-from .vpathlib import AnyPath
+from .types import AnyPath
 
 core = vs.core
 
 
-class Properties():
+class Properties:
     """Collection of static methods to get some properties from the parameters and/or the clip"""
     @staticmethod
     def get_color_range(params: List[str], clip: vs.VideoNode, bits: int) -> Tuple[int, int]:

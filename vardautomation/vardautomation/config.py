@@ -6,20 +6,18 @@ import sys
 from operator import attrgetter
 from os import remove
 from pprint import pformat
-from typing import Callable, List, Optional, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 import vapoursynth as vs
 
 from .presets import NoPreset, Preset
-from .vpathlib import AnyPath, VPath
+from .types import AnyPath, VPSIdx
+from .vpathlib import VPath
 
 core = vs.core
 
 
-VPSIdx = Callable[[str], vs.VideoNode]
-
-
-class FileInfo():  # noqa: PLR0902
+class FileInfo:  # noqa: PLR0902
     """File info object"""
     path: VPath
     path_without_ext: VPath

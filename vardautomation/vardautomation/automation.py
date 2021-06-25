@@ -14,12 +14,14 @@ from .colors import Colors
 from .config import FileInfo
 from .tooling import (AudioCutter, AudioEncoder, BasicTool, LosslessEncoder,
                       Mux, VideoEncoder)
-from .vpathlib import AnyPath
+from .types import AnyPath
 
 core = vs.core
 
 
-class Parser():  # noqa
+class Parser:
+    """Parser implementation"""
+
     def __init__(self, file: FileInfo) -> None:
         parser = argparse.ArgumentParser(description=f'Encode {file.name}')
         parser.add_argument('-L', '--lossless', action='store_true', default=False,
@@ -31,7 +33,8 @@ class Parser():  # noqa
         self.args = parser.parse_args()
         super().__init__()
 
-    def parsing(self, file: FileInfo, clip: vs.VideoNode) -> Tuple[FileInfo, vs.VideoNode]:  # noqa
+    def parsing(self, file: FileInfo, clip: vs.VideoNode) -> Tuple[FileInfo, vs.VideoNode]:
+        """Parse the args from the constructor"""
         # Lossless check
         if self.args.lossless:
             file.do_lossless = True
@@ -55,7 +58,7 @@ class Parser():  # noqa
                 file_frame_start = file.frame_start + self.args.start
             else:
                 print(Colors.FAIL)
-                raise ValueError('--start START must be a positive value!')
+                raise ValueError(f'{Colors.FAIL}--start START must be a positive value!{Colors.RESET}')
         else:
             file_frame_start = file.frame_start
 
@@ -65,11 +68,10 @@ class Parser():  # noqa
                 frame_end = self.args.end + 1
                 if file.frame_end is None:
                     file.frame_end = file.clip.num_frames
-                file_frame_end = min(file.frame_start + self.args.end + 1,
+                file_frame_end = min((file.frame_start if file.frame_start is not None else 0) + self.args.end + 1,
                                      file.frame_end)
             else:
-                print(Colors.FAIL)
-                raise ValueError('--end END must be a positive value!')
+                raise ValueError(f'{Colors.FAIL}--end END must be a positive value!{Colors.RESET}')
         else:
             file_frame_end = file.frame_end
 

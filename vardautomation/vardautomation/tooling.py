@@ -1,20 +1,20 @@
 """Tooling module"""
 
-__all__ = ['Tool', 'BasicTool',
-           'AudioEncoder', 'QAACEncoder', 'FlacCompressionLevel', 'FlacEncoder',
-           'AudioCutter',
-           'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
-           'progress_update_func',
-           'Mux', 'Stream', 'MediaStream', 'VideoStream', 'AudioStream', 'ChapterStream',
-           # Type:
-           'AudioStreams']
+__all__ = [
+    'Tool', 'BasicTool',
+    'AudioEncoder', 'QAACEncoder', 'FlacCompressionLevel', 'FlacEncoder',
+    'AudioCutter',
+    'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
+    'progress_update_func',
+    'Mux', 'Stream', 'MediaStream', 'VideoStream', 'AudioStream', 'ChapterStream'
+]
 
 import re
 import subprocess
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from pprint import pformat
-from typing import (Any, BinaryIO, Callable, Dict, List, NoReturn, Optional, Sequence,
+from typing import (Any, BinaryIO, Dict, List, NoReturn, Optional, Sequence,
                     Set, Tuple, Union, cast)
 
 import vapoursynth as vs
@@ -26,7 +26,8 @@ from .colors import Colors
 from .config import FileInfo
 from .language import UNDEFINED, Lang
 from .properties import Properties
-from .vpathlib import AnyPath, VPath
+from .types import AnyPath, UpdateFunc
+from .vpathlib import VPath
 
 
 class Tool(ABC):
@@ -343,7 +344,6 @@ class AudioCutter:
 
 
 
-UpdateFunc = Callable[[int, int], None]
 
 
 def progress_update_func(value: int, endvalue: int) -> None:
@@ -525,8 +525,6 @@ class ChapterStream(Stream):
 
 
 
-AudioStreams = Union[AudioStream, Sequence[AudioStream]]
-
 
 class Mux:
     """Muxing interface using mkvmerge"""
@@ -542,8 +540,16 @@ class Mux:
 
     __workfiles: Set[VPath]
 
-    def __init__(self, file: FileInfo,
-                 streams: Optional[Tuple[VideoStream, Optional[AudioStreams], Optional[ChapterStream]]] = None) -> None:
+    def __init__(
+        self, file: FileInfo,
+        streams: Optional[
+            Tuple[
+                VideoStream,
+                Optional[Union[AudioStream, Sequence[AudioStream]]],
+                Optional[ChapterStream]
+            ]
+        ] = None
+    ) -> None:
         """
             If `file` is specified:
                 - Will find `file.name_file_final` as VideoStream
