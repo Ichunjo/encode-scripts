@@ -92,10 +92,10 @@ class Patch:
         self.ranges = rng
 
     def _encode(self) -> None:
-        for i, rng in enumerate(self.ranges, start=1):
+        for i, (s, e) in enumerate(self.ranges, start=1):
             fix = self.workdir / f'fix-{i:03.0f}'
             self.file.name_clip_output = fix
-            self.encoder.run_enc(self.clip[rng[0]:rng[1]], self.file)
+            self.encoder.run_enc(self.clip[s:e], self.file)
 
             BasicTool(self.mkvmerge, ['-o', fix.with_suffix('.mkv').to_str(), fix.to_str()]).run()
 
@@ -105,7 +105,7 @@ class Patch:
 
         if (start := (rng := list(chain.from_iterable(self.ranges)))[0]) == 0:
             rng = rng[1:]
-        if rng[::-1][0] == self.clip.num_frames:
+        if rng[-1] == self.clip.num_frames:
             rng = rng[:-1]
         split_args = ['--split', 'frames:' + ','.join(map(str, rng))]
 
@@ -177,7 +177,7 @@ class Patch:
             if i < len(rng) - 1 and rng[i][1] > rng[i+1][0]:
                 j = 0
                 frames: Tuple[Set[int], Set[int]] = (set(), set())
-                while i + j < len(rng) - 1 and rng[j+i][1] > rng[j+i+1][0]:
+                while i + j < len(rng) - 1 and rng[j+i][1] >= rng[j+i+1][0]:
                     for k in range(2):
                         frames[k].add(rng[j+i][k])
                         frames[k].add(rng[j+i+1][k])
