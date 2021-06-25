@@ -105,6 +105,8 @@ class Patch:
 
         if (start := (rng := list(chain.from_iterable(self.ranges)))[0]) == 0:
             rng = rng[1:]
+        if rng[::-1][0] == self.clip.num_frames:
+            rng = rng[:-1]
         split_args = ['--split', 'frames:' + ','.join(map(str, rng))]
 
         BasicTool(
