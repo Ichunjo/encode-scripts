@@ -122,7 +122,10 @@ class AudioEncoder(BasicTool):
                 Defaults to None.
         """
         super().__init__(binary, settings, file=file)
-        self.track = track
+        if track > 0:
+            self.track = track
+        else:
+            raise ValueError('AudioEncoder: `track` must be > 0')
         self.xml_tag = xml_tag
 
     def run(self) -> None:
@@ -317,7 +320,7 @@ class AudioCutter:
     track: int
     kwargs: Dict[str, Any]
 
-    def __init__(self, file: FileInfo, /, *, track: int, **kwargs) -> None:
+    def __init__(self, file: FileInfo, /, *, track: int, **kwargs: Any) -> None:
         """
         Args:
             file (FileInfo):
@@ -327,7 +330,10 @@ class AudioCutter:
                 Track number.
         """
         self.file = file
-        self.track = track
+        if track > 0:
+            self.track = track
+        else:
+            raise ValueError('AudioEncoder: `track` must be > 0')
         self.kwargs = kwargs
 
     def run(self) -> None:
