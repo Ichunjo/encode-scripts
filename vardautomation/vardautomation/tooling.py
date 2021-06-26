@@ -536,7 +536,7 @@ class Mux:
     audios: Optional[List[AudioStream]]
     chapters: Optional[ChapterStream]
 
-    mkvmerge_path: AnyPath = VPath('mkvmerge')
+    mkvmerge_path: VPath = VPath('mkvmerge')
 
     __workfiles: Set[VPath]
 
@@ -551,7 +551,7 @@ class Mux:
         ] = None
     ) -> None:
         """
-            If `file` is specified:
+            If `streams` is not specified:
                 - Will find `file.name_file_final` as VideoStream
                 - Will try to find in this order file.a_enc_cut, file.a_src_cut, file.a_src as long as there is a file.a_xxxx.format(n)
                 - All languages are set to `und` and names to None.
@@ -560,19 +560,17 @@ class Mux:
         self.output = file.name_file_final
 
 
-        if file and streams:
+        if streams is not None:
             self.video, audios, self.chapters = streams
             if not audios:
                 self.audios = []
             else:
                 self.audios = [audios] if isinstance(audios, AudioStream) else list(audios)
-        elif file and streams is None:
+        else:
             self.file = file
             self.video = VideoStream(file.name_clip_output)
             self.audios = None
             self.chapters = None
-        else:
-            raise ValueError('Mux:')
 
     def run(self) -> Set[VPath]:
         """Make and launch the command"""
@@ -587,31 +585,29 @@ class Mux:
         if self.audios is not None:
             cmd += self._audios_cmd()
         else:
-            if hasattr(self, 'file'):
-                self.audios = []
-                i = 1
-                while True:
-                    if self.file.a_enc_cut is not None and self.file.a_enc_cut.format(i).exists():
-                        self.audios += [AudioStream(self.file.a_enc_cut.format(i))]
-                    elif self.file.a_src_cut is not None and self.file.a_src_cut.format(i).exists():
-                        self.audios += [AudioStream(self.file.a_src_cut.format(i))]
-                    elif self.file.a_src is not None and self.file.a_src.format(i).exists():
-                        self.audios += [AudioStream(self.file.a_src.format(i))]
-                    else:
-                        break
-                    i += 1
-                cmd += self._audios_cmd()
+            self.audios = []
+            i = 1
+            while True:
+                if self.file.a_enc_cut is not None and self.file.a_enc_cut.format(i).exists():
+                    self.audios += [AudioStream(self.file.a_enc_cut.format(i))]
+                elif self.file.a_src_cut is not None and self.file.a_src_cut.format(i).exists():
+                    self.audios += [AudioStream(self.file.a_src_cut.format(i))]
+                elif self.file.a_src is not None and self.file.a_src.format(i).exists():
+                    self.audios += [AudioStream(self.file.a_src.format(i))]
+                else:
+                    break
+                i += 1
+            cmd += self._audios_cmd()
 
 
         if self.chapters is not None:
             cmd += self._chapters_cmd()
         else:
-            if hasattr(self, 'file'):
-                if self.file.chapter and (chap := self.file.chapter).exists():
-                    self.chapters = ChapterStream(chap)
-                cmd += self._chapters_cmd()
+            if (chap := self.file.chapter) and chap.exists():
+                self.chapters = ChapterStream(chap)
+            cmd += self._chapters_cmd()
 
-        BasicTool(str(self.mkvmerge_path), cmd).run()
+        BasicTool(self.mkvmerge_path.to_str(), cmd).run()
 
         return self.__workfiles
 
