@@ -2,11 +2,12 @@
 
 __all__ = [
     'Tool', 'BasicTool',
-    'AudioEncoder', 'QAACEncoder', 'FlacCompressionLevel', 'FlacEncoder',
+    'AudioEncoder', 'QAACEncoder', 'OpusEncoder', 'FlacCompressionLevel', 'FlacEncoder',
     'AudioCutter',
     'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
     'progress_update_func',
-    'Mux', 'Stream', 'MediaStream', 'VideoStream', 'AudioStream', 'ChapterStream'
+    'Mux', 'Stream', 'MediaStream', 'VideoStream', 'AudioStream', 'ChapterStream',
+    'Tooling'
 ]
 
 import re
@@ -15,7 +16,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from pprint import pformat
 from typing import (Any, BinaryIO, Dict, List, NoReturn, Optional, Sequence,
-                    Set, Tuple, Union, cast)
+                    Set, Tuple, Type, Union, cast)
 
 import vapoursynth as vs
 from acsuite import eztrim
@@ -648,3 +649,23 @@ class Mux:
         cmd += ['--chapters', self.chapters.path.to_str()]
         self.__workfiles.add(self.chapters.path)
         return cmd
+
+
+class Tooling:
+    BasicTool: Type[BasicTool] = BasicTool
+
+    AudioEncoder: Type[AudioEncoder] = AudioEncoder
+    QAACEncoder: Type[QAACEncoder] = QAACEncoder
+    OpusEncoder: Type[OpusEncoder] = OpusEncoder
+    FlacEncoder: Type[FlacEncoder] = FlacEncoder
+
+    AudioCutter: Type[AudioCutter] = AudioCutter
+    VideoEncoder: Type[VideoEncoder] = VideoEncoder
+    X265Encoder: Type[X265Encoder] = X265Encoder
+    X264Encoder: Type[X264Encoder] = X264Encoder
+    LosslessEncoder: Type[LosslessEncoder] = LosslessEncoder
+
+    Mux: Type[Mux] = Mux
+    VideoStream: Type[VideoStream] = VideoStream
+    AudioStream: Type[AudioStream] = AudioStream
+    ChapterStream: Type[ChapterStream] = ChapterStream
