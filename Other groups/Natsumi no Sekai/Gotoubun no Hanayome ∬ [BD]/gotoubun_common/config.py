@@ -1,13 +1,13 @@
 # noqa
 
+from typing import List, Union
+
 import vapoursynth as vs
-from vardautomation import (
-    JAPANESE, AudioCutter, AudioStream,
-    BasicTool, ChapterStream, FileInfo,
-    LosslessEncoder, MatroskaXMLChapters, Mux,
-    QAACEncoder, RunnerConfig, SelfRunner, VideoStream,
-    X265Encoder
-)
+from vardautomation import (JAPANESE, AudioCutter, AudioStream, BasicTool,
+                            ChapterStream, FileInfo, LosslessEncoder,
+                            MatroskaXMLChapters, Mux, Patch, QAACEncoder,
+                            RunnerConfig, SelfRunner, VideoStream, X265Encoder)
+from vardautomation.types import Range
 
 
 class Encoding:
@@ -17,21 +17,20 @@ class Encoding:
     def __init__(self, file: FileInfo, clip: vs.VideoNode) -> None:
         self.file = file
         self.clip = clip
-
-    def run(self, *, do_chaptering: bool = True) -> None:
-
         assert self.file.a_src
-        assert self.file.a_enc_cut
 
-        v_encoder = X265Encoder('gotoubun_common/x265_settings')
-        v_lossless_encoder = LosslessEncoder('nvencc', 'gotoubun_common/nvenc_settings')
 
-        a_extracters = [
+        self.v_encoder = X265Encoder('gotoubun_common/x265_settings')
+        self.v_lossless_encoder = LosslessEncoder('nvencc', 'gotoubun_common/nvenc_settings')
+        self.a_extracters = [
             BasicTool('eac3to', [self.file.path.to_str(), '2:', self.file.a_src.format(1).to_str(), '-log=NUL'])
         ]
+        self.a_cutters = [AudioCutter(self.file, track=1)]
+        self.a_encoders = [QAACEncoder(self.file, track=1, xml_tag=self.xml_tags)]
 
-        a_cutters = [AudioCutter(self.file, track=1)]
-        a_encoders = [QAACEncoder(self.file, track=1, xml_tag=self.xml_tags)]
+    def run(self, *, do_chaptering: bool = True) -> None:
+        assert self.file.a_enc_cut
+
 
         if do_chaptering:
             self.chaptering()
@@ -46,11 +45,20 @@ class Encoding:
         )
         # muxer = Mux(self.file)
 
-        config = RunnerConfig(v_encoder, v_lossless_encoder, a_extracters, a_cutters, a_encoders, muxer)
+        config = RunnerConfig(
+            self.v_encoder, self.v_lossless_encoder,
+            self.a_extracters, self.a_cutters, self.a_encoders,
+            muxer
+        )
 
 
         self.runner = SelfRunner(self.clip, self.file, config)
         self.runner.run()
+
+    def do_patch(self, ranges: Union[Range, List[Range]]) -> None:
+        p = Patch(self.v_encoder, self.clip, self.file, ranges)
+        p.run()
+        p.do_cleanup()
 
     def cleanup(self) -> None:
         assert self.file.chapter

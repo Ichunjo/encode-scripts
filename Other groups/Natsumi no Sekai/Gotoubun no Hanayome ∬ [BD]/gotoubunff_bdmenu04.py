@@ -2,16 +2,12 @@
 """Gotoubun FF script"""
 __author__ = 'Vardë'
 
-
 import G41Fun as gf
 import havsfunc as hvf
-import lvsfunc as lvf
 import vapoursynth as vs
 import vardefunc as vdf
 from adptvgrnMod import sizedgrn
-from vardautomation import (FileInfo, PresetAAC, PresetBD, PresetChapXML,
-                            PresetWEB)
-# from vardautomation import MplsReader, JAPANESE
+from vardautomation import FileInfo, PresetAAC, PresetBD
 from vsutil import depth, get_y
 
 from gotoubun_common import AA, Denoise, Encoding, Mask
@@ -19,29 +15,10 @@ from gotoubun_common import AA, Denoise, Encoding, Mask
 core = vs.core
 
 
-# reader = MplsReader('[BDMV][210616][Gotoubun no Hanayome ∬][Vol.4]', JAPANESE)
-# reader.write_playlist('chapters')
-# exit()
-
 NUM = __file__[-5:-3]
 
-JPBD = FileInfo(r'[BDMV][210616][Gotoubun no Hanayome ∬][Vol.4]\BDMV\STREAM\00006.m2ts', 0, -24,
-                preset=[PresetBD, PresetAAC, PresetChapXML])
-JPBD_NCOP = FileInfo(r'[BDMV][210317][Gotoubun no Hanayome ∬][Vol.1]\BDMV\STREAM\00009.m2ts', 0, 2158,
-                     preset=[PresetBD])
-JPBD_NCED = FileInfo(r'[BDMV][210421][Gotoubun no Hanayome ∬][Vol.2]\BDMV\STREAM\00009.m2ts', 0, -24,
-                     preset=[PresetBD])
-
-WEB_AOD = FileInfo(fr'5-toubun no Hanayome S02 (The Quintessential Quintuplets S02) [AoD]\5-toubun no Hanayome S02E{NUM} [1080p+][AAC][JapDub][GerSub][Web-DL].mkv',
-                   preset=PresetWEB)
-WEB_CRU = FileInfo(fr'5-toubun no Hanayome S02 (The Quintessential Quintuplets S02) [CR]\5-toubun no Hanayome S02E{NUM} [1080p][AAC][JapDub][GerEngSub][Web-DL].mkv',
-                   preset=PresetWEB)
-SUB = fr'5-toubun_no_Hanayome_subs\ger\[FeelsBadSubs] 5-toubun no Hanayome ∬ - {NUM} [1080p].4.ger.ass'
-FONTDIR = '5-toubun_no_Hanayome_subs/_fonts'
-
-
-OPSTART, OPEND = 4339, 6495
-EDSTART, EDEND = 32369, 34525
+JPBD = FileInfo(r'[BDMV][210616][Gotoubun no Hanayome ∬][Vol.4]\BDMV\STREAM\00003.m2ts', 0, None,
+                preset=[PresetBD, PresetAAC])
 
 
 class Filtering():
@@ -49,48 +26,12 @@ class Filtering():
         """Vapoursynth filtering"""
         src = JPBD.clip_cut
         src = depth(src, 16)
-        src_cru = WEB_CRU.clip_cut
-        src_aod = WEB_AOD.clip_cut
 
 
-        # Dehardsubbing using .ass file
-        masksub = Mask.hardsub_mask(src_aod.std.BlankClip(), SUB, FONTDIR)
-        dehardsub = core.std.MaskedMerge(src_aod, src_cru, masksub)
-        src_web = dehardsub
+        ring_mask = Mask.ringing_mask(get_y(src))
 
-
-        # AoD is poorly rescaled
-        src_y, src_cru_y, src_web_y = map(get_y, [src, src_cru, src_web])
-
-        thr = 10
-        src_web_y = core.std.Expr([src_web_y, src_cru_y], f'x y - abs {thr} < x y * sqrt y ?')
-        src_web_y = depth(src_web_y, 16)
-
-        ringrid = core.rgvs.Repair(src_web_y, src_web_y.std.Convolution([1]*9), 11)
-        ringrid = core.std.Expr([ringrid, src_web_y], 'x y min')
-
-        # Remove ringing with AoD+CR
-        ring_mask = Mask.ringing_mask(src_y)
-        bdweb = core.std.MaskedMerge(src_y, ringrid, ring_mask)
-        # bdweb = lvf.rfs(bdweb, src_web_y, [(793, 1503)])
-        out = vdf.misc.merge_chroma(bdweb, src)
-
-
-
-        # Restore BD changes
         dering_src = hvf.EdgeCleaner(src, 20, hot=True)
-
-        diff_mask = Mask.diff_mask((src, src_cru), brz=4750.0)
-        bdchanges = core.std.MaskedMerge(out, dering_src, diff_mask)
-        bdchanges = lvf.rfs(out, bdchanges, [(1324, 1545), (17851, 18048)])
-        bdchanges = lvf.rfs(
-            bdchanges, dering_src,
-            [(18890, 18987), (21115, 21456), (25450, 25716),
-             (30956, 31111), (32905, 33000)]
-        )
-        # return bdchanges, diff_mask
-        out = bdchanges
-
+        out = dering_src
 
 
         ref = Denoise.ref_denoise(get_y(out), tr=1)
@@ -120,14 +61,8 @@ class Filtering():
         # Antialiasing sraaaaaaaaaa
         lineart = vdf.mask.ExPrewitt().get_mask(out, 4000, 7500).std.Convolution([1] * 25)
         aaa = AA().upscaled_sraaaaaaaaaa(out, height=1620)
-        aaa_sng = AA().upscaled_sraa_sangnom(out, height=1280, aa=128)
-        import bombzenfunc
-        aaa_sng = bombzenfunc.warpsharp(aaa_sng, thresh=48, depth=1.75)
-        import havsfunc
-        aaa_sng = havsfunc.LSFmod(aaa_sng, 80)
-        aaa = lvf.rfs(aaa, aaa_sng, [(26581, 26790)])
-        aaa = core.std.MaskedMerge(out, aaa, lineart)
         out = aaa
+
 
 
 
@@ -141,35 +76,15 @@ class Filtering():
 
 
 
+
         mergechroma = vdf.misc.merge_chroma(out, denoise)
         out = mergechroma
-
-
-
-        ref = depth(src_cru, 16)
-        cred_mask = vdf.mask.Difference().creditless_oped(
-            src, JPBD_NCOP.clip_cut, JPBD_NCED.clip_cut, OPSTART, OPEND, EDSTART, EDEND,
-            thr=25 << 8, expand=6
-        )
-        cred = out
-        cred = lvf.rfs(cred, core.std.MaskedMerge(cred, ref, cred_mask, 0), [(OPSTART, OPEND), (EDSTART, EDEND)])
-        out = cred
-
-
 
 
         db_mask = Mask.deband_mask(out, (4000, 4000, 4000), (2000, 2000, 2000))
 
         deband_1 = vdf.deband.dumb3kdb(out, 17, [36, 48])
-        # deband_2 = vdf.deband.dumb3kdb(out, 17, 30, sample_mode=4, use_neo=True)
-        deband_2 = core.std.Expr(
-            [vdf.deband.dumb3kdb(out, 17, 30, sample_mode=1),
-             vdf.deband.dumb3kdb(out.std.Transpose(), 17, 30, sample_mode=1).std.Transpose()], 'x y + 2 /'
-        )
-
-        deband_a = vdf.placebo.deband(out, 22, threshold=8, iterations=3, grain=0)
-        # deband_x = vdf.placebo.deband(out, 28, 4, iterations=3, grain=0)
-        deband_x = vdf.deband.dumb3kdb(out, 20, [50, 48])
+        deband_2 = vdf.deband.dumb3kdb(out, 17, 30, sample_mode=4, use_neo=True)
 
         th_lo, th_hi = 22 << 8, 28 << 8
         strength = f'{th_hi} x - {th_hi} {th_lo} - /'
@@ -178,10 +93,9 @@ class Filtering():
             [f'x {th_lo} > x {th_hi} < and z ' + strength + ' * y 1 ' + strength + f' - * + x {th_lo} <= z y ? ?',
              'x y * sqrt x z * sqrt * y * z * 0.25 pow'])
 
-        deband = lvf.rfs(deband, deband_a, [(OPSTART+1382, OPSTART+1433)])
-        deband = lvf.rfs(deband, deband_x, [(20329, 20778), (26926, 27048)])
         deband = core.std.MaskedMerge(deband, out, db_mask)
         out = deband
+
 
 
 
@@ -203,11 +117,9 @@ class Filtering():
         out = grain
 
 
-        if int(NUM) != 12:
-            while out.num_frames < 34646:
-                out += out[-1]
-
         return depth(out, 10).std.Limiter(16 << 2, [235 << 2, 240 << 2], [0, 1, 2])
+
+
 
     @staticmethod
     def line_darkening(clip: vs.VideoNode, strength: float = 0.2, **kwargs) -> vs.VideoNode:
@@ -229,28 +141,19 @@ class Filtering():
         return core.std.MaskedMerge(clip, darken, darken_mask)
 
 
-
-
 if __name__ == '__main__':
     filtered = Filtering().main()
     brrrr = Encoding(JPBD, filtered)
-    brrrr.run()
+    brrrr.run(do_chaptering=False)
     brrrr.cleanup()
 else:
-    JPBD.clip_cut.set_output(0)
+    JPBD.clip_cut.text.Text('BD').set_output(0)
     # lvf.comparison.stack_planes(JPBD.clip_cut).set_output(1)
     # WEB_AOD.clip_cut.text.Text('AoD').set_output(1)
     # WEB_CRU.clip_cut.text.Text('CR').set_output(2)
     FILTERED = Filtering().main()
-    if not isinstance(FILTERED, vs.VideoNode):
-        for i, clip_filtered in enumerate(FILTERED, start=1):
-            clip_filtered.set_output(i)
-    else:
-        FILTERED.set_output(3)
+    FILTERED.text.Text('Filtering').set_output(3)
     # FILTERED.set_output(3)
     # FILTERED[0].set_output(1)
     # FILTERED[1].set_output(2)
     # FILTERED[2].set_output(3)
-
-
-# Filtering().main().set_output(0)

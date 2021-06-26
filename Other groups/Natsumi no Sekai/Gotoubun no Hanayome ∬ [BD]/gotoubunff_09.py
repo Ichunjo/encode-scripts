@@ -25,7 +25,7 @@ core = vs.core
 
 NUM = __file__[-5:-3]
 
-JPBD = FileInfo(r'[BDMV][210616][Gotoubun no Hanayome ∬][Vol.4]\BDMV\STREAM\00006.m2ts', 0, -24,
+JPBD = FileInfo(r'[BDMV][210616][Gotoubun no Hanayome ∬][Vol.4]\BDMV\STREAM\00005.m2ts', 0, -24,
                 preset=[PresetBD, PresetAAC, PresetChapXML])
 JPBD_NCOP = FileInfo(r'[BDMV][210317][Gotoubun no Hanayome ∬][Vol.1]\BDMV\STREAM\00009.m2ts', 0, 2158,
                      preset=[PresetBD])
@@ -40,7 +40,7 @@ SUB = fr'5-toubun_no_Hanayome_subs\ger\[FeelsBadSubs] 5-toubun no Hanayome ∬ -
 FONTDIR = '5-toubun_no_Hanayome_subs/_fonts'
 
 
-OPSTART, OPEND = 4339, 6495
+OPSTART, OPEND = 5826, 7983
 EDSTART, EDEND = 32369, 34525
 
 
@@ -82,14 +82,15 @@ class Filtering():
 
         diff_mask = Mask.diff_mask((src, src_cru), brz=4750.0)
         bdchanges = core.std.MaskedMerge(out, dering_src, diff_mask)
-        bdchanges = lvf.rfs(out, bdchanges, [(1324, 1545), (17851, 18048)])
+        bdchanges = lvf.rfs(out, bdchanges, [(159, 323), (17185, 17256)])
         bdchanges = lvf.rfs(
             bdchanges, dering_src,
-            [(18890, 18987), (21115, 21456), (25450, 25716),
-             (30956, 31111), (32905, 33000)]
+            [(324, 563), (8497, 8604), (10272, 10368), (10801, 11016),
+             (13665, 13781), (14914, 15033), (15292, 15393)]
         )
         # return bdchanges, diff_mask
         out = bdchanges
+
 
 
 
@@ -120,14 +121,15 @@ class Filtering():
         # Antialiasing sraaaaaaaaaa
         lineart = vdf.mask.ExPrewitt().get_mask(out, 4000, 7500).std.Convolution([1] * 25)
         aaa = AA().upscaled_sraaaaaaaaaa(out, height=1620)
-        aaa_sng = AA().upscaled_sraa_sangnom(out, height=1280, aa=128)
+        aaa_sng = AA().upscaled_sraa_sangnom(out, height=1296, aa=96)
         import bombzenfunc
-        aaa_sng = bombzenfunc.warpsharp(aaa_sng, thresh=48, depth=1.75)
+        aaa_sng = bombzenfunc.warpsharp(aaa_sng, thresh=48, depth=2.5)
         import havsfunc
         aaa_sng = havsfunc.LSFmod(aaa_sng, 80)
-        aaa = lvf.rfs(aaa, aaa_sng, [(26581, 26790)])
+        aaa = lvf.rfs(aaa, aaa_sng, [(2079, 2168)])
         aaa = core.std.MaskedMerge(out, aaa, lineart)
         out = aaa
+
 
 
 
@@ -141,12 +143,14 @@ class Filtering():
 
 
 
+
         mergechroma = vdf.misc.merge_chroma(out, denoise)
         out = mergechroma
 
 
 
         ref = depth(src_cru, 16)
+        # cred_mask = Mask.credits_mask(src, JPBD_NCOP.clip_cut, JPBD_NCED.clip_cut, OPSTART, OPEND, EDSTART, EDEND)
         cred_mask = vdf.mask.Difference().creditless_oped(
             src, JPBD_NCOP.clip_cut, JPBD_NCED.clip_cut, OPSTART, OPEND, EDSTART, EDEND,
             thr=25 << 8, expand=6
@@ -166,10 +170,8 @@ class Filtering():
             [vdf.deband.dumb3kdb(out, 17, 30, sample_mode=1),
              vdf.deband.dumb3kdb(out.std.Transpose(), 17, 30, sample_mode=1).std.Transpose()], 'x y + 2 /'
         )
-
         deband_a = vdf.placebo.deband(out, 22, threshold=8, iterations=3, grain=0)
-        # deband_x = vdf.placebo.deband(out, 28, 4, iterations=3, grain=0)
-        deband_x = vdf.deband.dumb3kdb(out, 20, [50, 48])
+        deband_x = vdf.placebo.deband(out, 28, 4, iterations=3, grain=0)
 
         th_lo, th_hi = 22 << 8, 28 << 8
         strength = f'{th_hi} x - {th_hi} {th_lo} - /'
@@ -179,7 +181,7 @@ class Filtering():
              'x y * sqrt x z * sqrt * y * z * 0.25 pow'])
 
         deband = lvf.rfs(deband, deband_a, [(OPSTART+1382, OPSTART+1433)])
-        deband = lvf.rfs(deband, deband_x, [(20329, 20778), (26926, 27048)])
+        deband = lvf.rfs(deband, deband_x, [(18871, 18972)])
         deband = core.std.MaskedMerge(deband, out, db_mask)
         out = deband
 
@@ -229,13 +231,12 @@ class Filtering():
         return core.std.MaskedMerge(clip, darken, darken_mask)
 
 
-
-
 if __name__ == '__main__':
     filtered = Filtering().main()
     brrrr = Encoding(JPBD, filtered)
-    brrrr.run()
-    brrrr.cleanup()
+    brrrr.do_patch([(2079, 2168)])
+    # brrrr.run()
+    # brrrr.cleanup()
 else:
     JPBD.clip_cut.set_output(0)
     # lvf.comparison.stack_planes(JPBD.clip_cut).set_output(1)
@@ -251,6 +252,3 @@ else:
     # FILTERED[0].set_output(1)
     # FILTERED[1].set_output(2)
     # FILTERED[2].set_output(3)
-
-
-# Filtering().main().set_output(0)
