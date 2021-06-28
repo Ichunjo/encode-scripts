@@ -460,7 +460,7 @@ class LosslessEncoder(VideoEncoder):
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
-        return dict(clip_output_lossless=self.file.name_clip_output_lossless.to_str())
+        return dict(clip_output_lossless=self.file.name_clip_output_lossless.to_str(), bits=self.bits)
 
 
 class NvenccEncoder(LosslessEncoder):
@@ -471,7 +471,7 @@ class NvenccEncoder(LosslessEncoder):
             ['-i', '-', '--y4m',
              '--lossless',
              '-c', 'hevc',
-             '--output-depth', str(self.bits),
+             '--output-depth', '{bits:d}',
              '-o', '{clip_output_lossless:s}'],
             progress_update=None
         )
