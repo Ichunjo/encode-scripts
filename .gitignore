@@ -1,2 +1,3 @@
 *.pylintrc
 __pycache__
+vardautomation/vardautomation/shaders.py
