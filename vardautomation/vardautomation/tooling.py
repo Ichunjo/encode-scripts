@@ -4,7 +4,7 @@ __all__ = [
     'Tool', 'BasicTool',
     'AudioEncoder', 'QAACEncoder', 'OpusEncoder', 'FlacCompressionLevel', 'FlacEncoder',
     'AudioCutter',
-    'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder',
+    'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder', 'NvenccEncoder', 'FFV1Encoder',
     'progress_update_func',
     'Mux', 'Stream', 'MediaStream', 'VideoStream', 'AudioStream', 'ChapterStream',
     'Tooling'
@@ -123,6 +123,14 @@ class AudioEncoder(BasicTool):
                 Defaults to None.
         """
         super().__init__(binary, settings, file=file)
+
+        if self.file is None:
+            raise ValueError('AudioEncoder: `file` is needed!')
+        if self.file.a_src_cut is None:
+            raise ValueError('AudioEncoder: `file.a_src_cut` is needed!')
+        if self.file.a_enc_cut is None:
+            raise ValueError('AudioEncoder: `file.a_enc_cut` is needed!')
+
         if track > 0:
             self.track = track
         else:
@@ -136,13 +144,9 @@ class AudioEncoder(BasicTool):
             self._write_encoder_name_file()
 
     def set_variable(self) -> Dict[str, Any]:
-        if self.file is None:
-            raise ValueError('AudioEncoder: `file` is needed!')
-        if self.file.a_src_cut is None:
-            raise ValueError('AudioEncoder: `file.a_src_cut` is needed!')
-        if self.file.a_enc_cut is None:
-            raise ValueError('AudioEncoder: `file.a_enc_cut` is needed!')
-
+        assert self.file
+        assert self.file.a_src_cut
+        assert self.file.a_enc_cut
         return dict(a_src_cut=self.file.a_src_cut.format(self.track).to_str(),
                     a_enc_cut=self.file.a_enc_cut.format(self.track).to_str())
 
@@ -461,6 +465,7 @@ class LosslessEncoder(VideoEncoder):
 
 class NvenccEncoder(LosslessEncoder):
     def __init__(self) -> None:
+        """"""
         super().__init__(
             'nvencc',
             ['-i', '-', '--y4m',
@@ -474,6 +479,7 @@ class NvenccEncoder(LosslessEncoder):
 
 class FFV1Encoder(LosslessEncoder):
     def __init__(self, *, threads: int = 16) -> None:
+        """"""
         super().__init__(
             'ffmpeg',
             ['-i', '-',
