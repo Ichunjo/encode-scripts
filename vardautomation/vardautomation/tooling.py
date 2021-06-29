@@ -414,7 +414,7 @@ class VideoEncoder(Tool):
             scenes = find_scene_changes(self.file.clip_cut, SceneChangeMode.WWXD_SCXVID_UNION)
 
             with qpfile.open('w') as qpf:
-                qpf.writelines([f"{s} K" for s in scenes])
+                qpf.writelines([f"{s} K\n" for s in scenes])
 
     def _do_encode(self) -> None:
         print(f'{Colors.INFO}VideoEncoder command:', " ".join(self.params) + f'{Colors.RESET}\n')
@@ -574,6 +574,7 @@ class Mux:
 
 
         if streams is not None:
+            self.file = file
             self.video, audios, self.chapters = streams
             if not audios:
                 self.audios = []
@@ -618,7 +619,7 @@ class Mux:
         else:
             if (chap := self.file.chapter) and chap.exists():
                 self.chapters = ChapterStream(chap)
-            cmd += self._chapters_cmd()
+                cmd += self._chapters_cmd()
 
         BasicTool(self.mkvmerge_path.to_str(), cmd).run()
 
