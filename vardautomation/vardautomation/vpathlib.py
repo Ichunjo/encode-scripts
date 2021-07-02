@@ -1,5 +1,7 @@
 """pathlib.Path inheritance"""
 
+from __future__ import annotations
+
 __all__ = ['VPath']
 
 from pathlib import Path
@@ -12,7 +14,7 @@ class VPath(Path):
     def __format__(self, format_spec: str) -> str:
         return str(self)
 
-    def format(self, *args, **kwargs):
+    def format(self, *args, **kwargs) -> VPath:
         """
             vpath.format(*args, **kwargs) -> VPath
 
