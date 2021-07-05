@@ -564,7 +564,7 @@ class Stream(ABC):
         return pformat(vars(self), indent=1, width=80, sort_dicts=True)
 
 
-class MediaStream(Stream):
+class MediaStream(Stream, ABC):
     name: Optional[str] = None
     lang: Lang = UNDEFINED
     tag_file: Optional[VPath] = None
