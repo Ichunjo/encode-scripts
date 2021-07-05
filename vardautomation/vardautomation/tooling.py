@@ -423,12 +423,55 @@ class VideoEncoder(Tool):
             self.clip.output(cast(BinaryIO, process.stdin), y4m=True, progress_update=self.progress_update)
 
 
-class X265Encoder(VideoEncoder):
+class VideoLanEncoder(VideoEncoder, ABC):
+    """Abstract VideoEncoder interface for VideoLan based encoders such as x265 and x264"""
+    zones_settings: str
+
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+                 zones: Optional[Dict[Tuple[int, int], Dict[str, Any]]] = None,
+                 progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
+        self.zones_settings = ''
+        if zones:
+            for i, ((start, end), opt) in enumerate(zones.items()):
+                self.zones_settings += f'{start},{end}'
+                for opt_name, opt_val in opt.items():
+                    self.zones_settings += f',{opt_name}={opt_val}'
+                if i != len(zones) - 1:
+                    self.zones_settings += '/'
+
+        super().__init__(binary, settings, progress_update=progress_update)
+
+    def _get_settings(self) -> None:
+        super()._get_settings()
+        if self.zones_settings:
+            self.params += ['--zones', self.zones_settings]
+
+
+class X265Encoder(VideoLanEncoder):
     """Video encoder using x265 in HEVC"""
 
     def __init__(self, settings: Union[AnyPath, List[str]], /,
+                 zones: Optional[Dict[Tuple[int, int], Dict[str, Any]]] = None,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
-        super().__init__('x265', settings, progress_update=progress_update)
+        """
+        Args:
+            settings (Union[AnyPath, List[str]]):
+                Path to your settings file or list of string containing your settings.
+
+            zones (Optional[Dict[Tuple[int, int], Dict[str, Any]]], optional):
+                Custom zone ranges. Defaults to None.
+            Example:
+                zones: Dict[Tuple[int, int], Dict[str, Any]] = {
+                    (3500, 3600): dict(b=3, subme=11),
+                    (4800, 4900): {'psy-rd': '0.40:0.05', 'merange': 48}
+                }
+
+            progress_update (Optional[UpdateFunc], optional): [description].
+                Current progress can be reported by passing a callback function
+                of the form func(current_frame, total_frames) to progress_update.
+                Defaults to progress_update_func.
+        """
+        super().__init__('x265', settings, zones, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
         min_luma, max_luma = Properties.get_color_range(self.params, self.clip, self.bits)
@@ -438,12 +481,32 @@ class X265Encoder(VideoEncoder):
                     min_luma=min_luma, max_luma=max_luma)
 
 
-class X264Encoder(VideoEncoder):
+class X264Encoder(VideoLanEncoder):
     """Video encoder using x264 in AVC"""
 
     def __init__(self, settings: Union[AnyPath, List[str]], /,
+                 zones: Optional[Dict[Tuple[int, int], Dict[str, Any]]] = None,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
-        super().__init__('x264', settings, progress_update=progress_update)
+        """
+        Args:
+            settings (Union[AnyPath, List[str]]):
+                Path to your settings file or list of string containing your settings.
+
+            zones (Optional[Dict[Tuple[int, int], Dict[str, Any]]], optional):
+                Custom zone ranges. Defaults to None.
+            Example:
+                from typing import Any, Dict, Tuple
+                zones: Dict[Tuple[int, int], Dict[str, Any]] = {
+                    (3500, 3600): dict(b=3, subme=11),
+                    (4800, 4900): {'psy-rd': '0.40:0.05', 'merange': 48}
+                }
+
+            progress_update (Optional[UpdateFunc], optional): [description].
+                Current progress can be reported by passing a callback function
+                of the form func(current_frame, total_frames) to progress_update.
+                Defaults to progress_update_func.
+        """
+        super().__init__('x264', settings, zones, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
         csp = Properties.get_csp(self.clip)
