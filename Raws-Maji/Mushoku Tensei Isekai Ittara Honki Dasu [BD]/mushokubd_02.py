@@ -5,14 +5,16 @@ __author__ = 'Vardë'
 from functools import partial
 from typing import cast
 
+import awsmfunc as awf
 import havsfunc as hvf
 import mvsfunc as mvf
 import vapoursynth as vs
+from G41Fun import MaskedDHA
 from lvsfunc.util import replace_ranges as rfs
 from vardautomation import FileInfo, PresetAAC, PresetBD, PresetChapXML
 from vardefunc.deband import dumb3kdb
 from vardefunc.mask import (FDOG, ExLaplacian4, PrewittStd, detail_mask,
-                            region_mask)
+                            diff_creditless_mask, region_mask)
 from vardefunc.misc import merge_chroma
 from vardefunc.noise import decsiz
 from vsutil import depth, get_y, join, plane, split
@@ -23,22 +25,19 @@ core = vs.core
 
 
 
-# from vardautomation import UNDEFINED, MatroskaXMLChapters, MplsReader
-# reader = MplsReader(r'[BDMV][210421][TBR31094D][『無職転生 ～異世界行ったら本気だす～』 Blu-ray Chapter 1 初回生産限定版]\BDROM', UNDEFINED)
-# reader.write_playlist('chapters', chapters_obj=MatroskaXMLChapters)
-# exit()
-
 JPBD = FileInfo(
-    r'[BDMV][210421][TBR31094D][『無職転生 ～異世界行ったら本気だす～』 Blu-ray Chapter 1 初回生産限定版]\BDROM\BDMV\STREAM\00000.m2ts', 24, -24,
+    r'[BDMV][210421][TBR31094D][『無職転生 ～異世界行ったら本気だす～』 Blu-ray Chapter 1 初回生産限定版]\BDROM\BDMV\STREAM\00001.m2ts', 24, -24,
     preset=[PresetBD, PresetAAC, PresetChapXML]
+)
+JPBD.do_qpfile = True
+JPBD_TELOP = FileInfo(
+    r'[BDMV][210421][TBR31094D][『無職転生 ～異世界行ったら本気だす～』 Blu-ray Chapter 1 初回生産限定版]\BDROM\BDMV\STREAM\00005.m2ts', 24, -3,
+    preset=PresetBD
 )
 
 
-CREDITS = [
-    (0, 131), (204, 267), (337, 400), (611, 682), (800, 864),
-    (1233, 1298), (2013, 2259), (31769, 33926)
-]
 
+EDSTART, EDEND = 31769, 33926
 
 
 class Filtering:
@@ -61,20 +60,50 @@ class Filtering:
 
         fixrow = core.std.FrameEval(out, partial(self._select_row, clip=out, row_fix=row_fix), prop_src=diff)
         out = fixrow
+
+
+        fixedge_a = awf.bbmod(out, 1, 1, 1, 1, 20, blur=700, u=False, v=False)
+
+        fixedge_b = awf.FixRowBrightnessProtect2(out, 1077, -8)
+        fixedge_b = awf.FixRowBrightnessProtect2(fixedge_b, 1078, 14)
+        assert fixedge_b
+
+        fixedge_c = awf.FixRowBrightnessProtect2(out, 1077, -15)
+        fixedge_c = awf.FixRowBrightnessProtect2(fixedge_c, 1078, 4)
+        assert fixedge_c
+
+        fixedge = out
+        fixedge = rfs(fixedge, fixedge_a, [(EDSTART + 309, EDEND)])
+        fixedge = rfs(fixedge, fixedge_b, [(8114, 8191)])
+        fixedge = rfs(fixedge, fixedge_c, [(9252, 9287)])
+        out = fixedge
         out = depth(out, 16)
 
 
 
+        dehalo = MaskedDHA(out, rx=1.4, ry=1.4, darkstr=0.02, brightstr=1)
+        dehalo = rfs(out, dehalo, [(EDEND + 1, src.num_frames - 1)])
+        out = dehalo
+
 
 
         luma = get_y(out)
-        # return upscaled_sraa(luma, 1.5, singlerater=Eedi3SR(eedi3cl=True, nnedi3cl=True, alpha=0.2, beta=0.5, gamma=400))
         lineart = FDOG().get_mask(luma)
         fkrescale = fake_rescale(luma, 844, b=0, c=0.5, coef_dering=1.4)
         masked = core.std.MaskedMerge(luma, fkrescale, lineart)
 
+        credit_mask = diff_creditless_mask(
+            out,
+            credit_clip=out[:2242],
+            nc_clip=depth(JPBD_TELOP.clip_cut, 16)[:2242],
+            start_frame=0, thr=25 << 8, expand=3
+        )
+        credit_mask = region_mask(credit_mask, 20, 20, 20, 20).std.Convolution([1] * 9)
+
+        masked = core.std.MaskedMerge(masked, luma, credit_mask)
+
         merged = merge_chroma(masked, out)
-        merged = rfs(out, merged, [(0, 454), (718, 980), (1299, 2012)])
+        merged = rfs(out, merged, [(0, 2241), (9908, 10100), (18181, 19136)])
         out = merged
 
 
@@ -104,14 +133,6 @@ class Filtering:
 
         decz = decsiz(out, min_in=128 << 8, max_in=192 << 8)
         out = decz
-
-
-
-        ref = depth(src, 16)
-        credit = out
-        credit = rfs(out, ref, CREDITS)
-        out = credit
-
 
 
         return depth(out, 10).std.Limiter(16 << 2, [235 << 2, 240 << 2], [0, 1, 2])

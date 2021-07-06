@@ -13,6 +13,7 @@ core = vs.core
 class Encoding:
     runner: SelfRunner
     xml_tag: str = 'xml_tag.xml'
+    do_chaptering: bool
 
     def __init__(self, file: FileInfo, clip: vs.VideoNode) -> None:
         self.file = file
@@ -29,6 +30,7 @@ class Encoding:
 
     def run(self, *, do_chaptering: bool = True) -> None:
         assert self.file.a_enc_cut
+        self.do_chaptering = do_chaptering
 
         muxer = Mux(
             self.file,
@@ -56,8 +58,12 @@ class Encoding:
         p.do_cleanup()
 
     def cleanup(self) -> None:
-        assert self.file.chapter
-        self.runner.do_cleanup(self.file.chapter, self.xml_tag)
+        files = [self.xml_tag]
+        if self.do_chaptering:
+            assert self.file.chapter
+            files.append(self.file.chapter)  # type: ignore
+
+        self.runner.do_cleanup(*files)
 
     def chaptering(self, offset: int):
         assert self.file.chapter
@@ -65,4 +71,5 @@ class Encoding:
         chap = MatroskaXMLChapters(self.file.chapter)
         chap.copy(self.file.name + '_tmp.xml')
         chap.shift_times(offset, self.clip.fps)
+        chap.create_qpfile(self.file.qpfile, self.clip.fps)
         self.file.chapter = chap.chapter_file

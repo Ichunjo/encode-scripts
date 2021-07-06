@@ -5,40 +5,31 @@ __author__ = 'Vardë'
 from functools import partial
 from typing import cast
 
+import awsmfunc as awf
 import havsfunc as hvf
 import mvsfunc as mvf
 import vapoursynth as vs
+from G41Fun import MaskedDHA
 from lvsfunc.util import replace_ranges as rfs
 from vardautomation import FileInfo, PresetAAC, PresetBD, PresetChapXML
 from vardefunc.deband import dumb3kdb
-from vardefunc.mask import (FDOG, ExLaplacian4, PrewittStd, detail_mask,
-                            region_mask)
+from vardefunc.mask import ExLaplacian4, PrewittStd, detail_mask, region_mask
 from vardefunc.misc import merge_chroma
 from vardefunc.noise import decsiz
 from vsutil import depth, get_y, join, plane, split
 
-from mushoku_common import Encoding, fake_rescale
+from mushoku_common import Encoding
 
 core = vs.core
 
 
-
-# from vardautomation import UNDEFINED, MatroskaXMLChapters, MplsReader
-# reader = MplsReader(r'[BDMV][210421][TBR31094D][『無職転生 ～異世界行ったら本気だす～』 Blu-ray Chapter 1 初回生産限定版]\BDROM', UNDEFINED)
-# reader.write_playlist('chapters', chapters_obj=MatroskaXMLChapters)
-# exit()
-
 JPBD = FileInfo(
-    r'[BDMV][210421][TBR31094D][『無職転生 ～異世界行ったら本気だす～』 Blu-ray Chapter 1 初回生産限定版]\BDROM\BDMV\STREAM\00000.m2ts', 24, -24,
+    r'[BDMV][210421][TBR31094D][『無職転生 ～異世界行ったら本気だす～』 Blu-ray Chapter 1 初回生産限定版]\BDROM\BDMV\STREAM\00003.m2ts', 24, -24,
     preset=[PresetBD, PresetAAC, PresetChapXML]
 )
-
-
-CREDITS = [
-    (0, 131), (204, 267), (337, 400), (611, 682), (800, 864),
-    (1233, 1298), (2013, 2259), (31769, 33926)
-]
-
+JPBD.do_qpfile = True
+OPSTART, PART1, PART2, EDSTART, PREVIEW = 1584, 3717, 14028, 31769, 33927
+OPEND, EDEND = PART1 - 1, PREVIEW - 1
 
 
 class Filtering:
@@ -61,23 +52,25 @@ class Filtering:
 
         fixrow = core.std.FrameEval(out, partial(self._select_row, clip=out, row_fix=row_fix), prop_src=diff)
         out = fixrow
+
+
+        fixedge_a = awf.bbmod(out, 1, 1, 1, 1, 20, blur=700, u=False, v=False)
+
+        fixedge = out
+        fixedge = rfs(fixedge, fixedge_a, [(EDSTART + 309, EDEND)])
+        out = fixedge
         out = depth(out, 16)
 
 
 
+        dehalo = MaskedDHA(out, rx=1.4, ry=1.4, darkstr=0.02, brightstr=1)
+        dehalo = rfs(out, dehalo, [(EDEND + 1, src.num_frames - 1)])
+        out = dehalo
 
 
-        luma = get_y(out)
-        # return upscaled_sraa(luma, 1.5, singlerater=Eedi3SR(eedi3cl=True, nnedi3cl=True, alpha=0.2, beta=0.5, gamma=400))
-        lineart = FDOG().get_mask(luma)
-        fkrescale = fake_rescale(luma, 844, b=0, c=0.5, coef_dering=1.4)
-        masked = core.std.MaskedMerge(luma, fkrescale, lineart)
-
-        merged = merge_chroma(masked, out)
-        merged = rfs(out, merged, [(0, 454), (718, 980), (1299, 2012)])
-        out = merged
-
-
+        resize = core.std.Crop(out, right=12, bottom=8).resize.Bicubic(1920, 1080)
+        resize = rfs(out, resize, [(27005, 27076)])
+        out = resize
 
 
 
@@ -104,14 +97,6 @@ class Filtering:
 
         decz = decsiz(out, min_in=128 << 8, max_in=192 << 8)
         out = decz
-
-
-
-        ref = depth(src, 16)
-        credit = out
-        credit = rfs(out, ref, CREDITS)
-        out = credit
-
 
 
         return depth(out, 10).std.Limiter(16 << 2, [235 << 2, 240 << 2], [0, 1, 2])
