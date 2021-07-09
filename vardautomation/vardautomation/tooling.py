@@ -427,9 +427,18 @@ class VideoLanEncoder(VideoEncoder, ABC):
     """Abstract VideoEncoder interface for VideoLan based encoders such as x265 and x264"""
     zones_settings: str
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  zones: Optional[Dict[Tuple[int, int], Dict[str, Any]]] = None,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
+
+        settings_parsed: Union[AnyPath, List[str]] = []
+        if isinstance(settings, dict):
+            for k, v in settings.items():
+                settings_parsed += [k] + ([str(v)] if v else [])
+        else:
+            settings_parsed = settings
+
+
         self.zones_settings = ''
         if zones:
             for i, ((start, end), opt) in enumerate(zones.items()):
@@ -439,7 +448,7 @@ class VideoLanEncoder(VideoEncoder, ABC):
                 if i != len(zones) - 1:
                     self.zones_settings += '/'
 
-        super().__init__(binary, settings, progress_update=progress_update)
+        super().__init__(binary, settings_parsed, progress_update=progress_update)
 
     def _get_settings(self) -> None:
         super()._get_settings()
