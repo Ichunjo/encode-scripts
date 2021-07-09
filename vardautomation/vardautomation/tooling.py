@@ -34,10 +34,10 @@ from .vpathlib import VPath
 class Tool(ABC):
     """Abstract Tool interface"""
     binary: VPath
-    settings: Union[AnyPath, List[str]]
+    settings: Union[AnyPath, List[str], Dict[str, Any]]
     params: List[str]
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]]) -> None:
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]]) -> None:
         self.binary = VPath(binary)
         self.settings = settings
         self.params = []
@@ -52,14 +52,16 @@ class Tool(ABC):
         """Set variables in the settings"""
 
     def _get_settings(self) -> None:
-        if isinstance(self.settings, list):
+        if isinstance(self.settings, dict):
+            for k, v in self.settings.items():
+                self.params += [k] + ([str(v)] if v else [])
+        elif isinstance(self.settings, list):
             self.params = self.settings
         else:
             with open(self.settings, 'r') as sttgs:
                 self.params = re.split(r'[\n\s]\s*', sttgs.read())
 
         self.params.insert(0, self.binary.to_str())
-
         self.params = [p.format(**self.set_variable()) for p in self.params]
 
 
@@ -67,15 +69,16 @@ class BasicTool(Tool):
     """BasicTool interface"""
     file: Optional[FileInfo]
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /, file: Optional[FileInfo] = None) -> None:
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
+                 file: Optional[FileInfo] = None) -> None:
         """Helper allowing the use of CLI programs for basic tasks like video or audio track extraction.
 
         Args:
             binary (AnyPath):
                 Path to your binary file.
 
-            settings (Union[AnyPath, List[str]]):
-                Path to your settings file or list of string containing your settings.
+            settings (Union[AnyPath, List[str], Dict[str, Any]]):
+                Path to your settings file or list of string or a dict containing your settings.
 
             file (Optional[FileInfo]):
                 FileInfo object. Not used in BasicTool implementation.
@@ -100,7 +103,7 @@ class AudioEncoder(BasicTool):
     track: int
     xml_tag: Optional[AnyPath]
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  file: FileInfo, *, track: int, xml_tag: Optional[AnyPath] = None) -> None:
         """Helper for audio extraction.
 
@@ -108,8 +111,8 @@ class AudioEncoder(BasicTool):
             binary (AnyPath):
                 Path to your binary file.
 
-            settings (Union[AnyPath, List[str]]):
-                Path to your settings file or list of string containing your settings.
+            settings (Union[AnyPath, List[str], Dict[str, Any]]):
+                Path to your settings file or list of string or a dict containing your settings.
 
             file (FileInfo):
                 FileInfo object. Needed in AudioEncoder implementation.
@@ -118,7 +121,8 @@ class AudioEncoder(BasicTool):
                 Track number.
 
             xml_tag (Optional[AnyPath], optional):
-                XML file path. If specified, will write a file containing the encoder info
+                XML file path.
+                If specified, will write a file containing the encoder info
                 to be passed to the muxer.
                 Defaults to None.
         """
@@ -364,11 +368,13 @@ def progress_update_func(value: int, endvalue: int) -> None:
 
 class VideoEncoder(Tool):
     """VideoEncoder interface"""
+    progress_update: Optional[UpdateFunc]
+
     file: FileInfo
     clip: vs.VideoNode
     bits: int
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
         """Helper intended to facilitate video encoding
 
@@ -385,6 +391,7 @@ class VideoEncoder(Tool):
                 Defaults to progress_update_func.
         """
         self.progress_update = progress_update
+
         super().__init__(binary, settings)
 
     def run_enc(self, clip: vs.VideoNode, file: FileInfo) -> None:
@@ -392,8 +399,7 @@ class VideoEncoder(Tool):
         self.file = file
         self.clip = clip
 
-        assert self.clip.format
-        self.bits = self.clip.format.bits_per_sample
+        self.bits = self.clip.format.bits_per_sample  # type: ignore
 
         self._get_settings()
 
@@ -425,61 +431,67 @@ class VideoEncoder(Tool):
 
 class VideoLanEncoder(VideoEncoder, ABC):
     """Abstract VideoEncoder interface for VideoLan based encoders such as x265 and x264"""
-    zones_settings: str
 
     def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  zones: Optional[Dict[Tuple[int, int], Dict[str, Any]]] = None,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
+        """
+        Args:
+            settings (Union[AnyPath, List[str], Dict[str, Any]]):
+                Path to your settings file or list of string or a dict containing your settings.
 
-        settings_parsed: Union[AnyPath, List[str]] = []
-        if isinstance(settings, dict):
-            for k, v in settings.items():
-                settings_parsed += [k] + ([str(v)] if v else [])
-        else:
-            settings_parsed = settings
+            Example:
+                ::
 
+                    # This
+                    >>>cat settings
+                    >>>-o {clip_output:s} - --y4m --preset slower --crf 51
 
-        self.zones_settings = ''
+                    # is equivalent to this:
+                    settings: List[str] = ['-o', '{clip_output:s}', '-', '--y4m', '--preset', 'slower', '--crf', '51']
+
+                    # and is equivalent to this:
+                    settings: Dict[str, Any] = {
+                        '-o': '{clip_output:s}',
+                        '-': None,
+                        '--y4m': None,
+                        '--preset': 'slower',
+                        '--crf': 51
+                    }
+
+            zones (Optional[Dict[Tuple[int, int], Dict[str, Any]]], optional):
+                Custom zone ranges. Defaults to None.
+            Example:
+                ::
+
+                    zones: Dict[Tuple[int, int], Dict[str, Any]] = {
+                        (3500, 3600): dict(b=3, subme=11),
+                        (4800, 4900): {'psy-rd': '0.40:0.05', 'merange': 48}
+                    }
+
+            progress_update (Optional[UpdateFunc], optional):
+                Current progress can be reported by passing a callback function
+                of the form func(current_frame, total_frames) to progress_update.
+                Defaults to progress_update_func.
+        """
+        super().__init__(binary, settings, progress_update=progress_update)
         if zones:
+            zones_settings: str = ''
             for i, ((start, end), opt) in enumerate(zones.items()):
-                self.zones_settings += f'{start},{end}'
+                zones_settings += f'{start},{end}'
                 for opt_name, opt_val in opt.items():
-                    self.zones_settings += f',{opt_name}={opt_val}'
+                    zones_settings += f',{opt_name}={opt_val}'
                 if i != len(zones) - 1:
-                    self.zones_settings += '/'
-
-        super().__init__(binary, settings_parsed, progress_update=progress_update)
-
-    def _get_settings(self) -> None:
-        super()._get_settings()
-        if self.zones_settings:
-            self.params += ['--zones', self.zones_settings]
+                    zones_settings += '/'
+            self.params += ['--zones', zones_settings]
 
 
 class X265Encoder(VideoLanEncoder):
     """Video encoder using x265 in HEVC"""
 
-    def __init__(self, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  zones: Optional[Dict[Tuple[int, int], Dict[str, Any]]] = None,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
-        """
-        Args:
-            settings (Union[AnyPath, List[str]]):
-                Path to your settings file or list of string containing your settings.
-
-            zones (Optional[Dict[Tuple[int, int], Dict[str, Any]]], optional):
-                Custom zone ranges. Defaults to None.
-            Example:
-                zones: Dict[Tuple[int, int], Dict[str, Any]] = {
-                    (3500, 3600): dict(b=3, subme=11),
-                    (4800, 4900): {'psy-rd': '0.40:0.05', 'merange': 48}
-                }
-
-            progress_update (Optional[UpdateFunc], optional): [description].
-                Current progress can be reported by passing a callback function
-                of the form func(current_frame, total_frames) to progress_update.
-                Defaults to progress_update_func.
-        """
         super().__init__('x265', settings, zones, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
@@ -493,28 +505,9 @@ class X265Encoder(VideoLanEncoder):
 class X264Encoder(VideoLanEncoder):
     """Video encoder using x264 in AVC"""
 
-    def __init__(self, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  zones: Optional[Dict[Tuple[int, int], Dict[str, Any]]] = None,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
-        """
-        Args:
-            settings (Union[AnyPath, List[str]]):
-                Path to your settings file or list of string containing your settings.
-
-            zones (Optional[Dict[Tuple[int, int], Dict[str, Any]]], optional):
-                Custom zone ranges. Defaults to None.
-            Example:
-                from typing import Any, Dict, Tuple
-                zones: Dict[Tuple[int, int], Dict[str, Any]] = {
-                    (3500, 3600): dict(b=3, subme=11),
-                    (4800, 4900): {'psy-rd': '0.40:0.05', 'merange': 48}
-                }
-
-            progress_update (Optional[UpdateFunc], optional): [description].
-                Current progress can be reported by passing a callback function
-                of the form func(current_frame, total_frames) to progress_update.
-                Defaults to progress_update_func.
-        """
         super().__init__('x264', settings, zones, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
@@ -527,7 +520,7 @@ class X264Encoder(VideoLanEncoder):
 class LosslessEncoder(VideoEncoder):
     """Video encoder for lossless encoding"""
 
-    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str]], /,
+    def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  progress_update: Optional[UpdateFunc] = None) -> None:
         super().__init__(binary, settings, progress_update=progress_update)
 
