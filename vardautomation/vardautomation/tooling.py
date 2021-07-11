@@ -372,7 +372,6 @@ class VideoEncoder(Tool):
 
     file: FileInfo
     clip: vs.VideoNode
-    bits: int
 
     def __init__(self, binary: AnyPath, settings: Union[AnyPath, List[str], Dict[str, Any]], /,
                  progress_update: Optional[UpdateFunc] = progress_update_func) -> None:
@@ -494,10 +493,11 @@ class X265Encoder(VideoLanEncoder):
         super().__init__('x265', settings, zones, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
-        min_luma, max_luma = Properties.get_color_range(self.params, self.clip, self.bits)
+        assert self.clip.format
+        min_luma, max_luma = Properties.get_color_range(self.params, self.clip)
         return dict(clip_output=self.file.name_clip_output.to_str(), filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
-                    bits=self.bits,
+                    bits=self.clip.format.bits_per_sample,
                     min_luma=min_luma, max_luma=max_luma)
 
 
@@ -510,10 +510,11 @@ class X264Encoder(VideoLanEncoder):
         super().__init__('x264', settings, zones, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
+        assert self.clip.format
         csp = Properties.get_csp(self.clip)
         return dict(clip_output=self.file.name_clip_output.to_str(), filename=self.file.name, frames=self.clip.num_frames,
                     fps_num=self.clip.fps.numerator, fps_den=self.clip.fps.denominator,
-                    bits=self.bits, csp=csp)
+                    bits=self.clip.format.bits_per_sample, csp=csp)
 
 
 class LosslessEncoder(VideoEncoder):
@@ -524,7 +525,9 @@ class LosslessEncoder(VideoEncoder):
         super().__init__(binary, settings, progress_update=progress_update)
 
     def set_variable(self) -> Dict[str, Any]:
-        return dict(clip_output_lossless=self.file.name_clip_output_lossless.to_str(), bits=self.bits)
+        assert self.clip.format
+        return dict(clip_output_lossless=self.file.name_clip_output_lossless.to_str(),
+                    bits=self.clip.format.bits_per_sample)
 
 
 class NvenccEncoder(LosslessEncoder):

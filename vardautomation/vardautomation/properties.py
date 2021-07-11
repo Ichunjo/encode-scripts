@@ -12,23 +12,28 @@ core = vs.core
 
 class Properties:
     """Collection of static methods to get some properties from the parameters and/or the clip"""
+
     @staticmethod
-    def get_color_range(params: List[str], clip: vs.VideoNode, bits: int) -> Tuple[int, int]:
-        """[summary]
+    def get_color_range(params: List[str], clip: vs.VideoNode) -> Tuple[int, int]:
+        """Get colour range.
 
         Args:
-            params (List[str]): [description]
-            clip (vs.VideoNode): [description]
-            bits (int): [description]
+            params (List[str]):
+                Settings of the encoder.
 
-        Raises:
-            ValueError: [description]
-            vs.Error: [description]
-            ValueError: [description]
+            clip (vs.VideoNode):
+                Source clip.
+
+            bits (int):
+                Bitdepth
 
         Returns:
-            Tuple[int, int]: [description]
+            Tuple[int, int]:
+                A tuple of min_luma and max_luma value
         """
+        assert clip.format
+        bits = clip.format.bits_per_sample
+
         if '--range' in params:
             rng_param = params[params.index('--range') + 1]
             if rng_param == 'limited':
@@ -56,20 +61,20 @@ class Properties:
 
     @staticmethod
     def get_csp(clip: vs.VideoNode) -> str:
-        """[summary]
+        """Get colourspaces
 
         Args:
-            clip (vs.VideoNode): [description]
+            clip (vs.VideoNode): Source clip.
 
         Returns:
-            str: [description]
+            str: Colourspace suitable for x264
         """
         def _get_csp_subsampled(format_clip: vs.Format) -> str:
             sub_w, sub_h = format_clip.subsampling_w, format_clip.subsampling_h
             csp_yuv_subs: Dict[Tuple[int, int], str] = {(0, 0): 'i444', (1, 0): 'i422', (1, 1): 'i420'}
             return csp_yuv_subs[(sub_w, sub_h)]
 
-        assert clip.format is not None
+        assert clip.format
 
         csp_avc = {
             vs.GRAY: 'i400',
