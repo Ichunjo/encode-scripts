@@ -2,6 +2,7 @@
 
 __all__ = [
     'Preset', 'NoPreset',
+    'PresetGeneric',
     'PresetBD', 'PresetWEB',
     'PresetAAC', 'PresetOpus', 'PresetEAC3', 'PresetFLAC',
     'PresetChapOGM',
@@ -13,6 +14,7 @@ from enum import IntEnum
 from typing import Callable, Optional
 
 import vapoursynth as vs
+from lvsfunc.misc import source
 
 from .vpathlib import VPath
 
@@ -44,6 +46,14 @@ NoPreset = Preset(
     a_enc_cut=VPath(''),
     chapter=VPath(''),
     preset_type=PresetType.NO_PRESET
+)
+PresetGeneric = Preset(
+    idx=source,
+    a_src=None,
+    a_src_cut=None,
+    a_enc_cut=None,
+    chapter=None,
+    preset_type=PresetType.VIDEO
 )
 PresetBD = Preset(
     idx=core.lsmas.LWLibavSource,

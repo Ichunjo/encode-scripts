@@ -4,13 +4,12 @@ __all__ = ['FileInfo']
 
 import sys
 from operator import attrgetter
-from os import remove
 from pprint import pformat
 from typing import List, Optional, Sequence, Union
 
 import vapoursynth as vs
 
-from .presets import NoPreset, Preset
+from .presets import Preset, PresetGeneric
 from .types import AnyPath, VPSIdx
 from .vpathlib import VPath
 
@@ -54,7 +53,7 @@ class FileInfo:  # noqa: PLR0902
         self, path: AnyPath, /,
         frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
         idx: Optional[VPSIdx] = None,
-        preset: Union[Sequence[Preset], Preset] = NoPreset,
+        preset: Union[Sequence[Preset], Preset] = PresetGeneric,
         workdir: AnyPath = VPath().cwd()
     ) -> None:
         """Helper which allows to store the data related to your file to be encoded
