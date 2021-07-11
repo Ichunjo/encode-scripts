@@ -147,18 +147,3 @@ class FileInfo:  # noqa: PLR0902
 
         if self.chapter is None and p.chapter is not None:
             self.chapter = self.workdir / p.chapter.format(name=self.name)
-
-
-    # TODO: this is ugly
-    def cleanup(self, *,  # noqa
-                a_src: bool = True, a_src_cut: bool = True, a_enc_cut: bool = True,
-                chapter: bool = False) -> None:
-        files = (self.a_src, self.a_src_cut, self.a_enc_cut, self.chapter)
-        booleans = (a_src, a_src_cut, a_enc_cut, chapter)
-
-        for file, boolean in zip(files, booleans):
-            if boolean and file and file.exists():
-                remove(file)
-            for i in range(10):
-                if boolean and file and file.format(i) and file.format(i).exists():
-                    remove(file.format(i))
