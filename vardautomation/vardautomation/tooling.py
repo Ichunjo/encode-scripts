@@ -393,26 +393,29 @@ class VideoEncoder(Tool):
 
         super().__init__(binary, settings)
 
-    def run_enc(self, clip: vs.VideoNode, file: FileInfo) -> None:
+    def run_enc(self, clip: vs.VideoNode, file: Optional[FileInfo], *, y4m: bool = True) -> None:
         """Run encoding"""
-        self.file = file
-        self.clip = clip
+        if file:
+            self.file = file
 
-        self.bits = self.clip.format.bits_per_sample  # type: ignore
+        self.clip = clip
 
         self._get_settings()
 
-        if self.file.do_qpfile:
+        if file and self.file.do_qpfile:
             self._create_qpfile()
             self.params += ['--qpfile', self.file.qpfile.to_str()]
 
-        self._do_encode()
+        self._do_encode(y4m)
 
     def run(self) -> NoReturn:
         raise NameError('Use `run_enc` instead')
 
     def set_variable(self) -> Dict[str, Any]:
-        return dict(clip_output=self.file.name_clip_output.to_str(), filename=self.file.name)
+        try:
+            return dict(clip_output=self.file.name_clip_output.to_str(), filename=self.file.name)
+        except AttributeError:
+            return {}
 
     def _create_qpfile(self) -> None:
         if not (qpfile := self.file.qpfile).exists():
@@ -421,10 +424,11 @@ class VideoEncoder(Tool):
             with qpfile.open('w') as qpf:
                 qpf.writelines([f"{s} K\n" for s in scenes])
 
+    def _do_encode(self, y4m: bool) -> None:
         Status.info('VideoEncoder command: ' + ' '.join(self.params))
 
         with subprocess.Popen(self.params, stdin=subprocess.PIPE) as process:
-            self.clip.output(cast(BinaryIO, process.stdin), y4m=True, progress_update=self.progress_update)
+            self.clip.output(cast(BinaryIO, process.stdin), y4m=y4m, progress_update=self.progress_update)
 
 
 class VideoLanEncoder(VideoEncoder, ABC):
