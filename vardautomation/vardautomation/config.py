@@ -51,6 +51,7 @@ class FileInfo:  # noqa: PLR0902
 
     def __init__(
         self, path: AnyPath, /,
+        # TODO: Faire une nouvelle classe pour frame à dupliquer et frame à supprimer
         frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
         idx: Optional[VPSIdx] = None,
         preset: Union[Sequence[Preset], Preset] = PresetGeneric,
