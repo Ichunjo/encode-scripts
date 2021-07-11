@@ -11,6 +11,7 @@ from lvsfunc.util import normalize_ranges
 
 from .automation import BasicTool, VideoEncoder
 from .config import FileInfo
+from .status import Status
 from .types import Range
 from .vpathlib import VPath
 
@@ -52,7 +53,7 @@ class Patch:
             self.output_filename = final / f'{self._file_to_fix.stem}_new.mkv'
 
         if self.workdir.exists():
-            raise FileExistsError(f'Patch: {self.workdir.resolve().to_str()} already exists!')
+            Status.fail(f'Patch: {self.workdir.resolve().to_str()} already exists!', exception=FileExistsError)
 
     def run(self) -> None:
         """Launch patch"""
@@ -86,7 +87,7 @@ class Patch:
 
         if len(rng) == 1:
             if rng[0][0] == 0 and rng[0][1] == self.clip.num_frames:
-                raise ValueError('Don\'t use Patch, just redo your encode')
+                Status.fail('Don\'t use Patch, just redo your encode', exception=ValueError)
 
         self.ranges = rng
 
@@ -158,7 +159,7 @@ class Patch:
                     break
 
             if s is None or e is None:
-                raise ValueError('_resolve_range: Something is wrong in `s` or `e`')
+                Status.fail('_resolve_range: Something is wrong in `s` or `e`', exception=ValueError)
 
             rng_set.add((s, e))
 

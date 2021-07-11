@@ -23,10 +23,10 @@ from acsuite import eztrim
 from lvsfunc.render import SceneChangeMode, find_scene_changes
 from lxml import etree
 
-from .colors import Colors
 from .config import FileInfo
 from .language import UNDEFINED, Lang
 from .properties import Properties
+from .status import Status
 from .types import AnyPath, UpdateFunc
 from .vpathlib import VPath
 
@@ -94,7 +94,7 @@ class BasicTool(Tool):
         return {}
 
     def _do_tooling(self) -> None:
-        print(f'{Colors.INFO}{self.binary.to_str()} command:', ' '.join(self.params) + f'{Colors.RESET}\n')
+        Status.info(f'{self.binary.to_str()} command:' + ' '.join(self.params))
         subprocess.run(self.params, check=True, text=True, encoding='utf-8')
 
 
@@ -422,8 +422,7 @@ class VideoEncoder(Tool):
             with qpfile.open('w') as qpf:
                 qpf.writelines([f"{s} K\n" for s in scenes])
 
-    def _do_encode(self) -> None:
-        print(f'{Colors.INFO}VideoEncoder command:', " ".join(self.params) + f'{Colors.RESET}\n')
+        Status.info('VideoEncoder command: ' + ' '.join(self.params))
 
         with subprocess.Popen(self.params, stdin=subprocess.PIPE) as process:
             self.clip.output(cast(BinaryIO, process.stdin), y4m=True, progress_update=self.progress_update)

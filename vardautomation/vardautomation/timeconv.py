@@ -2,6 +2,8 @@
 
 from fractions import Fraction
 
+from .status import Status
+
 
 class Convert:
     """Collection of static method to perform time conversion"""
@@ -55,4 +57,4 @@ class Convert:
         elif precision == 9:
             return f"{h:02.0f}:{m:02.0f}:{s:012.9f}"
         else:
-            raise ValueError('precision must be <= 9 and >= 0')
+            Status.fail('precision must be <= 9 and >= 0', exception=ValueError)

@@ -10,8 +10,8 @@ from typing import NamedTuple, Optional, Sequence, Set, Tuple
 
 import vapoursynth as vs
 
-from .colors import Colors
 from .config import FileInfo
+from .status import Status
 from .tooling import (AudioCutter, AudioEncoder, BasicTool, LosslessEncoder,
                       Mux, VideoEncoder)
 from .types import AnyPath
@@ -57,8 +57,7 @@ class Parser:
                     file.frame_start = 0
                 file_frame_start = file.frame_start + self.args.start
             else:
-                print(Colors.FAIL)
-                raise ValueError(f'{Colors.FAIL}--start START must be a positive value!{Colors.RESET}')
+                Status.fail('--start START must be a positive value!', exception=ValueError)
         else:
             file_frame_start = file.frame_start
 
@@ -71,7 +70,7 @@ class Parser:
                 file_frame_end = min((file.frame_start if file.frame_start is not None else 0) + self.args.end + 1,
                                      file.frame_end)
             else:
-                raise ValueError(f'{Colors.FAIL}--end END must be a positive value!{Colors.RESET}')
+                Status.fail('--end END must be a positive value!', exception=ValueError)
         else:
             file_frame_end = file.frame_end
 

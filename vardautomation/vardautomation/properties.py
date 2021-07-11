@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 
 import vapoursynth as vs
 
-from .colors import Colors
+from .status import Status
 from .types import AnyPath
 
 core = vs.core
@@ -38,8 +38,7 @@ class Properties:
                 min_luma = 0
                 max_luma = (1 << bits) - 1
             else:
-                print(Colors.INFO)
-                raise ValueError('Wrong range in parameters!')
+                Status.fail('Wrong range in parameters!', exception=ValueError)
         elif '_ColorRange' in clip.get_frame(0).props:
             color_rng = clip.get_frame(0).props['_ColorRange']
             if color_rng == 1:
@@ -49,11 +48,10 @@ class Properties:
                 min_luma = 0
                 max_luma = (1 << bits) - 1
             else:
-                print(Colors.INFO)
-                raise vs.Error('Wrong "_ColorRange" prop in the clip!')
+                Status.fail('Wrong "_ColorRange" prop in the clip!', exception=vs.Error)
         else:
-            print(Colors.INFO)
-            raise ValueError('Cannot guess the color range!')
+            Status.fail('Cannot guess the color range!', exception=ValueError)
+
         return min_luma, max_luma
 
     @staticmethod

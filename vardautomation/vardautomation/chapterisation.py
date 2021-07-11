@@ -17,8 +17,8 @@ from lxml import etree
 from pyparsebluray import mpls
 from pyparsedvd import vts_ifo
 
-from .colors import Colors
 from .language import UNDEFINED, Lang
+from .status import Status
 from .timeconv import Convert
 from .types import AnyPath, Element
 from .vpathlib import VPath
@@ -61,9 +61,9 @@ class Chapters(ABC):
         destination = VPath(destination)
         copyfile(self.chapter_file.absolute(), destination.absolute())
         self.chapter_file = destination
-        print(
-            f'{Colors.INFO}Chapter file sucessfully copied from: '
-            + f'"{self.chapter_file.absolute().to_str()}" to "{destination.absolute().to_str()}" {Colors.RESET}\n'
+        Status.info(
+            'Chapter file sucessfully copied from: '
+            + f'"{self.chapter_file.absolute().to_str()}" to "{destination.absolute().to_str()}"'
         )
 
     def create_qpfile(self, qpfile: AnyPath, fps: Fraction) -> None:
@@ -74,10 +74,10 @@ class Chapters(ABC):
 
         qpfile.write_text('\n'.join([f"{f} K" for f in sorted(keyf)]), encoding='utf-8')
 
-        print(f'{Colors.INFO}Qpfile sucessfully created at: "{qpfile.absolute().to_str()}"{Colors.RESET}\n')
+        Status.info(f'Qpfile sucessfully created at: "{qpfile.absolute().to_str()}"')
 
     def _logging(self, action: str) -> None:
-        print(f'{Colors.INFO}Chapter file sucessfully {action} at: "{self.chapter_file.absolute().to_str()}"{Colors.RESET}\n')
+        Status.info(f'Chapter file sucessfully {action} at: "{self.chapter_file.absolute().to_str()}"')
 
 
 class OGMChapters(Chapters):
@@ -104,7 +104,7 @@ class OGMChapters(Chapters):
         old = data[1::2]
 
         if len(names) > len(old):
-            raise ValueError('set_names: too many names!')
+            Status.fail('set_names: too many names!', exception=ValueError)
         if len(names) < len(old):
             names += [None] * (len(old) - len(names))
 
@@ -221,7 +221,7 @@ class MatroskaXMLChapters(Chapters):
         olds = tree.xpath(f'/Chapters/{self.__ed_entry}/{self.__chap_atom}/{self.__chap_disp}/{self.__chap_name}')
 
         if len(names) > len(olds):
-            raise ValueError('set_names: too many names!')
+            Status.fail('set_names: too many names!', exception=ValueError)
         if len(names) < len(olds):
             names += [None] * (len(olds) - len(names))
 
@@ -293,7 +293,7 @@ class MatroskaXMLChapters(Chapters):
             if isinstance(timestart.text, str):
                 start_frame = Convert.ts2f(timestart.text, fps)
             else:
-                raise ValueError('xml_to_chapters: timestart.text is not a str, wtf are u doin')
+                Status.fail('xml_to_chapters: timestart.text is not a str, wtf are u doin', exception=ValueError)
 
             end_frame: Optional[int] = None
             try:
@@ -340,7 +340,7 @@ class MatroskaXMLChapters(Chapters):
         try:
             return cast(ElementTree, etree.parse(self.chapter_file.to_str()))
         except OSError as oserr:
-            raise FileNotFoundError('_get_tree: xml file not found!') from oserr
+            Status.fail('_get_tree: xml file not found!', exception=FileNotFoundError, chain_err=oserr)
 
 
 
@@ -352,10 +352,10 @@ class MplsChapters(Chapters):
     fps: Fraction
 
     def create(self, chapters: List[Chapter], fps: Fraction) -> NoReturn:
-        raise NotImplementedError("Can't create a mpls file!")
+        Status.fail('Can\'t create a mpls file!', exception=NotImplementedError)
 
     def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
-        raise NotImplementedError("Can't change name from a mpls file!")
+        Status.fail('Can\'t change name from a mpls file!', exception=NotImplementedError)
 
     def to_chapters(self, fps: Optional[Fraction] = None, lang: Optional[Lang] = None) -> List[Chapter]:
         if not hasattr(self, 'chapters') or not hasattr(self, 'fps'):
@@ -369,10 +369,10 @@ class IfoChapters(Chapters):
     fps: Fraction
 
     def create(self, chapters: List[Chapter], fps: Fraction) -> NoReturn:
-        raise NotImplementedError("Can't create an ifo file!")
+        Status.fail('Can\'t create an ifo file!', exception=NotImplementedError)
 
     def set_names(self, names: Sequence[Optional[str]]) -> NoReturn:
-        raise NotImplementedError("Can't change name from an ifo file!")
+        Status.fail('Can\'t change name from an ifo file!', exception=NotImplementedError)
 
     def to_chapters(self, fps: Optional[Fraction] = None, lang: Optional[Lang] = None) -> List[Chapter]:
         if not hasattr(self, 'chapters') or not hasattr(self, 'fps'):
@@ -468,15 +468,14 @@ class MplsReader():
             playlist = mpls.load_playlist(file)
 
             if not playlist.play_items:
-                raise ValueError('There is no play items in this file!')
+                Status.fail('There is no play items in this file!', exception=ValueError)
 
             file.seek(header.playlist_mark_start_address, os.SEEK_SET)
             playlist_mark = mpls.load_playlist_mark(file)
             if (plsmarks := playlist_mark.playlist_marks) is not None:
                 marks = plsmarks
             else:
-                raise ValueError('There is no playlist marks in this file!')
-
+                Status.fail('There is no playlist marks in this file!', exception=ValueError)
 
         mpls_chaps: List[MplsChapters] = []
 
@@ -505,9 +504,9 @@ class MplsReader():
                     if fps_n in mpls.FRAMERATE:
                         mpls_chap.fps = mpls.FRAMERATE[fps_n]
                     else:
-                        raise ValueError('Unknown framerate!')
+                        Status.fail('Unknown framerate!', exception=ValueError)
                 else:
-                    raise AttributeError('No STNTable in playitem!')
+                    Status.fail('No STNTable in playitem!', exception=AttributeError)
 
                 # Finally extract the chapters
                 mpls_chap.chapters = self._mplschapters_to_chapters(linked_marks, offset, mpls_chap.fps)
@@ -612,7 +611,7 @@ class IfoReader():
             if all(dvd_fpss[0] == dvd_fps for dvd_fps in dvd_fpss):
                 ifo_chap.fps = vts_ifo.FRAMERATE[dvd_fpss[0]]
             else:
-                raise ValueError('parse_ifo: No VFR allowed!')
+                Status.fail('parse_ifo: No VFR allowed!', exception=ValueError)
 
             # Add a zero PlaybackTime and the duration which is the last chapter
             playback_times = [vts_ifo.vts_pgci.PlaybackTime(dvd_fpss[0], 0, 0, 0, 0)]
