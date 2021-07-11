@@ -1,10 +1,12 @@
 """Language module"""
+from __future__ import annotations
 
 __all__ = ['Language',
            'FRENCH', 'ENGLISH', 'JAPANESE', 'UNDEFINED']
 
 
 from pprint import pformat
+from typing import Optional
 
 from langcodes import Language
 
@@ -23,14 +25,13 @@ class Lang:
     def __repr__(self) -> str:
         return pformat(vars(self), indent=4, width=200, sort_dicts=False)
 
-    @staticmethod
-    def make(ietf: str):
+    @classmethod
+    def make(cls, ietf: Optional[str]) -> Lang:
         """Make a new Lang based on IETF"""
-        return Lang(Language.make(ietf))
+        return cls(Language.make(ietf))
 
 
-
-FRENCH = Lang(Language.make('fr'))
-ENGLISH = Lang(Language.make('en'))
-JAPANESE = Lang(Language.make('ja'))
-UNDEFINED = Lang(Language.make())
+FRENCH = Lang.make('fr')
+ENGLISH = Lang.make('en')
+JAPANESE = Lang.make('ja')
+UNDEFINED = Lang.make(None)
