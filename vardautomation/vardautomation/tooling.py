@@ -582,15 +582,11 @@ class MediaStream(Stream, ABC):
 
 
 class VideoStream(MediaStream):
-    def __init__(self, path: AnyPath, name: Optional[str] = None,
-                 lang: Lang = UNDEFINED, tag_file: Optional[AnyPath] = None) -> None:
-        super().__init__(path, name=name, lang=lang, tag_file=tag_file)
+    pass
 
 
 class AudioStream(MediaStream):
-    def __init__(self, path: AnyPath, name: Optional[str] = None,
-                 lang: Lang = UNDEFINED, tag_file: Optional[AnyPath] = None) -> None:
-        super().__init__(path, name=name, lang=lang, tag_file=tag_file)
+    pass
 
 
 class ChapterStream(Stream):
