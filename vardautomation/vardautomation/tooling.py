@@ -7,6 +7,7 @@ __all__ = [
     'VideoEncoder', 'X265Encoder', 'X264Encoder', 'LosslessEncoder', 'NvenccEncoder', 'FFV1Encoder',
     'progress_update_func',
     'Mux', 'Stream', 'MediaStream', 'VideoStream', 'AudioStream', 'ChapterStream',
+    'make_comps',
     'Tooling'
 ]
 
