@@ -1,11 +1,11 @@
 acsuite_orangechannel>=6.0.0
-VapourSynth>=53
+colorama>=0.4.4
 langcodes>=3.1.0
 language-data>=1.0
 lvsfunc>=0.3.5
 lxml>=4.6.3
-lxml-stubs>=0.2.0
-colorama>=0.4.4
-types-colorama>=0.4.2
-pyparsebluray>=0.1.1
+pyparsebluray>=0.1.2
 pyparsedvd>=0.0.2
+requests>=2.25.1
+requests_toolbelt>=0.9.1
+VapourSynth>=53
