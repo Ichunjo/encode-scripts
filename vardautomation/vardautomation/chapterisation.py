@@ -10,8 +10,7 @@ from abc import ABC, abstractmethod
 from fractions import Fraction
 from pprint import pformat
 from shutil import copyfile
-from typing import (Any, Dict, List, NamedTuple, NoReturn, Optional, Sequence,
-                    Type, Union, cast)
+from typing import List, NamedTuple, NoReturn, Optional, Sequence, Type, cast
 
 from lxml import etree
 from pyparsebluray import mpls
@@ -20,7 +19,7 @@ from pyparsedvd import vts_ifo
 from .language import UNDEFINED, Lang
 from .status import Status
 from .timeconv import Convert
-from .types import AnyPath, Element
+from .types import AnyPath, Element, ElementTree
 from .vpathlib import VPath
 
 
@@ -160,16 +159,6 @@ class OGMChapters(Chapters):
 
 
 
-class ElementTree(etree._ElementTree):  # type: ignore
-    def xpath(self, _path: Union[str, bytes],  # type: ignore
-              namespaces: Optional[Union[Dict[str, str], Dict[bytes, bytes]]] = None,  # type: ignore
-              extensions: Any = None, smart_strings: bool = True,
-              **_variables) -> List[Element]:  # type: ignore
-        xpathobject = super().xpath(  # type: ignore
-            _path, namespaces=namespaces, extensions=extensions,
-            smart_strings=smart_strings, **_variables
-        )
-        return cast(List[Element], xpathobject)  # type: ignore
 
 
 class MatroskaXMLChapters(Chapters):
