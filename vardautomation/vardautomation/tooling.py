@@ -355,12 +355,19 @@ class AudioCutter:
         assert self.file.a_src
         assert self.file.a_src_cut
 
-        if not self.file.frame_start:
-            self.file.frame_start = 0
+        if self.file.trims_or_dfs:
+            if isinstance((trim := self.file.trims_or_dfs), tuple):
+                start, end = trim
+                if not start:
+                    start = 0
+            else:
+                raise NotImplementedError
 
-        eztrim(self.file.clip, (self.file.frame_start, self.file.frame_end),
-               self.file.a_src.format(self.track).to_str(), self.file.a_src_cut.format(self.track).to_str(),
-               **self.kwargs)
+            eztrim(
+                self.file.clip, (start, end),
+                self.file.a_src.format(self.track).to_str(), self.file.a_src_cut.format(self.track).to_str(),
+                **self.kwargs
+            )
 
 
 

@@ -8,6 +8,9 @@ from pprint import pformat
 from typing import List, Optional, Sequence, Union
 
 import vapoursynth as vs
+from vardefunc.types import DuplicateFrame as DF
+from vardefunc.types import Trim
+from vardefunc.util import adjust_clip_frames
 
 from .presets import Preset, PresetGeneric
 from .types import AnyPath, VPSIdx
@@ -35,8 +38,7 @@ class FileInfo:  # noqa: PLR0902
     chapter: Optional[VPath]
 
     clip: vs.VideoNode
-    frame_start: Optional[int]
-    frame_end: Optional[int]
+    _trims_or_dfs: Union[List[Union[Trim, DF]], Trim, None]
     clip_cut: vs.VideoNode
 
     name_clip_output: VPath
@@ -51,8 +53,7 @@ class FileInfo:  # noqa: PLR0902
 
     def __init__(
         self, path: AnyPath, /,
-        # TODO: Faire une nouvelle classe pour frame à dupliquer et frame à supprimer
-        frame_start: Optional[int] = None, frame_end: Optional[int] = None, *,
+        trims_or_dfs: Union[List[Union[Trim, DF]], Trim, None], *,
         idx: Optional[VPSIdx] = None,
         preset: Union[Sequence[Preset], Preset] = PresetGeneric,
         workdir: AnyPath = VPath().cwd()
@@ -105,9 +106,7 @@ class FileInfo:  # noqa: PLR0902
 
         if self.idx:
             self.clip = self.idx(str(path))
-            self.frame_start = frame_start
-            self.frame_end = frame_end
-            self.clip_cut = self.clip[self.frame_start:self.frame_end] if (self.frame_start or self.frame_end) else self.clip
+            self.trims_or_dfs = trims_or_dfs
 
             self.name_clip_output = VPath(self.name + '.265')
             self.name_file_final = VPath(self.name + '.mkv')
@@ -148,3 +147,15 @@ class FileInfo:  # noqa: PLR0902
 
         if self.chapter is None and p.chapter is not None:
             self.chapter = self.workdir / p.chapter.format(name=self.name)
+
+    @property
+    def trims_or_dfs(self) -> Union[List[Union[Trim, DF]], Trim, None]:
+        return self._trims_or_dfs
+
+    @trims_or_dfs.setter
+    def trims_or_dfs(self, x: Union[List[Union[Trim, DF]], Trim, None]) -> None:
+        self._trims_or_dfs = x
+        if x:
+            self.clip_cut = adjust_clip_frames(self.clip, x if isinstance(x, list) else [x])
+        else:
+            self.clip_cut = self.clip
