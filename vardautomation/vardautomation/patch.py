@@ -7,12 +7,12 @@ from itertools import chain
 from typing import List, Optional, Set, Tuple, Union
 
 import vapoursynth as vs
-from lvsfunc.util import normalize_ranges
+from vardefunc.types import Range
+from vardefunc.util import normalise_ranges
 
 from .automation import BasicTool, VideoEncoder
 from .config import FileInfo
 from .status import Status
-from .types import Range
 from .vpathlib import VPath
 
 
@@ -40,7 +40,7 @@ class Patch:
         self.file = file
         self.file.do_qpfile = False
 
-        self.ranges = normalize_ranges(self.clip, ranges)
+        self.ranges = normalise_ranges(self.clip, ranges)
 
         self._file_to_fix = self.file.name_file_final
 
