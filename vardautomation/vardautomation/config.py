@@ -53,7 +53,7 @@ class FileInfo:  # noqa: PLR0902
 
     def __init__(
         self, path: AnyPath, /,
-        trims_or_dfs: Union[List[Union[Trim, DF]], Trim, None], *,
+        trims_or_dfs: Union[List[Union[Trim, DF]], Trim, None] = None, *,
         idx: Optional[VPSIdx] = None,
         preset: Union[Sequence[Preset], Preset] = PresetGeneric,
         workdir: AnyPath = VPath().cwd()
