@@ -10,13 +10,13 @@ UpdateFunc = Callable[[int, int], None]
 VPSIdx = Callable[[str], VideoNode]
 
 
-class ElementTree(etree._ElementTree):  # type: ignore
+class ElementTree(etree._ElementTree):
     def xpath(self, _path: Union[str, bytes],  # type: ignore
-              namespaces: Optional[Union[Dict[str, str], Dict[bytes, bytes]]] = None,  # type: ignore
+              namespaces: Optional[Union[Dict[str, str], Dict[bytes, bytes]]] = None,
               extensions: Any = None, smart_strings: bool = True,
-              **_variables) -> List[Element]:  # type: ignore
-        xpathobject = super().xpath(  # type: ignore
+              **_variables) -> List[Element]:
+        xpathobject = super().xpath(
             _path, namespaces=namespaces, extensions=extensions,
             smart_strings=smart_strings, **_variables
         )
-        return cast(List[Element], xpathobject)  # type: ignore
+        return cast(List[Element], xpathobject)
