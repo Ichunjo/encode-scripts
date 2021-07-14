@@ -133,18 +133,17 @@ class AudioEncoder(BasicTool):
                 Defaults to None.
         """
         super().__init__(binary, settings, file=file)
+        assert self.file
 
-        if self.file is None:
-            raise ValueError('AudioEncoder: `file` is needed!')
         if self.file.a_src_cut is None:
-            raise ValueError('AudioEncoder: `file.a_src_cut` is needed!')
+            Status.fail('AudioEncoder: `file.a_src_cut` is needed!', exception=ValueError)
         if self.file.a_enc_cut is None:
-            raise ValueError('AudioEncoder: `file.a_enc_cut` is needed!')
+            Status.fail('AudioEncoder: `file.a_enc_cut` is needed!', exception=ValueError)
 
         if track > 0:
             self.track = track
         else:
-            raise ValueError('AudioEncoder: `track` must be > 0')
+            Status.fail('AudioEncoder: `track` must be > 0', exception=ValueError)
         self.xml_tag = xml_tag
 
     def run(self) -> None:
@@ -325,7 +324,7 @@ class FlacEncoder(AudioEncoder):
                     settings = []
                 settings = [f'-{level}', '-o', '{a_enc_cut:s}', '{a_src_cut:s}']
             else:
-                raise ValueError('FlacEncoder: "level" must be <= 8 if use_ffmpeg is false')
+                Status.fail('FlacEncoder: "level" must be <= 8 if use_ffmpeg is false', exception=ValueError)
         super().__init__(binary, settings, file, track=track, xml_tag=xml_tag)
 
 
@@ -348,7 +347,7 @@ class AudioCutter:
         if track > 0:
             self.track = track
         else:
-            raise ValueError('AudioEncoder: `track` must be > 0')
+            Status.fail('AudioEncoder: `track` must be > 0', exception=ValueError)
         self.kwargs = kwargs
 
     def run(self) -> None:
@@ -415,7 +414,7 @@ class VideoEncoder(Tool):
         self._do_encode(y4m)
 
     def run(self) -> NoReturn:
-        raise NameError('Use `run_enc` instead')
+        Status.fail('VideoEncoder: Use `run_enc` instead', exception=NameError)
 
     def set_variable(self) -> Dict[str, Any]:
         try:

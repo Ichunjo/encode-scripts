@@ -43,41 +43,45 @@ class Parser:
         if self.args.qpfile:
             file.do_qpfile = True
 
-        file_frame_start: Optional[int] = None
-        file_frame_end: Optional[int] = None
+        if self.args.start or self.args.end:
+            Status.fail('', exception=NotImplementedError)
 
-        frame_start: Optional[int] = None
-        frame_end: Optional[int] = None
+        # file_frame_start: Optional[int] = None
+        # file_frame_end: Optional[int] = None
 
-        # start frame check
-        if self.args.start is not None:
-            if self.args.start >= 0:
-                frame_start = self.args.start
-                if file.frame_start is None:
-                    file.frame_start = 0
-                file_frame_start = file.frame_start + self.args.start
-            else:
-                Status.fail('--start START must be a positive value!', exception=ValueError)
-        else:
-            file_frame_start = file.frame_start
+        # frame_start: Optional[int] = None
+        # frame_end: Optional[int] = None
 
-        # end frame check
-        if self.args.end is not None:
-            if self.args.end >= 0:
-                frame_end = self.args.end + 1
-                if file.frame_end is None:
-                    file.frame_end = file.clip.num_frames
-                file_frame_end = min((file.frame_start if file.frame_start is not None else 0) + self.args.end + 1,
-                                     file.frame_end)
-            else:
-                Status.fail('--end END must be a positive value!', exception=ValueError)
-        else:
-            file_frame_end = file.frame_end
+        # # start frame check
+        # if self.args.start is not None:
+        #     if self.args.start >= 0:
+        #         frame_start = self.args.start
+        #         if file.frame_start is None:
+        #             file.frame_start = 0
+        #         file_frame_start = file.frame_start + self.args.start
+        #     else:
+        #         Status.fail('--start START must be a positive value!', exception=ValueError)
+        # else:
+        #     file_frame_start = file.frame_start
 
-        file.frame_start = file_frame_start
-        file.frame_end = file_frame_end
+        # # end frame check
+        # if self.args.end is not None:
+        #     if self.args.end >= 0:
+        #         frame_end = self.args.end + 1
+        #         if file.frame_end is None:
+        #             file.frame_end = file.clip.num_frames
+        #         file_frame_end = min((file.frame_start if file.frame_start is not None else 0) + self.args.end + 1,
+        #                              file.frame_end)
+        #     else:
+        #         Status.fail('--end END must be a positive value!', exception=ValueError)
+        # else:
+        #     file_frame_end = file.frame_end
 
-        return file, clip[frame_start:frame_end]
+        # file.frame_start = file_frame_start
+        # file.frame_end = file_frame_end
+
+        # return file, clip[frame_start:frame_end]
+        return file, clip
 
 
 class RunnerConfig(NamedTuple):
