@@ -1,4 +1,4 @@
-"""Colors module"""
+"""Logger module"""
 from typing import NoReturn, Optional, Type
 
 import colorama

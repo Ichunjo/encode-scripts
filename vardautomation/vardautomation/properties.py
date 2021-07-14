@@ -1,4 +1,4 @@
-"""Automation module"""
+"""Properties and helpers functions"""
 import subprocess
 from typing import Dict, List, Tuple
 
