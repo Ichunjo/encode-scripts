@@ -8,12 +8,12 @@ from pprint import pformat
 from typing import List, Optional, Sequence, Union
 
 import vapoursynth as vs
-from vardefunc.types import DuplicateFrame as DF
-from vardefunc.types import Trim
 from vardefunc.util import adjust_clip_frames
 
 from .presets import Preset, PresetGeneric
-from .types import AnyPath, VPSIdx
+from .types import AnyPath
+from .types import DuplicateFrame as DF
+from .types import Trim, VPSIdx
 from .vpathlib import VPath
 
 core = vs.core

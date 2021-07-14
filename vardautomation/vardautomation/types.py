@@ -3,9 +3,12 @@ from typing import Any, Callable, Dict, List, Optional, Union, cast
 
 from lxml import etree
 from vapoursynth import VideoNode
+from vardefunc.types import DuplicateFrame, Trim
 
 AnyPath = Union[PathLike[str], str]
+DuplicateFrame = DuplicateFrame
 Element = etree._Element
+Trim = Trim
 UpdateFunc = Callable[[int, int], None]
 VPSIdx = Callable[[str], VideoNode]
 
