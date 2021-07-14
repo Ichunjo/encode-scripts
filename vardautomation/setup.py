@@ -8,7 +8,7 @@ with open("requirements.txt") as fh:
     install_requires = fh.read()
 
 NAME = 'vardautomation'
-VERSION = '0.1.3'
+VERSION = '0.2.0'
 
 setuptools.setup(
     name=NAME,
