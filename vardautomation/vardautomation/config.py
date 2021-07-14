@@ -64,12 +64,8 @@ class FileInfo:  # noqa: PLR0902
             path (AnyPath):
                 Path to your source file.
 
-            frame_start (Optional[int], optional):
-                Number of frames to trim at the beginning of the clip. Python slicing.
-                Defaults to None.
-
-            frame_end (Optional[int], optional):
-                Number of frames to trim at the end of the clip. Python slicing.
+            trims_or_dfs (Union[List[Union[Trim, DF]], Trim, None], optional):
+                Adjust the clip length by trimming or duplicating frames. Python slicing.
                 Defaults to None.
 
             idx (Optional[Callable[[str], vs.VideoNode]], optional):
