@@ -1,3 +1,4 @@
 *.pylintrc
 __pycache__
+.vscode
 vardautomation/vardautomation/shaders.py
