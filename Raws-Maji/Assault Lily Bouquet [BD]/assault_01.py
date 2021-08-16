@@ -23,10 +23,10 @@ NUM = int(__file__[-5:-3])
 
 BDMV_PATH = VPath(r'[BDMV][210127][BRMM-10341][アサルトリリィ BOUQUET 1]\BRMM_10341')
 
-JPBD = FileInfo(BDMV_PATH / r'BDMV\STREAM\00000.m2ts', 0, 34645, preset=(PresetBD, PresetAAC, PresetChapXML))
+JPBD = FileInfo(BDMV_PATH / r'BDMV\STREAM\00000.m2ts', (0, 34645), preset=(PresetBD, PresetAAC, PresetChapXML))
 JPBD.do_qpfile = True
-JPBD_NCOP = FileInfo(BDMV_PATH / r'BDMV\STREAM\00003.m2ts', 0, -26, preset=PresetBD)
-JPBD_NCED = FileInfo(BDMV_PATH / r'BDMV\STREAM\00004.m2ts', 0, -39, preset=PresetBD)
+JPBD_NCOP = FileInfo(BDMV_PATH / r'BDMV\STREAM\00003.m2ts', (0, -26), preset=PresetBD)
+JPBD_NCED = FileInfo(BDMV_PATH / r'BDMV\STREAM\00004.m2ts', (0, -39), preset=PresetBD)
 
 # Get chapters for this episode
 CHAPTERS = MplsReader(BDMV_PATH, lang=UNDEFINED).get_playlist()[0].mpls_chapters[(NUM - 1) % 3]
@@ -139,7 +139,6 @@ class Filtering:
 
 
 if __name__ == '__main__':
-
     filtered = Filtering().main()
     brrrr = Encoding(JPBD, filtered)
     brrrr.chaptering(CHAPTERS)
