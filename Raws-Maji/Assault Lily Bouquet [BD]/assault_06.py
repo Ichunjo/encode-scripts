@@ -22,12 +22,12 @@ core = vs.core
 
 NUM = int(__file__[-5:-3])
 
-BDMV_PATH = VPath(r'[BDMV][210127][BRMM-10341][アサルトリリィ BOUQUET 1]\BRMM_10341')
+BDMV_PATH = VPath('[BDMV][210224][BRMM-10342][アサルトリリィ BOUQUET 2]/BRMM_10342')
 
-JPBD = FileInfo(BDMV_PATH / r'BDMV\STREAM\00001.m2ts', (0, 34646), preset=(PresetBD, PresetAAC, PresetChapXML))
+JPBD = FileInfo(BDMV_PATH / f'BDMV/STREAM/0000{(NUM - 1) % 3}.m2ts', [(0, 34647)], preset=(PresetBD, PresetAAC, PresetChapXML))
 JPBD.do_qpfile = True
-JPBD_NCOP = FileInfo(BDMV_PATH / r'BDMV\STREAM\00003.m2ts', (0, -26), preset=PresetBD)
-JPBD_NCED = FileInfo(BDMV_PATH / r'BDMV\STREAM\00004.m2ts', (0, -39), preset=PresetBD)
+JPBD_NCOP = FileInfo('[BDMV][210127][BRMM-10341][アサルトリリィ BOUQUET 1]/BRMM_10341/BDMV/STREAM/00003.m2ts', [(0, -26)], preset=PresetBD)
+JPBD_NCED = FileInfo('[BDMV][210127][BRMM-10341][アサルトリリィ BOUQUET 1]/BRMM_10341/BDMV/STREAM/00004.m2ts', [(0, -39)], preset=PresetBD)
 
 # Get chapters for this episode
 CHAPTERS = MplsReader(BDMV_PATH, lang=UNDEFINED).get_playlist()[0].mpls_chapters[(NUM - 1) % 3]
@@ -35,11 +35,12 @@ CHAPTERS = MplsReader(BDMV_PATH, lang=UNDEFINED).get_playlist()[0].mpls_chapters
 # exit()
 
 
-OPSTART, OPEND = 1152, 3308
-EDSTART, EDEND = 32249, 34405
+OPSTART, OPEND = 792, 2948
+EDSTART, EDEND = 31433, 33590
 
 OP_DEBAND: List[Range] = [(OPSTART+1504, OPSTART+1574), (OPSTART+2019, OPSTART+2036)]
 CROP_BORDERS_ED = True
+FILTER_ENDCARD = True
 
 
 class Filtering:
@@ -50,6 +51,17 @@ class Filtering:
         src = SetFrameProp.yuv_hd(src)
         src = depth(src, 16)
         out = src
+
+
+        import rekt as rkt
+        blue_blank = core.std.BlankClip(out, color=[75 << 8, 139 << 8, 127 << 8])
+        wtf = rkt.rekt(out, blue_blank, left=230, top=158, right=1680, bottom=918)
+        out = rfs(out, wtf, [(7434, 7481)])
+
+        if FILTER_ENDCARD:
+            from G41Fun import MaskedDHA
+            dehalo = MaskedDHA(out, 1.45, 1.45, 0.25, 1.0)
+            out = rfs(out, dehalo, [(34526, src.num_frames-1)])
 
 
         # Limited aliasing + contra
@@ -73,7 +85,6 @@ class Filtering:
         denoise = Denoise.bm3d(depth(out, 32), [1.5, 2.5, 2.5], radius=1, profile='fast')
         out = denoise
 
-
         # Convert to RGB and deband the shit out of it
         # Blue plane seems to have more banding
         rgb = SetFrameProp.rgb(Scale.to_444(out).resize.Point(format=vs.RGBS))
@@ -86,10 +97,14 @@ class Filtering:
 
         # Build masks
         lmask, lmask_b, mmmask = self.deband_masks(y)
+        custom_mask_a = Scale.to_gray(core.imwri.Read('assault_06_20517_mask.png'), y)
+        custom_mask_a = custom_mask_a.std.Maximum().std.Maximum().std.BoxBlur(0, 2, 2, 2, 2)
         # -------------------------- SCENEFILTERING MASK --------------------------
-        lmask = rfs(lmask, lmask_b, [(5255, 5398), (5666, 5716)])
-        lmask = rfs(lmask, mmmask, OP_DEBAND + [(99, 158), (4556, 4627)])
+        # lmask = rfs(lmask, lmask_b, [(20517, 20588)])
+        lmask = rfs(lmask, core.std.Expr((mmmask, custom_mask_a), 'x y max'), [(20517, 20588)])
+        lmask = rfs(lmask, mmmask, OP_DEBAND + [(17075, 17172), (18191, 18294)])  # type: ignore
         # -------------------------- SCENEFILTERING MASK --------------------------
+
         # Merge
         deband_rgb = core.std.MaskedMerge(rgb_db_b, rgb_db_a, mmmask)
         deband_rgb = core.std.MaskedMerge(deband_rgb, rgb, lmask)
@@ -100,9 +115,10 @@ class Filtering:
         )
         # -------------------------- SCENEFILTERING --------------------------
         deband = rfs(deband, yuv_db_a, OP_DEBAND)  # type: ignore
-        deband = rfs(deband, yuv_db_b, [(4556, 4627)])  # type: ignore
-        deband = rfs(deband, core.std.MaskedMerge(yuv_db_a, out, lmask), [(99, 158)])
-        deband = rfs(deband, core.std.MaskedMerge(yuv_db_b, out, lmask), [(5255, 5398), (5666, 5716)])
+        deband = rfs(deband, yuv_db_b, [(8028, 8291), (8892, 9008), (17075, 17172), (18191, 18294),
+                                        (21369, 21464), (21882, 22028), (22345, 22388), (23910, 24005)])
+        deband = rfs(deband, core.std.MaskedMerge(yuv_db_a, out, lmask), [(20517, 20588)])
+        deband = rfs(deband, core.std.MaskedMerge(yuv_db_b, out, lmask), [(27267, 28593), (28666, 28965)])
         # -------------------------- SCENEFILTERING --------------------------
         out = depth(deband, 16)
 
@@ -145,10 +161,9 @@ class Filtering:
 if __name__ == '__main__':
     filtered = Filtering().main()
     brrrr = Encoding(JPBD, filtered)
-    brrrr.do_patch([(99, 158), (5255, 5398), (5666, 5716)])
-    # brrrr.chaptering(CHAPTERS)
-    # brrrr.run(merge_chapters=True)
-    # brrrr.cleanup()
+    brrrr.chaptering(CHAPTERS)
+    brrrr.run(merge_chapters=True)
+    brrrr.cleanup()
 else:
     JPBD.clip_cut.set_output(0)
     FILTERED = Filtering().main()

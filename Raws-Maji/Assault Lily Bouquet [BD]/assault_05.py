@@ -22,12 +22,12 @@ core = vs.core
 
 NUM = int(__file__[-5:-3])
 
-BDMV_PATH = VPath(r'[BDMV][210127][BRMM-10341][アサルトリリィ BOUQUET 1]\BRMM_10341')
+BDMV_PATH = VPath('[BDMV][210224][BRMM-10342][アサルトリリィ BOUQUET 2]/BRMM_10342')
 
-JPBD = FileInfo(BDMV_PATH / r'BDMV\STREAM\00001.m2ts', (0, 34646), preset=(PresetBD, PresetAAC, PresetChapXML))
+JPBD = FileInfo(BDMV_PATH / f'BDMV/STREAM/0000{(NUM - 1) % 3}.m2ts', (0, 34647), preset=(PresetBD, PresetAAC, PresetChapXML))
 JPBD.do_qpfile = True
-JPBD_NCOP = FileInfo(BDMV_PATH / r'BDMV\STREAM\00003.m2ts', (0, -26), preset=PresetBD)
-JPBD_NCED = FileInfo(BDMV_PATH / r'BDMV\STREAM\00004.m2ts', (0, -39), preset=PresetBD)
+JPBD_NCOP = FileInfo('[BDMV][210127][BRMM-10341][アサルトリリィ BOUQUET 1]/BRMM_10341/BDMV/STREAM/00003.m2ts', (0, -26), preset=PresetBD)
+JPBD_NCED = FileInfo('[BDMV][210224][BRMM-10342][アサルトリリィ BOUQUET 2]/BRMM_10342/BDMV/STREAM/00003.m2ts', (None, None), preset=PresetBD)
 
 # Get chapters for this episode
 CHAPTERS = MplsReader(BDMV_PATH, lang=UNDEFINED).get_playlist()[0].mpls_chapters[(NUM - 1) % 3]
@@ -35,11 +35,12 @@ CHAPTERS = MplsReader(BDMV_PATH, lang=UNDEFINED).get_playlist()[0].mpls_chapters
 # exit()
 
 
-OPSTART, OPEND = 1152, 3308
-EDSTART, EDEND = 32249, 34405
+OPSTART, OPEND = 1870, 4028
+EDSTART, EDEND = 32106, 34190
 
 OP_DEBAND: List[Range] = [(OPSTART+1504, OPSTART+1574), (OPSTART+2019, OPSTART+2036)]
 CROP_BORDERS_ED = True
+FILTER_ENDCARD = True
 
 
 class Filtering:
@@ -50,6 +51,12 @@ class Filtering:
         src = SetFrameProp.yuv_hd(src)
         src = depth(src, 16)
         out = src
+
+
+        if FILTER_ENDCARD:
+            from G41Fun import MaskedDHA
+            dehalo = MaskedDHA(out, 1.45, 1.45, 0.005, 1.0)
+            out = rfs(out, dehalo, [(34527, src.num_frames-1)])
 
 
         # Limited aliasing + contra
@@ -87,8 +94,8 @@ class Filtering:
         # Build masks
         lmask, lmask_b, mmmask = self.deband_masks(y)
         # -------------------------- SCENEFILTERING MASK --------------------------
-        lmask = rfs(lmask, lmask_b, [(5255, 5398), (5666, 5716)])
-        lmask = rfs(lmask, mmmask, OP_DEBAND + [(99, 158), (4556, 4627)])
+        lmask = rfs(lmask, lmask_b, [(15715, 15750)])
+        lmask = rfs(lmask, mmmask, OP_DEBAND)  # type: ignore
         # -------------------------- SCENEFILTERING MASK --------------------------
         # Merge
         deband_rgb = core.std.MaskedMerge(rgb_db_b, rgb_db_a, mmmask)
@@ -100,9 +107,8 @@ class Filtering:
         )
         # -------------------------- SCENEFILTERING --------------------------
         deband = rfs(deband, yuv_db_a, OP_DEBAND)  # type: ignore
-        deband = rfs(deband, yuv_db_b, [(4556, 4627)])  # type: ignore
-        deband = rfs(deband, core.std.MaskedMerge(yuv_db_a, out, lmask), [(99, 158)])
-        deband = rfs(deband, core.std.MaskedMerge(yuv_db_b, out, lmask), [(5255, 5398), (5666, 5716)])
+        deband = rfs(deband, yuv_db_b, [(22351, 22384), (22424, 22452), (30514, 30699),
+                                        (30790, 30957), (30988, 31035)])
         # -------------------------- SCENEFILTERING --------------------------
         out = depth(deband, 16)
 
@@ -145,10 +151,9 @@ class Filtering:
 if __name__ == '__main__':
     filtered = Filtering().main()
     brrrr = Encoding(JPBD, filtered)
-    brrrr.do_patch([(99, 158), (5255, 5398), (5666, 5716)])
-    # brrrr.chaptering(CHAPTERS)
-    # brrrr.run(merge_chapters=True)
-    # brrrr.cleanup()
+    brrrr.chaptering(CHAPTERS)
+    brrrr.run(merge_chapters=True)
+    brrrr.cleanup()
 else:
     JPBD.clip_cut.set_output(0)
     FILTERED = Filtering().main()

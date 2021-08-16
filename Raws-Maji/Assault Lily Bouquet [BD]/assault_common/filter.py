@@ -10,7 +10,7 @@ from vardefunc.aa import Eedi3SR, Nnedi3SS, upscaled_sraa
 from vardefunc.mask import FDOG, Difference, ExLaplacian4, MinMax, SobelStd
 from vardefunc.scale import to_444
 from vardefunc.util import get_sample_type
-from vsutil import Dither, depth, get_depth, get_y, iterate
+from vsutil import Dither, depth, get_depth, get_y, iterate, insert_clip
 
 core = vs.core
 
@@ -68,10 +68,17 @@ class Scale:
             filter_param_a_uv=-0.5, filter_param_b_uv=0.25
         )
 
+    @staticmethod
+    def to_gray(clip: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
+        assert ref.format
+        return clip.resize.Bicubic(
+            format=ref.format.id, matrix=1, dither_type=Dither.ERROR_DIFFUSION,
+        ).std.AssumeFPS(ref) * ref.num_frames
+
 
 class AA:
     @staticmethod
-    def upscaled_sraa(clip: vs.VideoNode, rfactor: float = 2.0, rep: int = 13, contrasharp: float = 20.0, **kwargs: Any) -> vs.VideoNode:
+    def upscaled_sraa(clip: vs.VideoNode, rfactor: float = 2.0, rep: Optional[int] = 13, contrasharp: float = 20.0, **kwargs: Any) -> vs.VideoNode:
         eedi3_args = dict(eedi3cl=False, gamma=250, nrad=1, mdis=15)
         eedi3_args |= kwargs
         aaa = upscaled_sraa(
@@ -79,7 +86,8 @@ class AA:
             supersampler=Nnedi3SS(opencl=False, nns=2),
             downscaler=Bicubic(-0.5, 0.25),
             singlerater=Eedi3SR(**eedi3_args)
-        ).rgvs.Repair(clip, rep)
+        )
+        aaa = aaa.rgvs.Repair(clip, rep) if rep else aaa
         return LSFmod(aaa, strength=contrasharp, Smode=3, edgemode=0, source=clip)
 
 
@@ -155,6 +163,7 @@ class Mask:
     def restore_credits(clip: vs.VideoNode, ref: vs.VideoNode,
                         oprange: Optional[Tuple[int, int]],
                         edrange: Optional[Tuple[int, int]],
+                        show_mask: bool = False,
                         **creditless_args: Any) -> vs.VideoNode:
         rng: List[Range] = []
         if oprange:
@@ -169,5 +178,20 @@ class Mask:
             edstart, edend = (None, ) * 2
 
         mask = Difference().creditless_oped(opstart=opstart, opend=opend, edstart=edstart, edend=edend, **creditless_args)
+        mask = mask.std.Convolution([1]*9)
+        if show_mask:
+            return mask
 
         return replace_ranges(clip, core.std.MaskedMerge(clip, ref, mask), rng)
+
+
+    @staticmethod
+    def ass_mask(path: str, ref: vs.VideoNode, rng: Tuple[int, int]) -> vs.VideoNode:
+        s, e = rng
+        _, masksub = core.sub.TextFile(ref, path, blend=False)
+        masksub = insert_clip(
+            ref.std.BlankClip(),
+            masksub.std.Binarize(1).resize.Point(format=ref.format.id)[:e-s],  # type: ignore
+            s
+        )
+        return masksub
