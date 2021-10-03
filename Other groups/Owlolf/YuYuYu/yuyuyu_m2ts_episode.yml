@@ -1,0 +1,52 @@
+first_press_path: &fp_path "[BDMV][アニメ] 結城友奈は勇者である"
+first_press_vol1: &fp_vol1 "[BDMV][アニメ][141217] 結城友奈は勇者である 1 (初回限定版BD)/YUYUYU_1"
+first_press_vol2: &fp_vol2 "[BDMV][アニメ][150121] 結城友奈は勇者である 2 (初回限定版BD)/YUYUYU_2"
+first_press_vol3: &fp_vol3 "[BDMV][アニメ][150218] 結城友奈は勇者である 3 (初回限定版BD)/YUYUYU_3"
+first_press_vol4: &fp_vol4 "[BDMV][アニメ][150318] 結城友奈は勇者である 4 (初回限定版BD)/YUYUYU_4"
+first_press_vol5: &fp_vol5 "[BDMV][アニメ][150415] 結城友奈は勇者である 5 (初回限定版BD)/YUYUYU_5"
+first_press_vol6: &fp_vol6 "[BDMV][アニメ][150520] 結城友奈は勇者である 6 (初回限定版BD)/YUYUYU_6"
+
+first_press:
+  - [*fp_path, *fp_vol1, 'BDMV/STREAM/00000.m2ts']
+  - [*fp_path, *fp_vol1, 'BDMV/STREAM/00001.m2ts']
+  - [*fp_path, *fp_vol2, 'BDMV/STREAM/00000.m2ts']
+  - [*fp_path, *fp_vol2, 'BDMV/STREAM/00001.m2ts']
+  - [*fp_path, *fp_vol3, 'BDMV/STREAM/00000.m2ts']
+  - [*fp_path, *fp_vol3, 'BDMV/STREAM/00001.m2ts']
+  - [*fp_path, *fp_vol4, 'BDMV/STREAM/00000.m2ts']
+  - [*fp_path, *fp_vol4, 'BDMV/STREAM/00001.m2ts']
+  - [*fp_path, *fp_vol5, 'BDMV/STREAM/00000.m2ts']
+  - [*fp_path, *fp_vol5, 'BDMV/STREAM/00001.m2ts']
+  - [*fp_path, *fp_vol6, 'BDMV/STREAM/00000.m2ts']
+  - [*fp_path, *fp_vol6, 'BDMV/STREAM/00001.m2ts']
+
+ncops:
+  - [*fp_path, *fp_vol1, 'BDMV/STREAM/00004.m2ts']
+  - [*fp_path, *fp_vol2, 'BDMV/STREAM/00004.m2ts']
+  - [*fp_path, *fp_vol3, 'BDMV/STREAM/00004.m2ts']
+
+nceds:
+  - [*fp_path, *fp_vol1, 'BDMV/STREAM/00005.m2ts']
+  - [*fp_path, *fp_vol2, 'BDMV/STREAM/00005.m2ts']
+  - [*fp_path, *fp_vol5, 'BDMV/STREAM/00005.m2ts']
+  - [*fp_path, *fp_vol6, 'BDMV/STREAM/00003.m2ts']
+  - [*fp_path, *fp_vol6, 'BDMV/STREAM/00004.m2ts']
+
+
+collector_path: &c_path "結城友奈は勇者である-結城友奈の章-"
+collector_vol1: &c_vol1 "YUYUYU_DISC1"
+collector_vol2: &c_vol2 "YUYUYU_DISC2"
+
+collector:
+  - [*c_path, *c_vol1, 'BDMV/STREAM/00000.m2ts']
+  - [*c_path, *c_vol1, 'BDMV/STREAM/00001.m2ts']
+  - [*c_path, *c_vol1, 'BDMV/STREAM/00002.m2ts']
+  - [*c_path, *c_vol1, 'BDMV/STREAM/00003.m2ts']
+  - [*c_path, *c_vol1, 'BDMV/STREAM/00004.m2ts']
+  - [*c_path, *c_vol1, 'BDMV/STREAM/00012.m2ts']
+  - [*c_path, *c_vol2, 'BDMV/STREAM/00000.m2ts']
+  - [*c_path, *c_vol2, 'BDMV/STREAM/00001.m2ts']
+  - [*c_path, *c_vol2, 'BDMV/STREAM/00002.m2ts']
+  - [*c_path, *c_vol2, 'BDMV/STREAM/00003.m2ts']
+  - [*c_path, *c_vol2, 'BDMV/STREAM/00004.m2ts']
+  - [*c_path, *c_vol2, 'BDMV/STREAM/00005.m2ts']
