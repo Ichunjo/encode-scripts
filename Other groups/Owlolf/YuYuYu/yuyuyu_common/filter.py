@@ -1,10 +1,10 @@
-from typing import Any, List, NamedTuple, cast
+from typing import Any, List, cast
 
 import EoEfunc as eoe
 import vapoursynth as vs
-from vardefunc.mask import FDOG, ExLaplacian4, MinMax, SobelStd
+from vardefunc.mask import SobelStd
 from vardefunc.scale import nnedi3_upscale
-from vsutil import depth, get_y, iterate
+from vsutil import depth, get_y
 
 core = vs.core
 
