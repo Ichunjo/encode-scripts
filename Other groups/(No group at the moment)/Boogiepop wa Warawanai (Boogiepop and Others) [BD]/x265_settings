@@ -1,0 +1,8 @@
+--preset veryslow
+--progress-readframes
+--frames {frames:d} --fps {fps_num:d}/{fps_den:d} --output-depth {bits:d}
+--no-strong-intra-smoothing
+--psy-rd 2.0 --psy-rdoq 2.0 --no-open-gop --keyint {keyint:d} --min-keyint {min_keyint:d} --rc-lookahead 60 --bframes 12
+--crf 13 --aq-mode 3 --aq-strength 0.75 --rd 3 --subme 5 --no-cutree --cbqpoffs -2 --crqpoffs -2 --qcomp 0.72
+--tu-intra-depth 2 --tu-inter-depth 2  --deblock=-2:-2 --no-sao --no-sao-non-deblock --no-rect --no-amp --rskip 0
+--sar 1 --range limited --colorprim 1 --transfer 1 --colormatrix 1 --min-luma {min_luma:d} --max-luma {max_luma:d}
